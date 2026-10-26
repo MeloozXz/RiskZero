@@ -15,7 +15,7 @@
     <!-- Content Security Policy (CSP) para mitigação de XSS e Data Exfiltration -->
     <meta 
       http-equiv="Content-Security-Policy" 
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://*.googleapis.com https://*.firebaseapp.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.pwnedpasswords.com https://api.ipify.org https://prod.spline.design https://*.spline.design https://unpkg.com blob:; object-src 'none'; base-uri 'self';" 
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://*.googleapis.com https://*.firebaseapp.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.pwnedpasswords.com https://api.ipify.org https://prod.spline.design https://*.spline.design https://unpkg.com blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self';" 
     />
     
     <!-- SEO Meta Tags -->
@@ -30,9 +30,9 @@
     <meta property="og:description" content="Proteja suas credenciais localmente com chaves derivadas em memória RAM e criptografia AES-256-GCM de nível militar." />
     <meta property="og:site_name" content="RiskZero" />
     
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
     
-    <link rel="shortcut icon" type="image/png" href="/favicon.png" />
+    <link rel="shortcut icon" type="image/png" href="favicon.png" />
     
     <!-- add to homescreen for ios -->
     <meta name="mobile-web-app-capable" content="yes" />
