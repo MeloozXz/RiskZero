@@ -13,15 +13,44 @@ import {
   Edit3,
   Trash2,
   ShieldCheck,
-  Clock
+  Clock,
+  ExternalLink,
+  KeyRound,
+  Activity,
 } from 'lucide-react';
 import { useParams, useHistory } from 'react-router-dom';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { OrbitRing } from '../../components/brand';
 import { useVault } from '../../contexts/VaultContext';
 import { useSecurity } from '../../contexts/SecurityContext';
 import { ClipboardService } from '../../services/clipboard';
 import { StorageService } from '../../services/storage';
 import { SessionService } from '../../services/session';
+
+function analyzePasswordStrength(pwd: string) {
+  if (!pwd) {
+    return { entropy: 0, pct: 0, label: 'Indefinida', color: 'var(--rz-text-muted)', badgeClass: 'rz-badge-neutral' };
+  }
+  let pool = 0;
+  if (/[a-z]/.test(pwd)) pool += 26;
+  if (/[A-Z]/.test(pwd)) pool += 26;
+  if (/[0-9]/.test(pwd)) pool += 10;
+  if (/[^a-zA-Z0-9]/.test(pwd)) pool += 32;
+  if (pool === 0) pool = 26;
+
+  const entropy = Math.round(pwd.length * Math.log2(pool));
+  if (entropy < 45 || pwd.length < 8) {
+    return { entropy, pct: 24, label: 'Vulnerável', color: 'var(--rz-danger)', badgeClass: 'rz-badge-danger' };
+  }
+  if (entropy < 65 || pwd.length < 12) {
+    return { entropy, pct: 52, label: 'Moderada', color: 'var(--rz-warning)', badgeClass: 'rz-badge-warning' };
+  }
+  if (entropy < 90) {
+    return { entropy, pct: 80, label: 'Forte', color: 'var(--rz-accent-light)', badgeClass: 'rz-badge-blue' };
+  }
+  return { entropy, pct: 100, label: 'Blindada (CSPRNG)', color: 'var(--rz-success)', badgeClass: 'rz-badge-success' };
+}
 
 export const VaultDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -175,65 +204,93 @@ export const VaultDetailPage: React.FC = () => {
 
   if (!item) return null;
 
+  const strength = analyzePasswordStrength(isRevealed && plaintextPassword ? plaintextPassword : item._plaintextPassword);
+  const totpPeriod = totpData?.period || 30;
+  const totpPercent = totpData ? Math.round((totpData.remainingSeconds / totpPeriod) * 100) : 0;
+
   return (
-    <IonPage style={{ background: '#09090b' }}>
-      <IonContent fullscreen style={{ '--background': '#09090b' }}>
-        <div className="rz-page-container" style={{ maxWidth: 720 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+    <IonPage className="rz-page">
+      <IonContent fullscreen className="rz-content">
+        <div className="rz-container-narrow">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
             <button
               type="button"
-              className="rz-btn rz-btn-secondary"
+              className="rz-btn rz-btn-secondary rz-btn-sm"
               onClick={() => history.push('/vault')}
             >
               <ArrowLeft size={15} />
               <span>Voltar ao Cofre</span>
             </button>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                className="rz-btn rz-btn-secondary"
-                onClick={() => history.push(`/vault/edit/${item.id}`)}
-              >
-                <Edit3 size={14} />
-                <span>Editar</span>
-              </button>
-              <button
-                type="button"
-                className="rz-btn rz-btn-danger"
-                onClick={handleDelete}
-              >
-                <Trash2 size={14} />
-                <span>Excluir</span>
-              </button>
-            </div>
+            <span className="rz-badge rz-badge-neutral">
+              {CATEGORY_LABELS[item.category || 'LOGIN']}
+            </span>
           </div>
 
-          <div className="rz-card" style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid #27272a' }}>
-              <div>
-                <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-                  {item.title}
-                </h1>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: '#10b981', marginTop: 4 }}>
-                  <ShieldCheck size={13} /> Protegido com AES-256-GCM
-                </span>
-              </div>
-              <span className="rz-badge rz-badge-neutral">
-                {CATEGORY_LABELS[item.category || 'LOGIN']}
+          <PageHeader
+            eyebrow="Inspeção de Credencial"
+            title={item.title}
+            subtitle={
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--rz-success)', fontWeight: 600 }}>
+                <ShieldCheck size={15} /> Protegido localmente com AES-256-GCM · Autodestruição de clipboard em 30s
               </span>
-            </div>
+            }
+            actions={
+              <>
+                <button
+                  type="button"
+                  className="rz-btn rz-btn-secondary"
+                  onClick={() => history.push(`/vault/edit/${item.id}`)}
+                >
+                  <Edit3 size={15} />
+                  <span>Editar</span>
+                </button>
+                <button
+                  type="button"
+                  className="rz-btn rz-btn-danger"
+                  onClick={handleDelete}
+                >
+                  <Trash2 size={15} />
+                  <span>Excluir</span>
+                </button>
+              </>
+            }
+          />
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
+          {/* Painel de Campos Criptografados */}
+          <div className="rz-panel" style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Usuário / E-mail */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '14px 16px',
+                  background: 'var(--rz-bg-deep)',
+                  border: '1px solid var(--rz-border)',
+                  borderRadius: 'var(--rz-radius-sm)',
+                }}
+              >
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <div className="rz-label">USUÁRIO / E-MAIL</div>
-                  <div style={{ color: '#fafafa', fontSize: '0.92rem' }}>{item.username || '—'}</div>
+                  <div
+                    className="rz-font-mono"
+                    style={{
+                      color: 'var(--rz-text-primary)',
+                      fontSize: 'var(--rz-text-md)',
+                      fontWeight: 600,
+                      wordBreak: 'break-all',
+                    }}
+                  >
+                    {item.username || '—'}
+                  </div>
                 </div>
                 {item.username && (
                   <button
                     type="button"
-                    className="rz-btn rz-btn-secondary"
+                    className="rz-btn rz-btn-secondary rz-btn-sm"
                     onClick={() => copyToClipboard(item.username, 'Usuário')}
                   >
                     <Copy size={14} />
@@ -242,44 +299,125 @@ export const VaultDetailPage: React.FC = () => {
                 )}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #1c1c21', paddingTop: 14 }}>
-                <div>
-                  <div className="rz-label">SENHA DE ACESSO</div>
-                  <div style={{ fontFamily: 'var(--rz-font-mono)', fontSize: '0.95rem', color: isRevealed ? '#fafafa' : '#71717a' }}>
-                    {isRevealed ? plaintextPassword : '••••••••••••••••'}
+              {/* Senha de Acesso + Barra de Entropia */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                  padding: '14px 16px',
+                  background: 'var(--rz-bg-deep)',
+                  border: '1px solid var(--rz-border)',
+                  borderRadius: 'var(--rz-radius-sm)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="rz-label">SENHA DE ACESSO</div>
+                    <div
+                      className="rz-font-mono"
+                      style={{
+                        fontSize: 'var(--rz-text-md)',
+                        fontWeight: 600,
+                        color: isRevealed ? 'var(--rz-ice)' : 'var(--rz-text-muted)',
+                        letterSpacing: isRevealed ? '0.03em' : '0.16em',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      {isRevealed ? plaintextPassword : '••••••••••••••••'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      className="rz-btn rz-btn-secondary rz-btn-sm"
+                      onClick={handleRevealClick}
+                      aria-label={isRevealed ? 'Ocultar senha' : 'Revelar senha'}
+                    >
+                      {isRevealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                    <button
+                      type="button"
+                      className="rz-btn rz-btn-secondary rz-btn-sm"
+                      onClick={async () => {
+                        const pass = isRevealed ? plaintextPassword : await revealPassword(id);
+                        copyToClipboard(pass, 'Senha');
+                      }}
+                    >
+                      <Copy size={14} />
+                      <span>Copiar</span>
+                    </button>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button type="button" className="rz-btn rz-btn-secondary" onClick={handleRevealClick}>
-                    {isRevealed ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                  <button
-                    type="button"
-                    className="rz-btn rz-btn-secondary"
-                    onClick={async () => {
-                      const pass = isRevealed ? plaintextPassword : await revealPassword(id);
-                      copyToClipboard(pass, 'Senha');
-                    }}
-                  >
-                    <Copy size={14} />
-                    <span>Copiar</span>
-                  </button>
+
+                {/* Barra de Força / Entropia */}
+                <div
+                  style={{
+                    borderTop: '1px solid var(--rz-border-subtle)',
+                    paddingTop: 10,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--rz-text-xs)', color: 'var(--rz-text-secondary)' }}>
+                      <Activity size={13} style={{ color: strength.color }} />
+                      Entropia estimada: <strong className="rz-font-mono" style={{ color: 'var(--rz-text-primary)' }}>{strength.entropy} bits</strong>
+                    </span>
+                    <span className={`rz-badge ${strength.badgeClass}`}>{strength.label}</span>
+                  </div>
+                  <div className="rz-meter">
+                    <span style={{ width: `${strength.pct}%`, background: strength.color }} />
+                  </div>
                 </div>
               </div>
 
+              {/* Código 2FA TOTP com OrbitRing (Ciclo 30s) */}
               {totpData && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #1c1c21', paddingTop: 14 }}>
-                  <div>
-                    <div className="rz-label">CÓDIGO 2FA (TOTP)</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                      <span style={{ fontFamily: 'var(--rz-font-mono)', fontSize: '1.35rem', fontWeight: 700, color: '#3b82f6' }}>
-                        {totpData.code}
-                      </span>
-                      <span style={{ fontSize: '0.78rem', color: '#a1a1aa' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 14,
+                    flexWrap: 'wrap',
+                    padding: '16px',
+                    background: 'var(--rz-bg-deep)',
+                    border: '1px solid var(--rz-accent-line)',
+                    borderRadius: 'var(--rz-radius-sm)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <OrbitRing
+                      value={totpPercent}
+                      size={54}
+                      stroke={4}
+                      tone={totpData.remainingSeconds <= 5 ? 'danger' : 'accent'}
+                      globe={false}
+                      label={`Expira em ${totpData.remainingSeconds} segundos`}
+                    >
+                      <span className="rz-font-mono" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--rz-text-primary)' }}>
                         {totpData.remainingSeconds}s
                       </span>
+                    </OrbitRing>
+
+                    <div>
+                      <div className="rz-label" style={{ marginBottom: 2 }}>CÓDIGO 2FA (TOTP AO VIVO)</div>
+                      <div
+                        className="rz-font-mono"
+                        style={{
+                          fontSize: '1.5rem',
+                          fontWeight: 700,
+                          color: 'var(--rz-ice)',
+                          letterSpacing: '0.16em',
+                        }}
+                      >
+                        {totpData.code}
+                      </div>
                     </div>
                   </div>
+
                   <button
                     type="button"
                     className="rz-btn rz-btn-primary"
@@ -291,26 +429,76 @@ export const VaultDetailPage: React.FC = () => {
                 </div>
               )}
 
+              {/* Endereço Web (URL) */}
               {item.url && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #1c1c21', paddingTop: 14 }}>
-                  <div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '14px 16px',
+                    background: 'var(--rz-bg-deep)',
+                    border: '1px solid var(--rz-border)',
+                    borderRadius: 'var(--rz-radius-sm)',
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="rz-label">ENDEREÇO WEB</div>
-                    <div style={{ color: '#fafafa', fontSize: '0.88rem' }}>{item.url}</div>
+                    <div
+                      className="rz-font-mono"
+                      style={{
+                        color: 'var(--rz-text-primary)',
+                        fontSize: 'var(--rz-text-sm)',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      {item.url}
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    className="rz-btn rz-btn-secondary"
-                    onClick={() => copyToClipboard(item.url, 'URL')}
-                  >
-                    <Copy size={14} />
-                  </button>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <a
+                      href={item.url.startsWith('http') ? item.url : `https://${item.url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rz-btn rz-btn-secondary rz-btn-sm"
+                      style={{ textDecoration: 'none' }}
+                      aria-label="Abrir site em nova aba"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                    <button
+                      type="button"
+                      className="rz-btn rz-btn-secondary rz-btn-sm"
+                      onClick={() => copyToClipboard(item.url, 'URL')}
+                    >
+                      <Copy size={14} />
+                    </button>
+                  </div>
                 </div>
               )}
 
+              {/* Notas Protegidas */}
               {item._plaintextNotes && (
-                <div style={{ borderTop: '1px solid #1c1c21', paddingTop: 14 }}>
+                <div
+                  style={{
+                    padding: '14px 16px',
+                    background: 'var(--rz-bg-deep)',
+                    border: '1px solid var(--rz-border)',
+                    borderRadius: 'var(--rz-radius-sm)',
+                  }}
+                >
                   <div className="rz-label">NOTAS PROTEGIDAS</div>
-                  <p style={{ color: '#d4d4d8', fontSize: '0.85rem', margin: '4px 0 0 0', whiteSpace: 'pre-wrap' }}>
+                  <p
+                    className="rz-font-mono"
+                    style={{
+                      color: 'var(--rz-text-secondary)',
+                      fontSize: 'var(--rz-text-sm)',
+                      margin: '4px 0 0 0',
+                      whiteSpace: 'pre-wrap',
+                      lineHeight: 1.55,
+                    }}
+                  >
                     {item._plaintextNotes}
                   </p>
                 </div>
@@ -318,27 +506,42 @@ export const VaultDetailPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Histórico de Alterações */}
           {item.history && item.history.length > 0 && (
-            <div className="rz-card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 600, color: '#a1a1aa', marginBottom: 12 }}>
-                <Clock size={14} />
-                <span>Histórico de Alterações</span>
+            <div className="rz-panel">
+              <div className="rz-section-head">
+                <h2 className="rz-section-title">
+                  <Clock size={15} />
+                  <span>Histórico de Alterações</span>
+                  <span className="rz-count">{item.history.length}</span>
+                </h2>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {item.history.map((hist, idx) => (
-                  <div key={hist.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#09090b', border: '1px solid #27272a', borderRadius: 6 }}>
+                  <div
+                    key={hist.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '10px 14px',
+                      background: 'var(--rz-bg-deep)',
+                      border: '1px solid var(--rz-border)',
+                      borderRadius: 'var(--rz-radius-xs)',
+                    }}
+                  >
                     <div>
-                      <strong style={{ color: '#d4d4d8', fontSize: '0.8rem', marginRight: 8 }}>
+                      <strong style={{ color: 'var(--rz-text-primary)', fontSize: 'var(--rz-text-sm)', marginRight: 10 }}>
                         Versão #{item.history!.length - idx}
                       </strong>
-                      <span style={{ color: '#71717a', fontSize: '0.75rem' }}>
+                      <span className="rz-font-mono" style={{ color: 'var(--rz-text-muted)', fontSize: 'var(--rz-text-xs)' }}>
                         {new Date(hist.updatedAt).toLocaleString('pt-BR')}
                       </span>
                     </div>
                     <button
                       type="button"
-                      className="rz-btn rz-btn-secondary"
-                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                      className="rz-btn rz-btn-secondary rz-btn-sm"
                       onClick={() => handleRevealHistoryClick(hist.id)}
                     >
                       <Eye size={13} />
@@ -357,21 +560,20 @@ export const VaultDetailPage: React.FC = () => {
             setShowPinModal(false);
             setEnteredPin('');
           }}
-          style={{
-            '--background': '#121215',
-            '--border-radius': '12px',
-            '--width': '90%',
-            '--max-width': '360px',
-            '--height': 'fit-content',
-          }}
+          className="rz-dialog"
         >
-          <div style={{ padding: '24px', background: '#121215', border: '1px solid #27272a', borderRadius: '12px' }}>
-            <h3 style={{ margin: '0 0 6px 0', color: '#fafafa', fontSize: '1rem', fontWeight: 700 }}>
-              Confirmação de PIN
-            </h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', color: '#a1a1aa' }}>
-              Insira seu código PIN para descriptografar a senha.
-            </p>
+          <div className="rz-dialog-body">
+            <div className="rz-dialog-head" style={{ marginBottom: 16 }}>
+              <div className="rz-icon-tile lg">
+                <KeyRound />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <h3 className="rz-dialog-title">Confirmação de PIN</h3>
+                <p className="rz-dialog-text">
+                  Insira seu código PIN para descriptografar a senha.
+                </p>
+              </div>
+            </div>
             <input
               type="password"
               inputMode="numeric"
@@ -379,14 +581,13 @@ export const VaultDetailPage: React.FC = () => {
               value={enteredPin}
               onChange={(e) => setEnteredPin(e.target.value.replace(/\D/g, ''))}
               placeholder="••••••"
-              className="rz-input"
-              style={{ textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.1rem', marginBottom: '16px' }}
+              className="rz-input is-mono"
+              style={{ textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.1rem' }}
             />
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="rz-dialog-actions">
               <button
                 type="button"
                 className="rz-btn rz-btn-secondary"
-                style={{ flex: 1 }}
                 onClick={() => setShowPinModal(false)}
               >
                 Cancelar
@@ -394,7 +595,6 @@ export const VaultDetailPage: React.FC = () => {
               <button
                 type="button"
                 className="rz-btn rz-btn-primary"
-                style={{ flex: 1 }}
                 onClick={verifyPinAndProceed}
               >
                 Confirmar

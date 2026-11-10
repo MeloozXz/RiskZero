@@ -1,245 +1,138 @@
 /* ==========================================================================
-   ANALYSIS PAGE - CORPORATE SAAS GRAPHITE / ZINC
+   RISKZERO — SAÚDE DAS SENHAS ("ORBITAL")
    ========================================================================== */
 
-.analysis-page,
-.analysis-content {
-  --background: #09090b !important;
-  background-color: #09090b !important;
-}
-
-.analysis-toolbar {
-  --background: #09090b !important;
-  --color: #fafafa;
-  border-bottom: 1px solid #27272a;
-}
-
-.analysis-title {
-  font-weight: 700 !important;
-  font-size: 1.15rem !important;
-  color: #fafafa !important;
-}
-
-.analysis-container {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 24px 20px 80px;
+.analysis-hero {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.analysis-score-card {
-  background: #121215;
-  border: 1px solid #27272a;
-  border-radius: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
   padding: 24px;
-  text-align: center;
+  margin-bottom: 20px;
 }
 
-.analysis-score-val {
-  font-size: 3.25rem;
-  font-weight: 700;
-  line-height: 1;
-  font-family: var(--rz-font-mono);
-}
-
-.analysis-score-val.excellent {
-  color: #10b981;
-}
-
-.analysis-score-val.warning {
-  color: #f59e0b;
-}
-
-.analysis-score-val.danger {
-  color: #ef4444;
-}
-
-.analysis-score-label {
-  color: #a1a1aa;
-  font-size: 0.875rem;
-  margin-top: 8px;
-  font-weight: 500;
-}
-
-.analysis-progress-bar {
-  border-radius: 4px;
-  height: 6px;
-  margin-top: 16px;
-  background: #27272a;
-}
-
-.analysis-progress-bar.excellent {
-  --progress-background: #10b981;
-}
-
-.analysis-progress-bar.warning {
-  --progress-background: #f59e0b;
-}
-
-.analysis-progress-bar.danger {
-  --progress-background: #ef4444;
-}
-
-.analysis-stats-row {
+.analysis-hero-left {
   display: flex;
-  justify-content: space-around;
-  margin-top: 20px;
-  border-top: 1px solid #27272a;
-  padding-top: 16px;
-}
-
-.analysis-stat-item {
-  text-align: center;
-}
-
-.analysis-stat-val {
-  font-size: 1.4rem;
-  font-weight: 700;
-  font-family: var(--rz-font-mono);
-}
-
-.analysis-stat-label {
-  font-size: 0.72rem;
-  color: #71717a;
-  margin-top: 4px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.analysis-filter-container {
-  display: flex;
-  gap: 8px;
-}
-
-.analysis-filter-btn {
+  align-items: center;
+  gap: 22px;
   flex: 1;
-  margin: 0;
-  --border-radius: 8px !important;
-  --border-width: 1px !important;
-  --border-style: solid !important;
-  --border-color: #27272a !important;
-  --background: #121215 !important;
-  --color: #a1a1aa !important;
-  font-weight: 600 !important;
-  font-size: 0.8rem !important;
-  box-shadow: none !important;
+  min-width: 0;
 }
 
-.analysis-filter-btn.active {
-  --background: #2563eb !important;
-  --color: #ffffff !important;
-  --border-color: #3b82f6 !important;
-}
-
-.analysis-list {
+.analysis-hero-info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
 }
 
-.analysis-item-card {
-  background: #121215;
-  border-radius: 8px;
-  padding: 14px 16px;
-  border: 1px solid #27272a;
+.analysis-hero-title {
+  font-family: var(--rz-font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--rz-text-primary);
+  margin: 0;
 }
 
-.analysis-item-card.border-weak {
-  border-left: 3px solid #ef4444;
+.analysis-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 24px 0 14px;
 }
 
-.analysis-item-card.border-reused {
-  border-left: 3px solid #f59e0b;
+.analysis-cred-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--rz-border-subtle);
+  border-left: 3px solid transparent;
+  transition: background var(--rz-dur-fast) var(--rz-ease);
 }
 
-.analysis-item-card.border-strong {
-  border-left: 3px solid #10b981;
+.analysis-cred-row:last-child {
+  border-bottom: 0;
 }
 
-.analysis-card-title-row {
+.analysis-cred-row:hover {
+  background: var(--rz-bg-surface);
+}
+
+.analysis-cred-row.is-weak {
+  border-left-color: var(--rz-danger);
+}
+
+.analysis-cred-row.is-reused {
+  border-left-color: var(--rz-warning);
+}
+
+.analysis-cred-row.is-strong {
+  border-left-color: var(--rz-success);
+}
+
+.analysis-cred-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.analysis-cred-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 
-.analysis-card-title {
-  color: #fafafa;
-  font-weight: 600;
-  font-size: 0.92rem;
+.analysis-cred-title {
+  font-weight: 700;
+  font-size: var(--rz-text-md);
+  color: var(--rz-text-primary);
 }
 
-.analysis-item-badge {
-  font-size: 0.65rem !important;
-  padding: 2px 6px !important;
-  border-radius: 4px !important;
-  font-weight: 600 !important;
-}
-
-.analysis-card-meta-row {
+.analysis-cred-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: var(--rz-text-xs);
+  color: var(--rz-text-secondary);
 }
 
-.analysis-strength-lbl {
-  font-size: 0.78rem;
-  font-weight: 600;
+.analysis-entropy-bar {
+  max-width: 280px;
+  width: 100%;
+  margin-top: 2px;
 }
 
-.analysis-entropy-val {
-  font-size: 0.75rem;
-  color: #71717a;
-  font-family: var(--rz-font-mono);
-}
+@media (max-width: 640px) {
+  .analysis-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 18px;
+  }
 
-.analysis-fix-btn {
-  --color: #3b82f6 !important;
-  --padding-start: 8px !important;
-  --padding-end: 8px !important;
-  font-weight: 600 !important;
-  font-size: 0.8rem !important;
-}
+  .analysis-hero-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
 
-.entropy-progress-track {
-  height: 4px;
-  background: #27272a;
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 10px;
-}
+  .analysis-cred-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
 
-.entropy-progress-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.analysis-clean-state {
-  text-align: center;
-  padding: 40px 24px;
-  background: #121215;
-  border-radius: 10px;
-  border: 1px solid #27272a;
-}
-
-.analysis-clean-icon {
-  font-size: 36px;
-  color: #10b981;
-  margin-bottom: 10px;
-}
-
-.analysis-clean-title {
-  color: #fafafa;
-  font-weight: 600;
-  font-size: 0.98rem;
-  margin-bottom: 4px;
-}
-
-.analysis-clean-desc {
-  font-size: 0.825rem;
-  color: #a1a1aa;
+  .analysis-entropy-bar {
+    max-width: 100%;
+  }
 }

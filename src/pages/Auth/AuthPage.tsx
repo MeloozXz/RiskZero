@@ -5,7 +5,6 @@ import {
   IonSpinner
 } from '@ionic/react';
 import {
-  ShieldCheck,
   Lock,
   Eye,
   EyeOff,
@@ -14,8 +13,13 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Info
+  Info,
+  Cpu,
+  Radio,
+  Mail,
+  ShieldCheck
 } from 'lucide-react';
+import { Logo, Mascot, OrbitLoader, RzMark } from '../../components/brand';
 import { useSecurity } from '../../contexts/SecurityContext';
 import { StorageService } from '../../services/storage';
 import { SessionService } from '../../services/session';
@@ -130,7 +134,12 @@ export const AuthPage: React.FC = () => {
 
   const strengthScore = calculateStrengthScore();
   const strengthLabels = ['Fraca', 'Razoável', 'Forte', 'Excelente'];
-  const strengthColors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'];
+  const strengthColors = [
+    'var(--rz-danger)',
+    'var(--rz-warning)',
+    'var(--rz-info)',
+    'var(--rz-success)'
+  ];
 
   const switchTab = (targetMode: 'LOGIN' | 'REGISTER') => {
     if (mode === targetMode) return;
@@ -351,8 +360,7 @@ export const AuthPage: React.FC = () => {
       <IonPage>
         <IonContent className="auth-lightweight-page">
           <div className="auth-loading-state" role="status" aria-label="Carregando ambiente">
-            <IonSpinner name="crescent" style={{ color: '#3b82f6', width: '28px', height: '28px' }} />
-            <span className="auth-loading-text">Inicializando cofre...</span>
+            <OrbitLoader label="Inicializando cofre..." size={48} />
           </div>
         </IonContent>
       </IonPage>
@@ -363,402 +371,484 @@ export const AuthPage: React.FC = () => {
     <IonPage>
       <IonContent className="auth-lightweight-page">
         <div className="auth-screen-container">
-          <main className="auth-saas-card" aria-labelledby="auth-brand-heading">
-            <header className="auth-brand-header">
-              <div className="auth-logo-mark" aria-hidden="true">
-                <ShieldCheck className="w-5 h-5" />
+          {/* DESKTOP SHOWCASE (≥1024px) */}
+          <aside className="auth-showcase-panel rz-meridian-bg" aria-label="Arquitetura de defesa RiskZero">
+            <div className="auth-showcase-inner">
+              <div className="auth-showcase-top">
+                <Logo width={210} />
+                <span className="rz-badge rz-badge-info">
+                  <span className="rz-dot info is-live" />
+                  ORBITAL CORE
+                </span>
               </div>
-              <div className="auth-brand-meta">
-                <h1 id="auth-brand-heading" className="brand-title">
-                  RiskZero
-                </h1>
-                <p className="brand-tagline">Cofre Corporativo Zero-Knowledge</p>
+
+              <div className="auth-showcase-hero">
+                <span className="rz-eyebrow">Soberania Criptográfica Zero-Knowledge</span>
+                <h2 className="auth-showcase-display">
+                  <span className="rz-echo" data-text="RISK ZERO">RISK ZERO</span>
+                </h2>
+                <p className="auth-showcase-lead">
+                  Cofre corporativo e defesa ativa. Suas chaves são derivadas localmente e jamais deixam o seu dispositivo sem cifragem autenticada.
+                </p>
+              </div>
+
+              <div className="auth-showcase-stage">
+                <div className="auth-mascot-pedestal">
+                  <div className="auth-mascot-halo" aria-hidden="true" />
+                  <Mascot height={240} alt="Guardião Cibernético RiskZero" />
+                </div>
+
+                <div className="auth-pillars-stack">
+                  <div className="auth-pillar-card">
+                    <div className="rz-icon-tile">
+                      <Lock />
+                    </div>
+                    <div className="auth-pillar-copy">
+                      <h3>Zero-Knowledge AES-256-GCM</h3>
+                      <p>Cifragem autenticada no cliente com vetores de inicialização únicos por registro.</p>
+                    </div>
+                  </div>
+
+                  <div className="auth-pillar-card">
+                    <div className="rz-icon-tile violet">
+                      <Cpu />
+                    </div>
+                    <div className="auth-pillar-copy">
+                      <h3>PBKDF2 600k em Web Worker</h3>
+                      <p>Derivação criptográfica intensiva isolada em thread dedicada contra força bruta.</p>
+                    </div>
+                  </div>
+
+                  <div className="auth-pillar-card">
+                    <div className="rz-icon-tile success">
+                      <Radio />
+                    </div>
+                    <div className="auth-pillar-copy">
+                      <h3>k-Anonymity &amp; WireGuard</h3>
+                      <p>Monitoramento de vazamentos por prefixo de hash SHA-1 e túnel de rede seguro.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* COLUNA DE AUTENTICAÇÃO (Desktop + Mobile nativo) */}
+          <div className="auth-form-column">
+            {/* BANNER COMPACTO MOBILE/TABLET (<1024px) */}
+            <header className="auth-mobile-banner rz-meridian-bg">
+              <div className="auth-mobile-banner-copy">
+                <Logo width={130} />
+                <div className="auth-mobile-badges">
+                  <span className="rz-badge rz-badge-info">
+                    <span className="rz-dot info is-live" />
+                    AES-256-GCM
+                  </span>
+                  <span className="rz-badge rz-badge-neutral">Zero-Knowledge</span>
+                </div>
+              </div>
+              <div className="auth-mobile-banner-mascot">
+                <Mascot height={96} />
               </div>
             </header>
 
-            {mode !== 'TOTP_VERIFY' && (
-              <nav className="auth-segmented-tabs" role="tablist" aria-label="Modo de autenticação">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === 'LOGIN'}
-                  className={`tab-toggle-btn ${mode === 'LOGIN' ? 'active' : ''}`}
-                  onClick={() => switchTab('LOGIN')}
-                >
-                  Acessar cofre
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === 'REGISTER'}
-                  className={`tab-toggle-btn ${mode === 'REGISTER' ? 'active' : ''}`}
-                  onClick={() => switchTab('REGISTER')}
-                >
-                  Criar conta
-                </button>
-              </nav>
-            )}
-
-            {errorMsg && (
-              <div className="auth-feedback-alert error" role="alert">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            {successMsg && (
-              <div className="auth-feedback-alert success" role="status">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>{successMsg}</span>
-              </div>
-            )}
-
-            {/* LOGIN */}
-            {mode === 'LOGIN' && (
-              <form onSubmit={handleLogin} className="auth-form-body" noValidate>
-                <div className="form-field-group">
-                  <label htmlFor="login-email" className="field-label">
-                    E-mail
-                  </label>
-                  <div className="field-input-wrapper">
-                    <input
-                      id="login-email"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="username"
-                      placeholder="nome@empresa.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={loading || lockoutSecs > 0}
-                      required
-                      className="clean-text-input"
-                    />
-                  </div>
+            <main className="auth-saas-card" aria-labelledby="auth-brand-heading">
+              <header className="auth-brand-header">
+                <div className="auth-logo-mark rz-icon-tile" aria-hidden="true">
+                  <RzMark size={22} />
                 </div>
+                <div className="auth-brand-meta">
+                  <h1 id="auth-brand-heading" className="brand-title">
+                    RiskZero
+                  </h1>
+                  <p className="brand-tagline">Cofre Corporativo Zero-Knowledge</p>
+                </div>
+              </header>
 
-                <div className="form-field-group">
-                  <div className="field-label-row">
-                    <label htmlFor="login-password" className="field-label">
-                      Senha Mestra
+              {mode !== 'TOTP_VERIFY' && (
+                <nav className="auth-segmented-tabs" role="tablist" aria-label="Modo de autenticação">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === 'LOGIN'}
+                    className={`tab-toggle-btn ${mode === 'LOGIN' ? 'active' : ''}`}
+                    onClick={() => switchTab('LOGIN')}
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === 'REGISTER'}
+                    className={`tab-toggle-btn ${mode === 'REGISTER' ? 'active' : ''}`}
+                    onClick={() => switchTab('REGISTER')}
+                  >
+                    Criar Cofre
+                  </button>
+                </nav>
+              )}
+
+              {errorMsg && (
+                <div className="rz-alert rz-alert-danger auth-feedback-alert" role="alert">
+                  <AlertTriangle />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              {successMsg && (
+                <div className="rz-alert rz-alert-success auth-feedback-alert" role="status">
+                  <CheckCircle2 />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
+              {/* LOGIN */}
+              {mode === 'LOGIN' && (
+                <form onSubmit={handleLogin} className="auth-form-body" noValidate>
+                  <div className="form-field-group">
+                    <label htmlFor="login-email" className="field-label">
+                      E-mail
                     </label>
-                    {canUseBiometricUnlock && (
+                    <div className="rz-input-group field-input-wrapper">
+                      <Mail />
+                      <input
+                        id="login-email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="username"
+                        placeholder="nome@empresa.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={loading || lockoutSecs > 0}
+                        required
+                        className="rz-input clean-text-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-field-group">
+                    <div className="field-label-row">
+                      <label htmlFor="login-password" className="field-label">
+                        Senha Mestra
+                      </label>
+                      {canUseBiometricUnlock && (
+                        <button
+                          type="button"
+                          onClick={handleBiometricRecovery}
+                          className="auth-inline-link"
+                        >
+                          Usar biometria física
+                        </button>
+                      )}
+                    </div>
+                    <div className="rz-input-group field-input-wrapper">
+                      <Lock />
+                      <input
+                        id="login-password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        placeholder="Digite sua Senha Mestra"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={loading || lockoutSecs > 0}
+                        required
+                        className="rz-input clean-text-input"
+                      />
                       <button
                         type="button"
-                        onClick={handleBiometricRecovery}
-                        className="auth-inline-link"
+                        aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="field-adornment-btn"
                       >
-                        Usar biometria física
+                        {showPassword ? <EyeOff /> : <Eye />}
                       </button>
-                    )}
+                    </div>
                   </div>
-                  <div className="field-input-wrapper">
+
+                  <label htmlFor="remember-session-check" className="auth-checkbox-row">
                     <input
-                      id="login-password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      placeholder="Digite sua Senha Mestra"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={loading || lockoutSecs > 0}
-                      required
-                      className="clean-text-input pr-10"
+                      id="remember-session-check"
+                      type="checkbox"
+                      checked={rememberSession}
+                      onChange={(e) => setRememberSession(e.target.checked)}
+                      className="auth-checkbox-input"
                     />
-                    <button
-                      type="button"
-                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="field-adornment-btn"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
+                    <span className="auth-checkbox-label">
+                      Manter sessão criptografada ativa ao recarregar a página
+                    </span>
+                  </label>
+
+                  {lockoutSecs > 0 ? (
+                    <div className="rz-alert rz-alert-danger lockout-warning-card" role="alert">
+                      <AlertTriangle />
+                      <div>
+                        <h3 className="lockout-title">Bloqueio temporário ativo</h3>
+                        <p className="lockout-desc">
+                          Muitas tentativas incorretas. Aguarde <strong className="rz-num">{lockoutSecs}s</strong>.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="auth-actions-stack">
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="rz-btn rz-btn-primary rz-btn-lg rz-btn-block primary-action-btn"
+                      >
+                        {loading ? (
+                          <span className="btn-content-inline">
+                            <IonSpinner name="crescent" style={{ width: '16px', height: '16px' }} />
+                            <span>Autenticando...</span>
+                          </span>
+                        ) : (
+                          <span className="btn-content-inline">
+                            <Lock />
+                            <span>Desbloquear cofre</span>
+                          </span>
+                        )}
+                      </button>
+
+                      {canUseBiometricUnlock && (
+                        <button
+                          type="button"
+                          onClick={handleBiometricLogin}
+                          disabled={loading}
+                          className="rz-btn rz-btn-secondary rz-btn-lg rz-btn-block secondary-biometric-btn"
+                        >
+                          <Fingerprint />
+                          <span>Entrar com Biometria do Dispositivo</span>
+                        </button>
                       )}
-                    </button>
+                    </div>
+                  )}
+                </form>
+              )}
+
+              {/* CADASTRO */}
+              {mode === 'REGISTER' && (
+                <form onSubmit={handleRegister} className="auth-form-body" noValidate>
+                  <div className="form-field-group">
+                    <label htmlFor="reg-email" className="field-label">
+                      E-mail corporativo ou pessoal
+                    </label>
+                    <div className="rz-input-group field-input-wrapper">
+                      <Mail />
+                      <input
+                        id="reg-email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="username"
+                        placeholder="nome@empresa.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={loading}
+                        required
+                        className="rz-input clean-text-input"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <label htmlFor="remember-session-check" className="auth-checkbox-row">
-                  <input
-                    id="remember-session-check"
-                    type="checkbox"
-                    checked={rememberSession}
-                    onChange={(e) => setRememberSession(e.target.checked)}
-                    className="auth-checkbox-input"
-                  />
-                  <span className="auth-checkbox-label">
-                    Manter sessão criptografada ativa ao recarregar a página
-                  </span>
-                </label>
+                  <div className="form-field-group">
+                    <label htmlFor="reg-password" className="field-label">
+                      Definir Senha Mestra
+                    </label>
+                    <div className="rz-input-group field-input-wrapper">
+                      <Lock />
+                      <input
+                        id="reg-password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="Mínimo de 12 caracteres"
+                        value={password}
+                        onChange={(e) => handlePasswordChange(e.target.value)}
+                        disabled={loading}
+                        required
+                        className="rz-input clean-text-input"
+                      />
+                      <button
+                        type="button"
+                        aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="field-adornment-btn"
+                      >
+                        {showPassword ? <EyeOff /> : <Eye />}
+                      </button>
+                    </div>
+                  </div>
 
-                {lockoutSecs > 0 ? (
-                  <div className="lockout-warning-card" role="alert">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <div className="password-health-container" aria-live="polite">
+                    <div className="strength-meter-header">
+                      <span>Entropia da Senha Mestra</span>
+                      <span
+                        className="strength-meter-badge"
+                        style={{
+                          color:
+                            password.length === 0
+                              ? 'var(--rz-text-muted)'
+                              : strengthColors[Math.max(0, strengthScore - 1)]
+                        }}
+                      >
+                        {password.length === 0 ? 'Aguardando' : strengthLabels[Math.max(0, strengthScore - 1)]}
+                      </span>
+                    </div>
+
+                    <div className="strength-bars-row">
+                      {[0, 1, 2, 3].map((step) => (
+                        <div
+                          key={step}
+                          className="strength-bar-segment"
+                          style={{
+                            backgroundColor:
+                              step < strengthScore && password.length > 0
+                                ? strengthColors[Math.max(0, strengthScore - 1)]
+                                : 'var(--rz-bg-hover)'
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="requirements-checklist">
+                      <div className={`check-rule ${pwdReqs.length ? 'met' : ''}`}>
+                        {pwdReqs.length ? <CheckCircle2 className="rule-icon met" /> : <XCircle className="rule-icon" />}
+                        <span>12+ caracteres</span>
+                      </div>
+                      <div className={`check-rule ${pwdReqs.upper ? 'met' : ''}`}>
+                        {pwdReqs.upper ? <CheckCircle2 className="rule-icon met" /> : <XCircle className="rule-icon" />}
+                        <span>Maiúscula (A-Z)</span>
+                      </div>
+                      <div className={`check-rule ${pwdReqs.lower ? 'met' : ''}`}>
+                        {pwdReqs.lower ? <CheckCircle2 className="rule-icon met" /> : <XCircle className="rule-icon" />}
+                        <span>Minúscula (a-z)</span>
+                      </div>
+                      <div className={`check-rule ${pwdReqs.number ? 'met' : ''}`}>
+                        {pwdReqs.number ? <CheckCircle2 className="rule-icon met" /> : <XCircle className="rule-icon" />}
+                        <span>Número (0-9)</span>
+                      </div>
+                      <div className={`check-rule ${pwdReqs.special ? 'met' : ''}`}>
+                        {pwdReqs.special ? <CheckCircle2 className="rule-icon met" /> : <XCircle className="rule-icon" />}
+                        <span>Símbolo (!@#$...)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-field-group">
+                    <label htmlFor="reg-confirm" className="field-label">
+                      Confirmar Senha Mestra
+                    </label>
+                    <div className="rz-input-group field-input-wrapper">
+                      <ShieldCheck />
+                      <input
+                        id="reg-confirm"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="Repita a Senha Mestra"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        disabled={loading}
+                        required
+                        className="rz-input clean-text-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="security-notice-box">
+                    <Info />
+                    <p>
+                      <strong>Arquitetura Zero-Knowledge:</strong> Sua Senha Mestra deriva as chaves AES-256-GCM localmente e jamais é enviada ao servidor. Caso perdida, não poderá ser recuperada.
+                    </p>
+                  </div>
+
+                  <label htmlFor="accept-terms-check" className="auth-checkbox-row">
+                    <input
+                      id="accept-terms-check"
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="auth-checkbox-input"
+                    />
+                    <span className="auth-checkbox-label">
+                      Compreendo a arquitetura Zero-Knowledge e concordo com os termos de privacidade (LGPD).
+                    </span>
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={!isPasswordValid() || !acceptedTerms || loading}
+                    className="rz-btn rz-btn-primary rz-btn-lg rz-btn-block primary-action-btn"
+                  >
+                    {loading ? (
+                      <span className="btn-content-inline">
+                        <IonSpinner name="crescent" style={{ width: '16px', height: '16px' }} />
+                        <span>Derivando chaves PBKDF2...</span>
+                      </span>
+                    ) : (
+                      <span>Criar cofre criptografado</span>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {/* 2FA TOTP */}
+              {mode === 'TOTP_VERIFY' && (
+                <form onSubmit={handleVerify2FA} className="auth-form-body" noValidate>
+                  <div className="totp-header-block">
+                    <div className="rz-icon-tile lg totp-badge-icon-box">
+                      <KeyRound />
+                    </div>
                     <div>
-                      <h3 className="lockout-title">Bloqueio temporário ativo</h3>
-                      <p className="lockout-desc">
-                        Muitas tentativas incorretas. Aguarde <strong>{lockoutSecs}s</strong>.
+                      <h2 className="totp-title">Verificação em Duas Etapas</h2>
+                      <p className="totp-subtitle">
+                        Insira o código TOTP de 6 dígitos gerado pelo seu aplicativo autenticador.
                       </p>
                     </div>
                   </div>
-                ) : (
+
+                  <div className="form-field-group">
+                    <label htmlFor="totp-input" className="field-label">
+                      Código de 6 dígitos
+                    </label>
+                    <div className="rz-input-group field-input-wrapper">
+                      <input
+                        id="totp-input"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        autoComplete="one-time-code"
+                        placeholder="000000"
+                        value={totpToken}
+                        onChange={(e) => setTotpToken(e.target.value.replace(/\D/g, ''))}
+                        disabled={loading}
+                        required
+                        className="rz-input clean-text-input totp-code-input"
+                      />
+                    </div>
+                  </div>
+
                   <div className="auth-actions-stack">
                     <button
                       type="submit"
-                      disabled={loading}
-                      className="primary-action-btn"
+                      disabled={loading || totpToken.length !== 6}
+                      className="rz-btn rz-btn-primary rz-btn-lg rz-btn-block primary-action-btn"
                     >
-                      {loading ? (
-                        <span className="btn-content-inline">
-                          <IonSpinner name="crescent" style={{ width: '16px', height: '16px' }} />
-                          <span>Autenticando...</span>
-                        </span>
-                      ) : (
-                        <span className="btn-content-inline">
-                          <Lock className="w-4 h-4" />
-                          <span>Desbloquear cofre</span>
-                        </span>
-                      )}
+                      {loading ? 'Validando...' : 'Confirmar código'}
                     </button>
 
-                    {canUseBiometricUnlock && (
-                      <button
-                        type="button"
-                        onClick={handleBiometricLogin}
-                        disabled={loading}
-                        className="secondary-biometric-btn"
-                      >
-                        <Fingerprint className="w-4 h-4 shrink-0" />
-                        <span>Entrar com Biometria do Dispositivo</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </form>
-            )}
-
-            {/* CADASTRO */}
-            {mode === 'REGISTER' && (
-              <form onSubmit={handleRegister} className="auth-form-body" noValidate>
-                <div className="form-field-group">
-                  <label htmlFor="reg-email" className="field-label">
-                    E-mail corporativo ou pessoal
-                  </label>
-                  <div className="field-input-wrapper">
-                    <input
-                      id="reg-email"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="username"
-                      placeholder="nome@empresa.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={loading}
-                      required
-                      className="clean-text-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-field-group">
-                  <label htmlFor="reg-password" className="field-label">
-                    Definir Senha Mestra
-                  </label>
-                  <div className="field-input-wrapper">
-                    <input
-                      id="reg-password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      placeholder="Mínimo de 12 caracteres"
-                      value={password}
-                      onChange={(e) => handlePasswordChange(e.target.value)}
-                      disabled={loading}
-                      required
-                      className="clean-text-input pr-10"
-                    />
                     <button
                       type="button"
-                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="field-adornment-btn"
+                      onClick={() => {
+                        setMode('LOGIN');
+                        setTotpToken('');
+                        setErrorMsg(null);
+                      }}
+                      className="rz-btn rz-btn-secondary rz-btn-lg rz-btn-block secondary-biometric-btn"
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
+                      Voltar para o login
                     </button>
                   </div>
-                </div>
-
-                <div className="password-health-container" aria-live="polite">
-                  <div className="strength-meter-header">
-                    <span>Entropia da Senha Mestra</span>
-                    <span
-                      style={{
-                        color: password.length === 0 ? '#71717a' : strengthColors[Math.max(0, strengthScore - 1)],
-                        fontWeight: 600
-                      }}
-                    >
-                      {password.length === 0 ? 'Aguardando' : strengthLabels[Math.max(0, strengthScore - 1)]}
-                    </span>
-                  </div>
-
-                  <div className="strength-bars-row">
-                    {[0, 1, 2, 3].map((step) => (
-                      <div
-                        key={step}
-                        className="strength-bar-segment"
-                        style={{
-                          backgroundColor:
-                            step < strengthScore && password.length > 0
-                              ? strengthColors[Math.max(0, strengthScore - 1)]
-                              : '#27272a'
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="requirements-checklist">
-                    <div className={`check-rule ${pwdReqs.length ? 'met' : ''}`}>
-                      {pwdReqs.length ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
-                      <span>12+ caracteres</span>
-                    </div>
-                    <div className={`check-rule ${pwdReqs.upper ? 'met' : ''}`}>
-                      {pwdReqs.upper ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
-                      <span>Maiúscula (A-Z)</span>
-                    </div>
-                    <div className={`check-rule ${pwdReqs.lower ? 'met' : ''}`}>
-                      {pwdReqs.lower ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
-                      <span>Minúscula (a-z)</span>
-                    </div>
-                    <div className={`check-rule ${pwdReqs.number ? 'met' : ''}`}>
-                      {pwdReqs.number ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
-                      <span>Número (0-9)</span>
-                    </div>
-                    <div className={`check-rule ${pwdReqs.special ? 'met' : ''}`}>
-                      {pwdReqs.special ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
-                      <span>Símbolo (!@#$...)</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="form-field-group">
-                  <label htmlFor="reg-confirm" className="field-label">
-                    Confirmar Senha Mestra
-                  </label>
-                  <div className="field-input-wrapper">
-                    <input
-                      id="reg-confirm"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      placeholder="Repita a Senha Mestra"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      disabled={loading}
-                      required
-                      className="clean-text-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="security-notice-box">
-                  <Info className="w-4 h-4 shrink-0 mt-0.5 text-zinc-400" />
-                  <p>
-                    <strong>Arquitetura Zero-Knowledge:</strong> Sua Senha Mestra deriva as chaves AES-256-GCM localmente e jamais é enviada ao servidor. Caso perdida, não poderá ser recuperada.
-                  </p>
-                </div>
-
-                <label htmlFor="accept-terms-check" className="auth-checkbox-row">
-                  <input
-                    id="accept-terms-check"
-                    type="checkbox"
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className="auth-checkbox-input"
-                  />
-                  <span className="auth-checkbox-label">
-                    Compreendo a arquitetura Zero-Knowledge e concordo com os termos de privacidade (LGPD).
-                  </span>
-                </label>
-
-                <button
-                  type="submit"
-                  disabled={!isPasswordValid() || !acceptedTerms || loading}
-                  className="primary-action-btn"
-                >
-                  {loading ? (
-                    <span className="btn-content-inline">
-                      <IonSpinner name="crescent" style={{ width: '16px', height: '16px' }} />
-                      <span>Derivando chaves Argon2id...</span>
-                    </span>
-                  ) : (
-                    <span>Criar cofre criptografado</span>
-                  )}
-                </button>
-              </form>
-            )}
-
-            {/* 2FA TOTP */}
-            {mode === 'TOTP_VERIFY' && (
-              <form onSubmit={handleVerify2FA} className="auth-form-body" noValidate>
-                <div className="totp-header-block">
-                  <div className="totp-badge-icon-box">
-                    <KeyRound className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="totp-title">Verificação em Duas Etapas</h2>
-                    <p className="totp-subtitle">
-                      Insira o código TOTP de 6 dígitos gerado pelo seu aplicativo autenticador.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="form-field-group">
-                  <label htmlFor="totp-input" className="field-label">
-                    Código de 6 dígitos
-                  </label>
-                  <div className="field-input-wrapper">
-                    <input
-                      id="totp-input"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      autoComplete="one-time-code"
-                      placeholder="000000"
-                      value={totpToken}
-                      onChange={(e) => setTotpToken(e.target.value.replace(/\D/g, ''))}
-                      disabled={loading}
-                      required
-                      className="clean-text-input totp-code-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="auth-actions-stack">
-                  <button
-                    type="submit"
-                    disabled={loading || totpToken.length !== 6}
-                    className="primary-action-btn"
-                  >
-                    {loading ? 'Validando...' : 'Confirmar código'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('LOGIN');
-                      setTotpToken('');
-                      setErrorMsg(null);
-                    }}
-                    className="secondary-biometric-btn"
-                  >
-                    Voltar para o login
-                  </button>
-                </div>
-              </form>
-            )}
-          </main>
+                </form>
+              )}
+            </main>
+          </div>
         </div>
       </IonContent>
     </IonPage>
@@ -766,4 +856,3 @@ export const AuthPage: React.FC = () => {
 };
 
 export default AuthPage;
-

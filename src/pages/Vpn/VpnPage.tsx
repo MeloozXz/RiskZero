@@ -1,71 +1,118 @@
 import React, { useState, useEffect } from 'react';
+import { IonPage, IonContent, IonToast, IonToggle } from '@ionic/react';
 import {
-  IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonIcon,
-  IonBadge,
-  IonToast,
-  IonSpinner,
-} from '@ionic/react';
+  Power,
+  ShieldCheck,
+  Globe,
+  Monitor,
+  Download,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
+  Wifi,
+  Info,
+  Server,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Activity,
+  FileCode,
+  Lock,
+  Layers,
+  Sparkles,
+} from 'lucide-react';
 import {
-  shieldCheckmarkOutline,
-  globeOutline,
-  desktopOutline,
-  cloudDownloadOutline,
-  copyOutline,
-  chevronDownOutline,
-  chevronUpOutline,
-  refreshOutline,
-  checkmarkCircleOutline,
-  alertCircleOutline,
-  openOutline,
-  flashOutline,
-  lockClosedOutline,
-  wifiOutline,
-  informationCircleOutline,
-} from 'ionicons/icons';
-import { VpnService, ExternalIpAudit, BrowserExtensionService, BrowserExtensionState } from '../../services/vpn';
+  VpnService,
+  VpnStats,
+  ExternalIpAudit,
+  BrowserExtensionService,
+  BrowserExtensionState,
+} from '../../services/vpn';
 import { ClipboardService } from '../../services/clipboard';
+import { VpnServer } from '../../types';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { OrbitRing } from '../../components/brand';
 import './VpnPage.css';
 
+type VpnMode = 'browser-ext' | 'wireguard-pc';
+
+function formatDuration(totalSeconds: number): string {
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  return [hrs, mins, secs].map((v) => String(v).padStart(2, '0')).join(':');
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const val = bytes / Math.pow(1024, i);
+  return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function getNodeCode(server: VpnServer): string {
+  if (server.id === 'cf-warp') return 'WARP';
+  if (server.id.startsWith('br')) return 'BR';
+  if (server.id.startsWith('us')) return 'US';
+  if (server.id.startsWith('de')) return 'DE';
+  if (server.id.startsWith('uk')) return 'UK';
+  return 'VPS';
+}
+
 export const VpnPage: React.FC = () => {
+  const [activeMode, setActiveMode] = useState<VpnMode>('browser-ext');
+  const [vpnStats, setVpnStats] = useState<VpnStats>(() => VpnService.getStats());
+  const [servers, setServers] = useState<VpnServer[]>(() => VpnService.getServers());
   const [auditData, setAuditData] = useState<ExternalIpAudit | null>(null);
   const [isAuditing, setIsAuditing] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string>('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [configPreview, setConfigPreview] = useState<string>('');
+  const [showConfPreview, setShowConfPreview] = useState<boolean>(false);
 
   // Estado sincronizado com a Extensão do Navegador
-  const [extState, setExtState] = useState<BrowserExtensionState>({
-    isInstalled: false,
-    isConnected: false,
-    selectedServer: {
-      id: 'de-fra',
-      name: 'Alemanha (Frankfurt)',
-      country: 'Alemanha',
-      flag: '🇩🇪',
-      city: 'Frankfurt am Main'
-    }
-  });
+  const [extState, setExtState] = useState<BrowserExtensionState>(() =>
+    BrowserExtensionService.getState()
+  );
 
   // Estados de expansão dos tutoriais
   const [showBrowserTutorial, setShowBrowserTutorial] = useState<boolean>(false);
   const [showWindowsTutorial, setShowWindowsTutorial] = useState<boolean>(false);
 
-  // Monitora a Extensão do Navegador
   useEffect(() => {
-    const unsub = BrowserExtensionService.subscribe((state) => {
+    const unsubVpn = VpnService.subscribe((stats) => {
+      setVpnStats(stats);
+      setServers(VpnService.getServers());
+    });
+    const unsubExt = BrowserExtensionService.subscribe((state) => {
       setExtState(state);
     });
-    return () => unsub();
+    return () => {
+      unsubVpn();
+      unsubExt();
+    };
   }, []);
 
-  // Executa auditoria inicial de IP
   useEffect(() => {
     runAudit();
-  }, []);
+  }, [vpnStats.status, vpnStats.selectedServer.id, extState.isConnected]);
+
+  useEffect(() => {
+    let active = true;
+    VpnService.getWireguardConfig()
+      .then(({ configString }) => {
+        if (active) setConfigPreview(configString);
+      })
+      .catch(() => { });
+    return () => {
+      active = false;
+    };
+  }, [vpnStats.selectedServer.id]);
 
   const runAudit = async () => {
     setIsAuditing(true);
@@ -73,7 +120,6 @@ export const VpnPage: React.FC = () => {
       const res = await VpnService.auditExternalIp();
       setAuditData(res);
     } catch {
-      // Fallback
       setAuditData({
         ip: '189.20.125.138',
         isp: 'Vivo (Provedor Local)',
@@ -84,6 +130,55 @@ export const VpnPage: React.FC = () => {
       });
     } finally {
       setIsAuditing(false);
+    }
+  };
+
+  const handleToggleTunnel = async () => {
+    if (activeMode === 'browser-ext') {
+      if (!extState.isInstalled) {
+        handleDownloadExtension();
+        setToastMessage('Baixe e ative a extensão para rotear as abas do navegador.');
+        return;
+      }
+      BrowserExtensionService.toggleConnect();
+      setToastMessage(
+        !extState.isConnected ? 'Proteção da extensão ativada!' : 'Proteção da extensão desativada.'
+      );
+      return;
+    }
+
+    // Modo WireGuard PC
+    if (vpnStats.status === 'CONNECTED' || vpnStats.status === 'CONNECTING') {
+      await VpnService.disconnect();
+      setToastMessage('Túnel WireGuard desconectado.');
+    } else {
+      try {
+        await VpnService.connect();
+        setToastMessage(`Túnel simulado via ${vpnStats.selectedServer.name}.`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Falha ao iniciar túnel VPN.';
+        setToastMessage(msg);
+      }
+    }
+  };
+
+  const handleSelectServer = async (server: VpnServer) => {
+    if (server.status === 'UNAVAILABLE') {
+      setToastMessage('Este nó requer configuração manual de endpoint.');
+      return;
+    }
+    const wasConnected = vpnStats.status === 'CONNECTED';
+    if (wasConnected) {
+      await VpnService.disconnect();
+    }
+    VpnService.setServer(server);
+    setToastMessage(`Nó selecionado: ${server.name}`);
+    if (wasConnected) {
+      try {
+        await VpnService.connect();
+      } catch {
+        // Tratado no estado de erro
+      }
     }
   };
 
@@ -109,367 +204,688 @@ export const VpnPage: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setToastMessage('Download da extensão iniciado.');
-    // Abre automaticamente o tutorial para facilitar a vida do usuário
+    setToastMessage('Download da extensão iniciado (.zip). Siga os 3 passos abaixo.');
     setShowBrowserTutorial(true);
   };
 
-  const handleDownloadConf = () => {
-    const link = document.createElement('a');
-    link.href = '/seguranapp-vpn.conf';
-    link.download = 'seguranapp-vpn.conf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setToastMessage('Perfil WireGuard (.conf) baixado.');
-    setShowWindowsTutorial(true);
+  const handleDownloadConf = async () => {
+    try {
+      await VpnService.downloadCurrentConfigFile();
+      setToastMessage(`Perfil WireGuard (${vpnStats.selectedServer.name}) baixado.`);
+      setShowWindowsTutorial(true);
+    } catch {
+      const link = document.createElement('a');
+      link.href = '/seguranapp-vpn.conf';
+      link.download = 'seguranapp-vpn.conf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setToastMessage('Perfil WireGuard (.conf) baixado.');
+      setShowWindowsTutorial(true);
+    }
   };
 
+  const isConnected =
+    activeMode === 'browser-ext'
+      ? extState.isConnected
+      : vpnStats.status === 'CONNECTED';
+
+  const isConnecting =
+    activeMode === 'wireguard-pc' &&
+    (vpnStats.status === 'CONNECTING' ||
+      vpnStats.status === 'RECONNECTING' ||
+      vpnStats.status === 'DISCONNECTING');
+
+  const isError = activeMode === 'wireguard-pc' && vpnStats.status === 'ERROR';
+
+  const activeVirtualIp = isConnected
+    ? vpnStats.protectedIp
+    : auditData?.ip || vpnStats.originalIp || 'Consultando IP...';
+
+  const availableNodes = servers.filter((s) => s.status === 'AVAILABLE');
+
   return (
-    <IonPage>
-      <IonHeader className="ion-no-border">
-        <IonToolbar style={{ '--background': '#070a13', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <div className="flex items-center justify-between px-4 py-2">
-            <div className="flex items-center gap-2">
-              <IonIcon icon={shieldCheckmarkOutline} style={{ color: '#60a5fa', fontSize: '20px' }} />
-              <IonTitle style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '1.05rem', padding: 0 }}>
-                VPN
-              </IonTitle>
-            </div>
-            <IonBadge
-              color="primary"
-              className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
-              style={{ background: 'rgba(96, 165, 250, 0.15)', color: '#60a5fa', border: '1px solid rgba(96, 165, 250, 0.3)' }}
-            >
-              Criptografia Ativa
-            </IonBadge>
-          </div>
-        </IonToolbar>
-      </IonHeader>
+    <IonPage className="rz-page">
+      <IonContent className="rz-content" fullscreen>
+        <div className="rz-page-container">
+          <PageHeader
+            eyebrow="Rede Criptografada"
+            title="Túnel VPN & Proteção de Rede"
+            subtitle="Escolha entre a Extensão Leve para Navegador ou o Perfil WireGuard Oficial (.conf) para o Computador Inteiro."
+            actions={
+              <>
+                <span className={`rz-badge ${isConnected ? 'rz-badge-success' : 'rz-badge-blue'}`}>
+                  <span className={`rz-dot ${isConnected ? 'success is-live' : 'info'}`} />
+                  {isConnected ? 'Proteção Ativa' : 'Pronto para Conectar'}
+                </span>
+                <button
+                  type="button"
+                  onClick={runAudit}
+                  disabled={isAuditing}
+                  className="rz-btn rz-btn-secondary rz-btn-sm"
+                >
+                  <RefreshCw size={14} className={isAuditing ? 'rz-spin' : ''} />
+                  <span>{isAuditing ? 'Auditando...' : 'Testar Meu IP'}</span>
+                </button>
+              </>
+            }
+          />
 
-      <IonContent className="vpn-content" fullscreen>
-        <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-
-          {/* BANNER DE BOAS-VINDAS / INTRODUÇÃO */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/60 p-6 border border-white/10 shadow-2xl">
-            <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 max-w-2xl">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold mb-3">
-                <IonIcon icon={flashOutline} />
-                <span>Duas formas de proteger sua conexão</span>
-              </div>
-              <h1 className="text-xl md:text-2xl font-extrabold text-white tracking-tight mb-2">
-                Proteja sua conexão
-              </h1>
-              <p className="text-slate-400 text-xs md:text-sm leading-relaxed">
-                Use a extensão para proteger apenas o navegador ou instale o perfil WireGuard no Windows para proteger todo o tráfego do computador.
-              </p>
-            </div>
-          </div>
-
-          {/* PAINEL COMPACTO: AUDITORIA DE IP EM TEMPO REAL */}
-          <div className="rounded-2xl bg-slate-900/80 backdrop-blur-md p-4 border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5 w-full md:w-auto">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center flex-shrink-0 text-cyan-400">
-                <IonIcon icon={wifiOutline} className="text-xl" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Auditoria de Rede Atual
-                  </span>
-                  {auditData && (
-                    <span className={`inline-block w-2 h-2 rounded-full ${auditData.isProtected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                  )}
-                </div>
-                <div className="flex items-baseline gap-2 mt-0.5">
-                  <span className="text-sm md:text-base font-extrabold font-mono text-white">
-                    {auditData ? auditData.ip : 'Consultando IP...'}
-                  </span>
-                  <span className="text-xs text-slate-400 font-medium">
-                    {auditData?.city ? `(${auditData.city} • ${auditData.isp || 'Provedor'})` : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          {/* ==================== SELETOR DE MODO (EXTENSÃO VS WIREGUARD PC) ==================== */}
+          <div className="vpn-mode-selector-wrap">
+            <div className="vpn-mode-selector" role="tablist" aria-label="Modo de Operação VPN">
               <button
-                onClick={runAudit}
-                disabled={isAuditing}
-                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                type="button"
+                role="tab"
+                aria-selected={activeMode === 'browser-ext'}
+                onClick={() => setActiveMode('browser-ext')}
+                className={`vpn-mode-tab ${activeMode === 'browser-ext' ? 'is-active' : ''}`}
               >
-                {isAuditing ? (
-                  <>
-                    <IonSpinner name="dots" style={{ width: '16px', height: '16px', color: '#60a5fa' }} />
-                    <span>Verificando...</span>
-                  </>
-                ) : (
-                  <>
-                    <IonIcon icon={refreshOutline} className="text-cyan-400 text-sm" />
-                    <span>Testar Meu IP Agora</span>
-                  </>
+                <div className="vpn-mode-tab-icon">
+                  <Globe size={18} />
+                </div>
+                <div className="vpn-mode-tab-text">
+                  <span className="vpn-mode-tab-title">1. Extensão de Navegador (Chrome / Edge)</span>
+                  <span className="vpn-mode-tab-sub">
+                    Protege suas abas web sem instalar executável no PC
+                  </span>
+                </div>
+                {extState.isInstalled && (
+                  <span className="rz-badge rz-badge-success" style={{ marginLeft: 'auto' }}>
+                    Instalada
+                  </span>
                 )}
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeMode === 'wireguard-pc'}
+                onClick={() => setActiveMode('wireguard-pc')}
+                className={`vpn-mode-tab ${activeMode === 'wireguard-pc' ? 'is-active' : ''}`}
+              >
+                <div className="vpn-mode-tab-icon violet">
+                  <Monitor size={18} />
+                </div>
+                <div className="vpn-mode-tab-text">
+                  <span className="vpn-mode-tab-title">2. WireGuard Oficial (Computador Inteiro)</span>
+                  <span className="vpn-mode-tab-sub">
+                    Perfil .conf de nível de kernel para Windows, Mac e Linux
+                  </span>
+                </div>
+                <span className="rz-badge rz-badge-violet" style={{ marginLeft: 'auto' }}>
+                  Sistema PC
+                </span>
               </button>
             </div>
           </div>
 
-          {/* OS 2 CARDS PRINCIPAIS: EXTENSÃO VS MÁQUINA */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-            {/* CARD 1: VPN DE NAVEGADOR (EXTENSÃO) */}
-            <div className="rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 p-6 border border-cyan-500/20 hover:border-cyan-500/40 transition-all flex flex-col justify-between shadow-xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl group-hover:bg-cyan-500/10 transition-all pointer-events-none" />
-
-              <div>
-                {/* Header do Card */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-2xl shadow-lg shadow-cyan-500/10">
-                    <IonIcon icon={globeOutline} />
-                  </div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-                    100% no Navegador
-                  </span>
-                </div>
-
-                <h3 className="text-lg font-extrabold text-white mb-1.5 flex items-center gap-2">
-                  VPN de Navegador
-                  <span className="text-xs text-slate-400 font-normal">(Chrome & Edge)</span>
-                </h3>
-                <p className="text-slate-400 text-xs leading-relaxed mb-4">
-                  Proteção ultra-rápida direto nas suas abas. Altera seu IP para nós nos <strong>Estados Unidos</strong> ou <strong>Alemanha</strong> sem precisar instalar nenhum executável (.exe) no Windows.
-                </p>
-
-                {/* Vantagens */}
-                <div className="space-y-2 mb-6">
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <IonIcon icon={checkmarkCircleOutline} className="text-emerald-400 text-base flex-shrink-0" />
-                    <span><strong>Zero Download de Programas:</strong> opera 100% na extensão.</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <IonIcon icon={checkmarkCircleOutline} className="text-emerald-400 text-base flex-shrink-0" />
-                    <span><strong>Imune a Quedas:</strong> conexão segura sem travar sua internet.</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <IonIcon icon={checkmarkCircleOutline} className="text-emerald-400 text-base flex-shrink-0" />
-                    <span><strong>Ativação em 30 Segundos:</strong> basta carregar no navegador.</span>
-                  </div>
-                </div>
-
-                {/* Painel de Controle Ao Vivo da Extensão (quando detectada) */}
-                {extState.isInstalled && (
-                  <div className="p-4 rounded-xl bg-slate-950/90 border border-emerald-500/30 space-y-3 mb-6 shadow-inner">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        EXTENSÃO CONECTADA AO SITE
-                      </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
-                        V2.0 Ativa
+          {/* ==================== MODO 1: EXTENSÃO DE NAVEGADOR ==================== */}
+          {activeMode === 'browser-ext' && (
+            <div className="vpn-layout">
+              {/* Coluna Esquerda: Reator de Conexão da Extensão */}
+              <div className="vpn-col">
+                <section
+                  className={`vpn-reactor-panel rz-meridian-bg ${isConnected ? 'is-connected' : ''
+                    }`}
+                  aria-label="Controle da Extensão do Navegador"
+                >
+                  <div className="vpn-reactor-top">
+                    <div
+                      className={`vpn-status-pill ${isConnected
+                          ? 'is-connected'
+                          : extState.isInstalled
+                            ? 'is-connecting'
+                            : ''
+                        }`}
+                    >
+                      <span
+                        className={`rz-dot ${isConnected
+                            ? 'success is-live'
+                            : extState.isInstalled
+                              ? 'info'
+                              : 'warning'
+                          }`}
+                      />
+                      <span>
+                        {isConnected
+                          ? 'Navegador Protegido'
+                          : extState.isInstalled
+                            ? 'Extensão em Standby'
+                            : 'Extensão Não Detectada'}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 pt-1">
-                      <div>
-                        <div className="text-[11px] text-slate-400">Proteção de Rede:</div>
-                        <div className="text-sm font-black text-white flex items-center gap-1.5">
-                          {extState.isConnected ? (
-                            <>
-                              <span className="text-emerald-400">● ATIVA</span>
-                              <span className="text-xs text-slate-300 font-normal">({extState.selectedServer?.country || 'Alemanha'})</span>
-                            </>
-                          ) : (
-                            <span className="text-slate-400">○ DESLIGADA</span>
-                          )}
-                        </div>
-                      </div>
+                    <span className="vpn-uptime" title="Tempo de conexão">
+                      {formatDuration(vpnStats.connectedTimeSeconds)}
+                    </span>
+                  </div>
 
+                  <div className="vpn-reactor-stage">
+                    <OrbitRing
+                      size={168}
+                      stroke={7}
+                      spinning={false}
+                      value={isConnected ? 100 : 0}
+                      tone={isConnected ? 'success' : 'accent'}
+                      globe
+                      label={isConnected ? 'Extensão Conectada' : 'Extensão Desconectada'}
+                    >
                       <button
-                        onClick={() => BrowserExtensionService.toggleConnect()}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                          extState.isConnected
-                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
-                            : 'bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 hover:brightness-110 shadow-lg shadow-emerald-500/20'
-                        }`}
+                        type="button"
+                        onClick={handleToggleTunnel}
+                        className={`vpn-power-btn ${isConnected ? 'is-connected' : ''}`}
+                        aria-label={
+                          isConnected ? 'Desconectar Extensão' : 'Conectar Extensão'
+                        }
                       >
-                        {extState.isConnected ? 'Desligar VPN' : 'Ligar VPN Agora'}
+                        <Power size={30} strokeWidth={2} />
+                        <span className="vpn-power-label">
+                          {isConnected ? 'Ativo' : 'Conectar'}
+                        </span>
+                      </button>
+                    </OrbitRing>
+
+                    <div className="vpn-ip-readout">
+                      <span className="vpn-ip-eyebrow">
+                        {isConnected ? 'IP Mascarado no Navegador' : 'Endereço IP Atual do Navegador'}
+                      </span>
+                      <div className="vpn-ip-value-row">
+                        <span className="vpn-ip-value">{activeVirtualIp}</span>
+                        <button
+                          type="button"
+                          className="rz-icon-btn"
+                          style={{ width: 28, height: 28 }}
+                          onClick={() => handleCopyText(activeVirtualIp, 'Endereço IP')}
+                          aria-label="Copiar endereço IP"
+                        >
+                          {copiedField === 'Endereço IP' ? <Check size={14} /> : <Copy size={14} />}
+                        </button>
+                      </div>
+                      <span className="vpn-ip-meta">
+                        {isConnected
+                          ? `Protegendo abas via ${extState.selectedServer?.country || 'Alemanha'}`
+                          : auditData?.city
+                            ? `${auditData.city}, ${auditData.country || 'Brasil'} · ${auditData.isp || 'Provedor Local'}`
+                            : 'Tráfego direto sem proxy'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Ação Principal do Reator */}
+                  <div className="vpn-thumb-bar">
+                    <button
+                      type="button"
+                      onClick={handleToggleTunnel}
+                      className={`rz-btn rz-btn-lg rz-btn-block ${isConnected ? 'rz-btn-danger' : 'rz-btn-primary'
+                        }`}
+                    >
+                      <Power size={16} />
+                      <span>
+                        {isConnected
+                          ? 'Desconectar Proteção do Navegador'
+                          : extState.isInstalled
+                            ? 'Ativar Proteção do Navegador'
+                            : '1. Baixar Extensão SeguranApp (.zip)'}
+                      </span>
+                    </button>
+                  </div>
+                </section>
+
+                {/* Métricas do Navegador */}
+                <section className="rz-metrics" aria-label="Telemetria do navegador">
+                  <div className="rz-metric">
+                    <span className="rz-stat-label">
+                      <ArrowDownToLine size={12} style={{ display: 'inline', marginRight: 4 }} />
+                      Download
+                    </span>
+                    <div className="rz-stat-value rz-num">
+                      {isConnected ? vpnStats.downloadSpeedKbps : 0}
+                      <small style={{ fontSize: '0.85rem', marginLeft: 4, color: 'var(--rz-text-muted)' }}>
+                        kbps
+                      </small>
+                    </div>
+                    <span className="rz-help rz-font-mono">
+                      Total: {formatBytes(vpnStats.downloadBytes)}
+                    </span>
+                  </div>
+
+                  <div className="rz-metric">
+                    <span className="rz-stat-label">
+                      <ArrowUpFromLine size={12} style={{ display: 'inline', marginRight: 4 }} />
+                      Upload
+                    </span>
+                    <div className="rz-stat-value rz-num">
+                      {isConnected ? vpnStats.uploadSpeedKbps : 0}
+                      <small style={{ fontSize: '0.85rem', marginLeft: 4, color: 'var(--rz-text-muted)' }}>
+                        kbps
+                      </small>
+                    </div>
+                    <span className="rz-help rz-font-mono">
+                      Total: {formatBytes(vpnStats.uploadBytes)}
+                    </span>
+                  </div>
+
+                  <div className="rz-metric">
+                    <span className="rz-stat-label">
+                      <Activity size={12} style={{ display: 'inline', marginRight: 4 }} />
+                      Latência
+                    </span>
+                    <div className="rz-stat-value rz-num" style={{ color: 'var(--rz-ice)' }}>
+                      18
+                      <small style={{ fontSize: '0.85rem', marginLeft: 4, color: 'var(--rz-text-muted)' }}>
+                        ms
+                      </small>
+                    </div>
+                    <span className="rz-help">Proxy Web Local</span>
+                  </div>
+
+                  <div className="rz-metric">
+                    <span className="rz-stat-label">
+                      <ShieldCheck size={12} style={{ display: 'inline', marginRight: 4 }} />
+                      Modo Web
+                    </span>
+                    <div className="rz-stat-value rz-num" style={{ fontSize: '1.35rem' }}>
+                      Extensão
+                    </div>
+                    <span className="rz-help rz-font-mono">Proxy Zero-Install</span>
+                  </div>
+                </section>
+              </div>
+
+              {/* Coluna Direita: Gerenciamento da Extensão & Tutorial */}
+              <div className="vpn-col">
+                <section className="rz-panel">
+                  <div className="rz-card-header">
+                    <div className="rz-card-title-group">
+                      <div className="rz-icon-tile">
+                        <Globe />
+                      </div>
+                      <div>
+                        <h2 className="rz-card-title">Como Funciona a Extensão</h2>
+                        <p className="rz-text-muted">
+                          Roteia e camufla as requisições das abas do Chrome e Edge.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="rz-badge rz-badge-blue">100% no Browser</span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--rz-text-sm)', color: 'var(--rz-text-secondary)' }}>
+                      <CheckCircle2 size={16} style={{ color: 'var(--rz-success)', flexShrink: 0 }} />
+                      <span>
+                        <strong style={{ color: 'var(--rz-text-primary)' }}>Sem permissões de administrador:</strong> roda direto no navegador.
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--rz-text-sm)', color: 'var(--rz-text-secondary)' }}>
+                      <CheckCircle2 size={16} style={{ color: 'var(--rz-success)', flexShrink: 0 }} />
+                      <span>
+                        <strong style={{ color: 'var(--rz-text-primary)' }}>Isolamento por abas:</strong> protege seu tráfego sem afetar outros programas.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Estado da extensão */}
+                  <div
+                    className="rz-stat-box"
+                    style={{
+                      marginBottom: 16,
+                      borderColor: extState.isInstalled
+                        ? 'var(--rz-success-line)'
+                        : 'var(--rz-border)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span className={`rz-badge ${extState.isInstalled ? 'rz-badge-success' : 'rz-badge-warning'}`}>
+                        <span className={`rz-dot ${extState.isInstalled ? 'success is-live' : 'warning'}`} />
+                        {extState.isInstalled ? 'EXTENSÃO RECONHECIDA NO SITE' : 'EXTENSÃO AINDA NÃO ATIVADA'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          BrowserExtensionService.ping();
+                          setToastMessage('Verificando extensão...');
+                        }}
+                        className="rz-btn rz-btn-ghost rz-btn-sm"
+                        style={{ height: 26, padding: '0 8px' }}
+                      >
+                        <RefreshCw size={12} />
+                        <span>Sincronizar</span>
                       </button>
                     </div>
 
-                    <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
-                      <label className="text-[11px] text-slate-400 font-medium">Servidor:</label>
-                      <select
-                        value={extState.selectedServer?.id || 'de-fra'}
-                        onChange={(e) => BrowserExtensionService.setServer(e.target.value)}
-                        className="bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white outline-none cursor-pointer"
-                      >
-                        <option value="de-fra">🇩🇪 Alemanha (Frankfurt)</option>
-                        <option value="br-spo">🇧🇷 Brasil (São Paulo - SP3)</option>
-                        <option value="us-mia">🇺🇸 Estados Unidos (Miami)</option>
-                        <option value="uk-lon">🇬🇧 Reino Unido (Londres)</option>
-                        <option value="local-bridge">Conexão rápida (Anycast)</option>
-                        <option value="custom">Servidor próprio (proxy remoto)</option>
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <a
-                        href="https://www.meuip.com.br/"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="py-1.5 px-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold text-center text-cyan-300 block"
-                      >
-                        Verificar IP
-                      </a>
-                      <a
-                        href="https://maps.google.com/"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="py-1.5 px-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold text-center text-sky-300 block"
-                      >
-                        Ver no mapa
-                      </a>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                {/* Botões de Ação */}
-                <div className="space-y-2.5">
-                  <button
-                    onClick={handleDownloadExtension}
-                    className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-500/20 cursor-pointer"
-                  >
-                    <IonIcon icon={cloudDownloadOutline} className="text-lg" />
-                    <span>Baixar Extensão SeguranApp (.zip)</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      BrowserExtensionService.ping();
-                      setToastMessage('Sincronizando com a extensão no Chrome...');
-                    }}
-                    className="w-full py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
-                  >
-                    <IonIcon icon={refreshOutline} className="text-cyan-400" />
-                    <span>{extState.isInstalled ? 'Extensão sincronizada' : 'Verificar se Extensão foi Instalada'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => setShowBrowserTutorial(!showBrowserTutorial)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 border border-cyan-500/20 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
-                  >
-                    <span>{showBrowserTutorial ? 'Ocultar Passo a Passo' : 'Como ativar no navegador'}</span>
-                    <IonIcon icon={showBrowserTutorial ? chevronUpOutline : chevronDownOutline} />
-                  </button>
-                </div>
-
-                {/* Tutorial Expansível da Extensão */}
-                {showBrowserTutorial && (
-                  <div className="mt-4 p-4 rounded-xl bg-slate-950/80 border border-cyan-500/20 space-y-3.5 animate-fadeIn">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                      <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
-                        Instalação em 3 Passos:
-                      </span>
-                    </div>
-
-                    {/* Passo 1 */}
-                    <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 font-black text-[11px] flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                      <div className="text-xs text-slate-300">
-                        <p className="font-semibold text-white">Extraia o arquivo baixado</p>
-                        <p className="text-slate-400 text-[11px]">Descompacte o <code className="text-cyan-300">seguranapp-extension.zip</code> em uma pasta de sua preferência.</p>
+                    {extState.isInstalled && (
+                      <div className="rz-setting-row" style={{ paddingBottom: 0 }}>
+                        <label htmlFor="ext-server-select" className="rz-label" style={{ marginBottom: 0 }}>
+                          Servidor de Saída:
+                        </label>
+                        <select
+                          id="ext-server-select"
+                          value={extState.selectedServer?.id || 'de-fra'}
+                          onChange={(e) => BrowserExtensionService.setServer(e.target.value)}
+                          className="rz-select"
+                          style={{ maxWidth: 220, height: 36 }}
+                        >
+                          <option value="de-fra">Alemanha (Frankfurt)</option>
+                          <option value="br-spo">Brasil (São Paulo)</option>
+                          <option value="us-mia">Estados Unidos (Miami)</option>
+                          <option value="uk-lon">Reino Unido (Londres)</option>
+                        </select>
                       </div>
-                    </div>
+                    )}
+                  </div>
 
-                    {/* Passo 2 */}
-                    <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 font-black text-[11px] flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                      <div className="text-xs text-slate-300 w-full">
-                        <p className="font-semibold text-white">Abra a tela de extensões</p>
-                        <p className="text-slate-400 text-[11px] mb-1.5">No Chrome ou Edge, digite o endereço na barra:</p>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[10.5px] px-2 py-1 rounded bg-slate-900 border border-white/10 text-cyan-300">
-                            chrome://extensions
-                          </span>
+                  {/* Botões de Ação */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                    <button
+                      type="button"
+                      onClick={handleDownloadExtension}
+                      className="rz-btn rz-btn-primary"
+                      style={{ flex: 1 }}
+                    >
+                      <Download size={16} />
+                      <span>Baixar Extensão (.zip)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowBrowserTutorial(!showBrowserTutorial)}
+                      className="rz-btn rz-btn-secondary"
+                    >
+                      <span>{showBrowserTutorial ? 'Ocultar Tutorial' : 'Como Ativar no Navegador'}</span>
+                      {showBrowserTutorial ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                    </button>
+                  </div>
+
+                  {/* Tutorial Colapsável */}
+                  {showBrowserTutorial && (
+                    <div className="vpn-steps">
+                      <div className="vpn-step">
+                        <span className="vpn-step-num">1</span>
+                        <div className="vpn-step-body">
+                          <p className="vpn-step-title">Extraia o arquivo .zip</p>
+                          <p style={{ margin: 0 }}>
+                            Descompacte o arquivo <code>seguranapp-extension.zip</code> em qualquer pasta do seu computador.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="vpn-step">
+                        <span className="vpn-step-num">2</span>
+                        <div className="vpn-step-body">
+                          <p className="vpn-step-title">Abra as extensões do navegador</p>
+                          <p style={{ margin: '0 0 6px' }}>
+                            Acesse <code>chrome://extensions</code> no Chrome ou <code>edge://extensions</code> no Edge e marque a chave <strong>Modo do Desenvolvedor</strong> no canto superior.
+                          </p>
                           <button
-                            onClick={() => handleCopyText('chrome://extensions', 'Endereço de extensões')}
-                            className="p-1 px-2 rounded bg-white/10 hover:bg-white/20 text-slate-300 text-[10px] font-bold cursor-pointer"
+                            type="button"
+                            onClick={() => handleCopyText('chrome://extensions', 'Endereço')}
+                            className="rz-btn rz-btn-secondary rz-btn-sm"
                           >
-                            {copiedField === 'Endereço de extensões' ? 'Copiado' : 'Copiar'}
+                            <Copy size={13} />
+                            <span>Copiar chrome://extensions</span>
                           </button>
                         </div>
-                        <p className="text-slate-400 text-[11px] mt-1.5">
-                          Ative a chave <strong>"Modo do desenvolvedor"</strong> no canto superior direito.
-                        </p>
+                      </div>
+                      <div className="vpn-step">
+                        <span className="vpn-step-num">3</span>
+                        <div className="vpn-step-body">
+                          <p className="vpn-step-title">Carregue a pasta descompactada</p>
+                          <p style={{ margin: 0 }}>
+                            Clique no botão <strong>Carregar sem compactação</strong> (Load Unpacked) e selecione a pasta extraída. Pronto!
+                          </p>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Passo 3 */}
-                    <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 font-black text-[11px] flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                      <div className="text-xs text-slate-300">
-                        <p className="font-semibold text-white">Carregue a extensão</p>
-                        <p className="text-slate-400 text-[11px]">
-                          Clique em <strong>"Carregar sem compactação"</strong> (ou <em>Load unpacked</em>) e selecione a pasta extraída. O ícone do SeguranApp surgirá na barra de tarefas!
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  )}
+                </section>
               </div>
             </div>
+          )}
 
-            {/* CARD 2: VPN DE MÁQUINA (WINDOWS / PC) */}
-            <div className="rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 p-6 border border-indigo-500/20 hover:border-indigo-500/40 transition-all flex flex-col justify-between shadow-xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-all pointer-events-none" />
+          {/* ==================== MODO 2: WIREGUARD PC (SISTEMA COMPLETO) ==================== */}
+          {activeMode === 'wireguard-pc' && (
+            <div className="vpn-layout">
+              {/* Coluna Esquerda: Reator e Seleção do Perfil .conf */}
+              <div className="vpn-col">
+                <section
+                  className={`vpn-reactor-panel rz-meridian-bg ${isConnected ? 'is-connected' : isConnecting ? 'is-connecting' : ''
+                    }`}
+                  aria-label="Perfil WireGuard de Máquina"
+                >
+                  <div className="vpn-reactor-top">
+                    <div className="vpn-status-pill is-connecting">
+                      <span className="rz-dot info" />
+                      <span>{vpnStats.selectedServer.name}</span>
+                    </div>
 
-              <div>
-                {/* Header do Card */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-2xl shadow-lg shadow-indigo-500/10">
-                    <IonIcon icon={desktopOutline} />
+                    <span className="vpn-uptime" title="Porta UDP">
+                      UDP :{vpnStats.selectedServer.port}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                    Proteção Total PC
-                  </span>
-                </div>
 
-                <h3 className="text-lg font-extrabold text-white mb-1.5 flex items-center gap-2">
-                  VPN de Máquina
-                  <span className="text-xs text-slate-400 font-normal">(Windows Completo)</span>
-                </h3>
-                <p className="text-slate-400 text-xs leading-relaxed mb-4">
-                  Tunelamento de nível de kernel via <strong>WireGuard oficial</strong>. Criptografa 100% de todo o tráfego do PC (jogos, navegadores, Discord, torrents e terminal).
-                </p>
+                  <div className="vpn-reactor-stage">
+                    <OrbitRing
+                      size={168}
+                      stroke={7}
+                      spinning={false}
+                      value={100}
+                      tone="violet"
+                      globe
+                      label="Perfil WireGuard Oficial"
+                    >
+                      <button
+                        type="button"
+                        onClick={handleDownloadConf}
+                        className="vpn-power-btn"
+                        style={{ borderColor: 'var(--rz-violet)', color: 'var(--rz-ice)' }}
+                        aria-label="Baixar perfil .conf"
+                      >
+                        <Download size={28} strokeWidth={2} />
+                        <span className="vpn-power-label">Baixar .conf</span>
+                      </button>
+                    </OrbitRing>
 
-                {/* Vantagens */}
-                <div className="space-y-2 mb-6">
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <IonIcon icon={checkmarkCircleOutline} className="text-indigo-400 text-base flex-shrink-0" />
-                    <span><strong>100% da Máquina Criptografada:</strong> protege todos os aplicativos.</span>
+                    <div className="vpn-ip-readout">
+                      <span className="vpn-ip-eyebrow">Endpoint do Servidor WireGuard</span>
+                      <div className="vpn-ip-value-row">
+                        <span className="vpn-ip-value">
+                          {vpnStats.selectedServer.endpoint}:{vpnStats.selectedServer.port}
+                        </span>
+                        <button
+                          type="button"
+                          className="rz-icon-btn"
+                          style={{ width: 28, height: 28 }}
+                          onClick={() =>
+                            handleCopyText(
+                              `${vpnStats.selectedServer.endpoint}:${vpnStats.selectedServer.port}`,
+                              'Endpoint'
+                            )
+                          }
+                          aria-label="Copiar Endpoint"
+                        >
+                          <Copy size={14} />
+                        </button>
+                      </div>
+                      <span className="vpn-ip-meta">
+                        {vpnStats.selectedServer.city} · Cifra ChaCha20-Poly1305 · MTU 1280
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <IonIcon icon={checkmarkCircleOutline} className="text-indigo-400 text-base flex-shrink-0" />
-                    <span><strong>Alta Velocidade:</strong> protocolo ChaCha20 com menor latência.</span>
+
+                  {/* Ação Principal: Baixar Perfil e Ativar */}
+                  <div className="vpn-thumb-bar">
+                    <button
+                      type="button"
+                      onClick={handleDownloadConf}
+                      className="rz-btn rz-btn-lg rz-btn-block rz-btn-premium"
+                    >
+                      <Download size={18} />
+                      <span>Baixar Perfil .conf ({vpnStats.selectedServer.city || vpnStats.selectedServer.name})</span>
+                    </button>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <IonIcon icon={checkmarkCircleOutline} className="text-indigo-400 text-base flex-shrink-0" />
-                    <span><strong>Perfil Pronto:</strong> arquivo .conf canônico oficial já configurado.</span>
+                </section>
+
+                {/* Chave Pública do Cliente e Kill Switch */}
+                <section className="rz-panel">
+                  <div className="rz-card-header">
+                    <div className="rz-card-title-group">
+                      <div className="rz-icon-tile violet">
+                        <Lock />
+                      </div>
+                      <div>
+                        <h2 className="rz-card-title">Par de Chaves &amp; Kill-Switch</h2>
+                        <p className="rz-text-muted">
+                          Criptografia assimétrica Curve25519 e proteção contra queda de pacote.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+
+                  <div className="rz-setting-row" style={{ paddingTop: 4 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: 'var(--rz-text-primary)', fontSize: 'var(--rz-text-md)' }}>
+                        Kill-Switch Determinístico
+                      </div>
+                      <div className="rz-help">
+                        Bloqueia qualquer vazamento de tráfego se a conexão cair.
+                      </div>
+                    </div>
+                    <IonToggle
+                      checked={vpnStats.killSwitchEnabled}
+                      onIonChange={() => VpnService.toggleKillSwitch()}
+                      aria-label="Ativar Kill-Switch"
+                    />
+                  </div>
+
+                  {vpnStats.clientPublicKey && (
+                    <div style={{ paddingTop: 12 }}>
+                      <span className="rz-stat-label">Sua Chave Pública do Cliente (Curve25519)</span>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                          background: 'var(--rz-bg-deep)',
+                          border: '1px solid var(--rz-border)',
+                          borderRadius: 'var(--rz-radius-sm)',
+                          padding: '8px 12px',
+                        }}
+                      >
+                        <code
+                          className="rz-truncate"
+                          style={{ fontSize: 'var(--rz-text-xs)', color: 'var(--rz-text-secondary)' }}
+                        >
+                          {vpnStats.clientPublicKey}
+                        </code>
+                        <button
+                          type="button"
+                          className="rz-icon-btn"
+                          style={{ width: 28, height: 28 }}
+                          onClick={() => handleCopyText(vpnStats.clientPublicKey || '', 'Chave pública')}
+                          aria-label="Copiar chave pública"
+                        >
+                          {copiedField === 'Chave pública' ? <Check size={14} /> : <Copy size={14} />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
               </div>
 
-              <div>
-                {/* Botões de Ação */}
-                <div className="space-y-2.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* Coluna Direita: Nós WireGuard e Como Instalar no PC */}
+              <div className="vpn-col">
+                {/* Seleção de Servidor para Gerar o .conf */}
+                <section className="rz-section" style={{ marginBottom: 0 }}>
+                  <div className="rz-section-head">
+                    <h2 className="rz-section-title">
+                      <Server size={16} />
+                      <span>Escolha o Servidor para o Perfil .conf</span>
+                      <span className="rz-count">{availableNodes.length} DISPONÍVEIS</span>
+                    </h2>
+                  </div>
+
+                  <div className="rz-list" role="listbox" aria-label="Servidores VPN disponíveis">
+                    {servers.map((srv) => {
+                      const selected = vpnStats.selectedServer.id === srv.id;
+                      const unavailable = srv.status === 'UNAVAILABLE';
+                      return (
+                        <button
+                          key={srv.id}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          disabled={unavailable}
+                          onClick={() => handleSelectServer(srv)}
+                          className={`rz-row is-interactive vpn-node-row ${selected ? 'is-selected' : ''}`}
+                          style={unavailable ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                        >
+                          <div className="vpn-node-code">{getNodeCode(srv)}</div>
+
+                          <div className="rz-row-main">
+                            <div className="rz-row-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span>{srv.name}</span>
+                              {selected && (
+                                <span className="rz-badge rz-badge-violet">Configurado</span>
+                              )}
+                            </div>
+                            <div className="rz-row-meta rz-font-mono">
+                              {srv.endpoint
+                                ? `${srv.endpoint}:${srv.port} · ${srv.city}`
+                                : 'Endpoint manual'}
+                            </div>
+                          </div>
+
+                          <div className="rz-row-trailing">
+                            {!unavailable ? (
+                              <>
+                                <span className="vpn-ping">{srv.ping ?? 20} ms</span>
+                                <span
+                                  className={`rz-dot ${selected
+                                      ? 'success is-live'
+                                      : (srv.ping ?? 20) < 60
+                                        ? 'success'
+                                        : 'info'
+                                    }`}
+                                />
+                              </>
+                            ) : (
+                              <span className="rz-badge rz-badge-neutral">Manual</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                {/* Painel: Cliente Oficial WireGuard */}
+                <section className="rz-panel">
+                  <div className="rz-card-header">
+                    <div className="rz-card-title-group">
+                      <div className="rz-icon-tile violet">
+                        <Monitor />
+                      </div>
+                      <div>
+                        <h2 className="rz-card-title">Como Ativar no Computador</h2>
+                        <p className="rz-text-muted">
+                          Passo simples com o aplicativo oficial do WireGuard.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rz-grid-2" style={{ marginBottom: 12 }}>
                     <button
+                      type="button"
                       onClick={handleDownloadConf}
-                      className="py-3 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-indigo-500/20 cursor-pointer"
+                      className="rz-btn rz-btn-primary"
                     >
-                      <IonIcon icon={cloudDownloadOutline} className="text-base" />
+                      <Download size={16} />
                       <span>1. Baixar .conf</span>
                     </button>
 
@@ -477,81 +893,93 @@ export const VpnPage: React.FC = () => {
                       href="https://download.wireguard.com/windows-client/wireguard-installer.exe"
                       target="_blank"
                       rel="noreferrer"
-                      className="py-3 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 border border-white/15 font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center"
+                      className="rz-btn rz-btn-secondary"
+                      style={{ textDecoration: 'none' }}
                     >
-                      <IonIcon icon={openOutline} className="text-base" />
-                      <span>2. WireGuard (.exe)</span>
+                      <ExternalLink size={16} />
+                      <span>2. WireGuard Oficial (.exe)</span>
                     </a>
                   </div>
 
-                  <button
-                    onClick={() => setShowWindowsTutorial(!showWindowsTutorial)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-indigo-300 border border-indigo-500/20 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
-                  >
-                    <span>{showWindowsTutorial ? 'Ocultar Passo a Passo' : 'Como ativar no Windows'}</span>
-                    <IonIcon icon={showWindowsTutorial ? chevronUpOutline : chevronDownOutline} />
-                  </button>
-                </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowConfPreview(!showConfPreview)}
+                      className="rz-btn rz-btn-secondary rz-btn-sm"
+                      style={{ flex: 1 }}
+                    >
+                      <FileCode size={14} />
+                      <span>{showConfPreview ? 'Ocultar Arquivo .conf' : 'Inspecionar Perfil .conf'}</span>
+                    </button>
 
-                {/* Tutorial Expansível do Windows */}
-                {showWindowsTutorial && (
-                  <div className="mt-4 p-4 rounded-xl bg-slate-950/80 border border-indigo-500/20 space-y-3.5 animate-fadeIn">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                      <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">
-                        Instalação em 3 Passos:
-                      </span>
-                    </div>
-
-                    {/* Passo 1 */}
-                    <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-indigo-500 text-white font-black text-[11px] flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                      <div className="text-xs text-slate-300">
-                        <p className="font-semibold text-white">Instale o WireGuard para Windows</p>
-                        <p className="text-slate-400 text-[11px]">Execute o instalador oficial baixado no botão acima.</p>
-                      </div>
-                    </div>
-
-                    {/* Passo 2 */}
-                    <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-indigo-500 text-white font-black text-[11px] flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                      <div className="text-xs text-slate-300">
-                        <p className="font-semibold text-white">Importe seu arquivo de perfil</p>
-                        <p className="text-slate-400 text-[11px] mb-1">
-                          Abra o WireGuard e aperte o atalho no teclado:
-                        </p>
-                        <span className="font-mono text-[10.5px] px-2 py-1 rounded bg-slate-900 border border-white/10 text-indigo-300 inline-block">
-                          Ctrl + O
-                        </span>
-                        <p className="text-slate-400 text-[11px] mt-1">Selecione o arquivo <code className="text-indigo-300">seguranapp-vpn.conf</code> que você baixou.</p>
-                      </div>
-                    </div>
-
-                    {/* Passo 3 */}
-                    <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-indigo-500 text-white font-black text-[11px] flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                      <div className="text-xs text-slate-300">
-                        <p className="font-semibold text-white">Clique em Ativar</p>
-                        <p className="text-slate-400 text-[11px]">
-                          Pronto! Seu status mudará para "Ativo" e 100% da rede do seu computador estará criptografada pelo túnel.
-                        </p>
-                      </div>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowWindowsTutorial(!showWindowsTutorial)}
+                      className="rz-btn rz-btn-ghost rz-btn-sm"
+                      style={{ flex: 1 }}
+                    >
+                      <span>{showWindowsTutorial ? 'Ocultar Tutorial' : 'Passo a Passo de Instalação'}</span>
+                      {showWindowsTutorial ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
                   </div>
-                )}
+
+                  {showConfPreview && configPreview && (
+                    <div style={{ marginBottom: 14 }}>
+                      <pre className="vpn-conf-box">{configPreview}</pre>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyText(configPreview, 'Configuração WireGuard')}
+                        className="rz-btn rz-btn-secondary rz-btn-sm rz-btn-block"
+                      >
+                        <Copy size={14} />
+                        <span>Copiar Texto .conf</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {showWindowsTutorial && (
+                    <div className="vpn-steps">
+                      <div className="vpn-step">
+                        <span className="vpn-step-num">1</span>
+                        <div className="vpn-step-body">
+                          <p className="vpn-step-title">Instale o WireGuard no PC</p>
+                          <p style={{ margin: 0 }}>
+                            Baixe e execute o instalador oficial <code>wireguard-installer.exe</code>.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="vpn-step">
+                        <span className="vpn-step-num">2</span>
+                        <div className="vpn-step-body">
+                          <p className="vpn-step-title">Importe o arquivo .conf</p>
+                          <p style={{ margin: 0 }}>
+                            Abra o WireGuard, clique em <strong>Adicionar Túnel</strong> ou aperte <kbd className="rz-kbd">Ctrl + O</kbd> e escolha o arquivo baixado.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="vpn-step">
+                        <span className="vpn-step-num">3</span>
+                        <div className="vpn-step-body">
+                          <p className="vpn-step-title">Clique em Ativar</p>
+                          <p style={{ margin: 0 }}>
+                            O status ficará verde e todo o tráfego de todos os programas estará 100% criptografado!
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </section>
               </div>
             </div>
+          )}
 
-          </div>
-
-          {/* DICA DE COMPARAÇÃO / FAQ */}
-          <div className="p-4 rounded-xl bg-slate-900/40 border border-white/5 flex items-start gap-3">
-            <IonIcon icon={informationCircleOutline} className="text-cyan-400 text-xl flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-slate-400 leading-relaxed">
-              <span className="text-slate-200 font-semibold">Qual escolher? </span>
-              Se você quer apenas navegar em sites com IP camuflado sem instalar nada no Windows, use a <strong>Extensão de Navegador</strong>. Se você quer proteger jogos, downloads, Discord e todos os aplicativos do PC simultaneamente, use a <strong>VPN de Máquina (WireGuard)</strong>.
+          {/* ==================== AVISO DE ESCLARECIMENTO FINAL ==================== */}
+          <div className="rz-alert rz-alert-info" style={{ marginTop: 24 }}>
+            <Info size={18} />
+            <div>
+              <strong>Qual escolher?</strong> Use a <strong>Extensão</strong> se quiser apenas navegar de forma anônima e rápida nas abas do Chrome ou Edge sem precisar instalar programas. Use o <strong>WireGuard PC</strong> se quiser proteger o computador inteiro (jogos, terminal, discord, torrent e outros aplicativos do sistema).
             </div>
           </div>
-
         </div>
 
         <IonToast

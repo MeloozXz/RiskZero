@@ -1,24 +1,419 @@
-.vpn-content {
-  --background: #09090b !important;
-  background-color: #09090b !important;
-  --color: #fafafa;
+/* ==========================================================================
+   RISKZERO — TÚNEL VPN WIREGUARD ("ORBITAL")
+   ========================================================================== */
+
+/* ---------- Seletor de Modo (Extensão Web vs WireGuard PC) ---------- */
+.vpn-mode-selector-wrap {
+  margin-bottom: 24px;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
+.vpn-mode-selector {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .vpn-mode-selector {
+    grid-template-columns: 1fr 1fr;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+}
+
+.vpn-mode-tab {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: var(--rz-radius-md);
+  border: 1px solid var(--rz-border);
+  background: var(--rz-bg-elevated);
+  color: var(--rz-text-secondary);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--rz-highlight);
+  transition: all var(--rz-dur) var(--rz-ease);
+}
+
+.vpn-mode-tab:hover {
+  background: var(--rz-bg-surface);
+  border-color: var(--rz-border-strong);
+  color: var(--rz-text-primary);
+}
+
+.vpn-mode-tab.is-active {
+  background:
+    linear-gradient(90deg, rgba(47, 123, 255, 0.12), transparent 75%),
+    var(--rz-bg-surface);
+  border-color: var(--rz-accent-line);
+  color: var(--rz-text-primary);
+  box-shadow: 0 0 20px -8px rgba(47, 123, 255, 0.4), var(--rz-highlight);
+}
+
+.vpn-mode-tab-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--rz-radius-sm);
+  background: var(--rz-accent-soft);
+  color: var(--rz-ice);
+  border: 1px solid var(--rz-accent-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vpn-mode-tab-icon.violet {
+  background: var(--rz-violet-soft);
+  color: #c4b5fd;
+  border-color: var(--rz-violet-line);
+}
+
+.vpn-mode-tab-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vpn-mode-tab-title {
+  font-family: var(--rz-font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--rz-text-primary);
+}
+
+.vpn-mode-tab-sub {
+  font-size: var(--rz-text-xs);
+  color: var(--rz-text-muted);
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.vpn-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (min-width: 1280px) {
+  .vpn-layout {
+    grid-template-columns: minmax(0, 1.08fr) minmax(380px, 0.92fr);
   }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.2s ease forwards;
+.vpn-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
 }
 
-code {
+/* ---------- Reator Central do Túnel ---------- */
+.vpn-reactor-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  background:
+    radial-gradient(85% 65% at 50% 28%, rgba(47, 123, 255, 0.14), transparent 70%),
+    var(--rz-bg-elevated);
+  border: 1px solid var(--rz-border);
+  border-radius: var(--rz-radius-md);
+  box-shadow: var(--rz-highlight);
+  overflow: hidden;
+}
+
+.vpn-reactor-panel.is-connected {
+  border-color: var(--rz-success-line);
+  background:
+    radial-gradient(85% 65% at 50% 28%, rgba(43, 217, 160, 0.14), transparent 70%),
+    var(--rz-bg-elevated);
+}
+
+.vpn-reactor-panel.is-connecting {
+  border-color: var(--rz-accent-line);
+}
+
+.vpn-reactor-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vpn-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-family: var(--rz-font-display);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--rz-bg-surface);
+  border: 1px solid var(--rz-border);
+  color: var(--rz-text-secondary);
+}
+
+.vpn-status-pill.is-connected {
+  background: var(--rz-success-soft);
+  border-color: var(--rz-success-line);
+  color: var(--rz-success);
+}
+
+.vpn-status-pill.is-connecting {
+  background: var(--rz-accent-soft);
+  border-color: var(--rz-accent-line);
+  color: var(--rz-ice);
+}
+
+.vpn-status-pill.is-error {
+  background: var(--rz-danger-soft);
+  border-color: var(--rz-danger-line);
+  color: var(--rz-danger);
+}
+
+.vpn-uptime {
   font-family: var(--rz-font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--rz-text-secondary);
+  padding: 4px 10px;
+  border-radius: var(--rz-radius-xs);
+  background: var(--rz-bg-deep);
+  border: 1px solid var(--rz-border);
+}
+
+.vpn-reactor-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0 4px;
+  gap: 18px;
+}
+
+.vpn-power-btn {
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  border: 1px solid var(--rz-border-strong);
+  background:
+    radial-gradient(circle at 50% 30%, var(--rz-bg-raised), var(--rz-bg-deep));
+  color: var(--rz-text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(140, 200, 255, 0.16),
+    0 10px 28px -8px rgba(0, 4, 16, 0.85);
+  transition:
+    transform var(--rz-dur-fast) var(--rz-ease),
+    border-color var(--rz-dur) var(--rz-ease),
+    box-shadow var(--rz-dur) var(--rz-ease),
+    color var(--rz-dur) var(--rz-ease);
+}
+
+.vpn-power-btn:hover:not(:disabled) {
+  border-color: var(--rz-accent-light);
+  color: var(--rz-ice);
+  box-shadow:
+    inset 0 1px 0 rgba(140, 200, 255, 0.25),
+    0 0 24px -4px rgba(47, 123, 255, 0.55);
+}
+
+.vpn-power-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.vpn-power-btn.is-connected {
+  border-color: var(--rz-success);
+  color: var(--rz-success);
+  box-shadow:
+    inset 0 1px 0 rgba(43, 217, 160, 0.3),
+    0 0 28px -4px rgba(43, 217, 160, 0.45);
+}
+
+.vpn-power-btn.is-connecting {
+  border-color: var(--rz-accent);
+  color: var(--rz-ice);
+}
+
+.vpn-power-label {
+  font-family: var(--rz-font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ---------- Leitura de IP Virtual ---------- */
+.vpn-ip-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.vpn-ip-eyebrow {
+  font-family: var(--rz-font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--rz-text-muted);
+}
+
+.vpn-ip-value-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: var(--rz-radius-sm);
+  background: var(--rz-bg-deep);
+  border: 1px solid var(--rz-border);
+}
+
+.vpn-ip-value {
+  font-family: var(--rz-font-mono);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--rz-text-primary);
+  letter-spacing: 0.02em;
+}
+
+.vpn-ip-meta {
+  font-size: var(--rz-text-xs);
+  color: var(--rz-text-secondary);
+}
+
+/* ---------- Seletor Rápido Mobile (Alcance do Polegar) ---------- */
+.vpn-thumb-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rz-border-subtle);
+}
+
+.vpn-thumb-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--rz-font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--rz-text-muted);
+}
+
+/* ---------- Lista de Nós WireGuard ---------- */
+.vpn-node-row.is-selected {
+  background:
+    linear-gradient(90deg, rgba(47, 123, 255, 0.14), transparent 85%),
+    var(--rz-bg-surface);
+}
+
+.vpn-node-code {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--rz-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--rz-font-display);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  background: var(--rz-bg-deep);
+  border: 1px solid var(--rz-border);
+  color: var(--rz-ice);
+}
+
+.vpn-node-row.is-selected .vpn-node-code {
+  background: var(--rz-accent-soft);
+  border-color: var(--rz-accent-line);
+  color: var(--rz-text-primary);
+}
+
+.vpn-ping {
+  font-family: var(--rz-font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--rz-text-secondary);
+}
+
+/* ---------- Bloco de Configuração WireGuard (.conf) ---------- */
+.vpn-conf-box {
+  background: var(--rz-bg-deep);
+  border: 1px solid var(--rz-border);
+  border-radius: var(--rz-radius-sm);
+  padding: 12px 14px;
+  font-family: var(--rz-font-mono);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--rz-ice);
+  overflow-x: auto;
+  white-space: pre;
+  margin: 12px 0;
+}
+
+/* ---------- Passos de Tutorial ---------- */
+.vpn-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rz-border-subtle);
+  animation: rz-enter var(--rz-dur) var(--rz-ease) both;
+}
+
+.vpn-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.vpn-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--rz-radius-xs);
+  background: var(--rz-accent-soft);
+  border: 1px solid var(--rz-accent-line);
+  color: var(--rz-ice);
+  font-family: var(--rz-font-display);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.vpn-step-body {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--rz-text-sm);
+  color: var(--rz-text-secondary);
+}
+
+.vpn-step-title {
+  font-weight: 700;
+  color: var(--rz-text-primary);
+  margin: 0 0 2px;
 }

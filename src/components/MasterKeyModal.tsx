@@ -5,21 +5,19 @@ import {
   IonToolbar,
   IonTitle,
   IonContent,
-  IonButton,
-  IonIcon,
   IonInput,
   IonSpinner,
   IonToast,
   IonButtons
 } from '@ionic/react';
 import {
-  lockClosedOutline,
-  fingerPrintOutline,
-  warningOutline,
-  closeOutline,
-  checkmarkCircleOutline,
-  keyOutline
-} from 'ionicons/icons';
+  Lock,
+  Fingerprint,
+  AlertTriangle,
+  X,
+  CheckCircle2,
+  KeyRound
+} from 'lucide-react';
 import { useSecurity } from '../contexts/SecurityContext';
 import { BiometricsService } from '../services/biometrics';
 import { SessionService } from '../services/session';
@@ -41,7 +39,7 @@ export const MasterKeyModal: React.FC<MasterKeyModalProps> = ({ isOpen, onClose 
   const [confirmMasterKey, setConfirmMasterKey] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [bioVerified, setBioVerified] = useState<boolean>(false);
-  
+
   const [showToast, setShowToast] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string>('');
   const [toastColor, setToastColor] = useState<string>('dark');
@@ -139,7 +137,6 @@ export const MasterKeyModal: React.FC<MasterKeyModalProps> = ({ isOpen, onClose 
         setIsProcessing(false);
         onClose();
       }, 1200);
-
     } catch (err: unknown) {
       console.error('Erro na redefinição da chave mestra:', err);
       triggerToast(getErrorMessage(err) || 'Falha ao redefinir Chave Mestra.', 'danger');
@@ -147,116 +144,107 @@ export const MasterKeyModal: React.FC<MasterKeyModalProps> = ({ isOpen, onClose 
     }
   };
 
-
   return (
     <IonModal
       isOpen={isOpen}
       onDidDismiss={onClose}
       style={{
-        '--background': '#070a13',
-        '--border-radius': '24px'
+        '--background': 'var(--rz-bg-elevated)',
+        '--border-radius': 'var(--rz-radius-lg)'
       }}
     >
       <IonHeader className="ion-no-border">
-        <IonToolbar style={{ '--background': '#070a13', borderBottom: '1px solid rgba(239, 68, 68, 0.2)' }}>
-          <IonTitle style={{ color: '#ffffff', fontWeight: 800 }}>
-            Redefinir Chave Mestra
-          </IonTitle>
+        <IonToolbar
+          style={{
+            '--background': 'var(--rz-bg-elevated)',
+            borderBottom: '1px solid var(--rz-border)'
+          }}
+        >
+          <IonTitle>Redefinir Chave Mestra</IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={onClose} style={{ color: '#94a3b8' }}>
-              <IonIcon icon={closeOutline} style={{ fontSize: '24px' }} />
-            </IonButton>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rz-icon-btn"
+              aria-label="Fechar modal"
+            >
+              <X />
+            </button>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
 
-      <IonContent className="ion-padding" style={{ '--background': '#070a13' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '10px 0' }}>
-          
+      <IonContent className="ion-padding" style={{ '--background': 'var(--rz-bg-elevated)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '4px 0 12px' }}>
           {/* Banner de Advertência Zero-Knowledge */}
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '12px'
-          }}>
-            <IonIcon icon={warningOutline} style={{ color: '#ef4444', fontSize: '24px', flexShrink: 0, marginTop: '2px' }} />
-            <div style={{ color: '#f8fafc', fontSize: '0.85rem', lineHeight: '1.5' }}>
-              <strong style={{ color: '#ef4444', display: 'block', marginBottom: '2px' }}>
+          <div className="rz-alert rz-alert-danger" role="alert">
+            <AlertTriangle />
+            <div>
+              <strong style={{ color: 'var(--rz-text-primary)', display: 'block', marginBottom: '2px' }}>
                 Exigência Criptográfica Estrita
               </strong>
-              Esta ação re-criptografa seu cofre local com uma nova Chave Mestra. Para evitar sequestro de conta, <strong>SÓ SERÁ CONCLUÍDA</strong> após leitura biométrica válida do seu hardware.
+              <span>
+                Esta ação re-criptografa seu cofre local com uma nova Chave Mestra. Para evitar sequestro de conta,{' '}
+                <strong>SÓ SERÁ CONCLUÍDA</strong> após leitura biométrica válida do seu hardware.
+              </span>
             </div>
           </div>
 
           {/* Form de Nova Senha */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            
-            <div>
-              <label style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
-                NOVA CHAVE MESTRA
-              </label>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                background: 'rgba(15, 23, 42, 0.7)',
-                border: '1px solid rgba(96, 165, 250, 0.2)',
-                borderRadius: '12px',
-                padding: '0 12px'
-              }}>
-                <IonIcon icon={keyOutline} style={{ color: '#60a5fa', fontSize: '18px', marginRight: '8px' }} />
+            <div className="rz-field" style={{ marginBottom: 0 }}>
+              <label className="rz-label">Nova Chave Mestra</label>
+              <div className="rz-input-group">
+                <KeyRound />
                 <IonInput
                   type="password"
                   placeholder="Mínimo 12 caracteres fortes"
                   value={newMasterKey}
                   onIonInput={(e) => setNewMasterKey(e.detail.value ?? '')}
-                  style={{ color: '#ffffff' }}
+                  style={{ color: 'var(--rz-text-primary)' }}
                 />
               </div>
             </div>
 
-            <div>
-              <label style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
-                CONFIRME A NOVA CHAVE MESTRA
-              </label>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                background: 'rgba(15, 23, 42, 0.7)',
-                border: '1px solid rgba(96, 165, 250, 0.2)',
-                borderRadius: '12px',
-                padding: '0 12px'
-              }}>
-                <IonIcon icon={lockClosedOutline} style={{ color: '#60a5fa', fontSize: '18px', marginRight: '8px' }} />
+            <div className="rz-field" style={{ marginBottom: 0 }}>
+              <label className="rz-label">Confirme a Nova Chave Mestra</label>
+              <div className="rz-input-group">
+                <Lock />
                 <IonInput
                   type="password"
                   placeholder="Repita a nova Chave Mestra"
                   value={confirmMasterKey}
                   onIonInput={(e) => setConfirmMasterKey(e.detail.value ?? '')}
-                  style={{ color: '#ffffff' }}
+                  style={{ color: 'var(--rz-text-primary)' }}
                 />
               </div>
             </div>
 
             {/* Requisitos de Força de Senha */}
             {newMasterKey.length > 0 && (
-              <div style={{
-                background: 'rgba(2, 6, 23, 0.5)',
-                padding: '12px',
-                borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px'
-              }}>
-                <span style={{ color: strength.isValid ? '#10b981' : '#f59e0b', fontWeight: 700, fontSize: '0.8rem' }}>
+              <div
+                className="rz-panel"
+                style={{
+                  background: 'var(--rz-bg-deep)',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}
+              >
+                <span
+                  style={{
+                    color: strength.isValid ? 'var(--rz-success)' : 'var(--rz-warning)',
+                    fontWeight: 700,
+                    fontSize: 'var(--rz-text-xs)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em'
+                  }}
+                >
                   {strength.isValid ? 'Senha mestra forte' : 'Requisitos da Senha:'}
                 </span>
                 {strength.feedback.map((fb, idx) => (
-                  <span key={idx} style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                  <span key={idx} style={{ color: 'var(--rz-text-secondary)', fontSize: 'var(--rz-text-xs)' }}>
                     • {fb}
                   </span>
                 ))}
@@ -265,53 +253,49 @@ export const MasterKeyModal: React.FC<MasterKeyModalProps> = ({ isOpen, onClose 
           </div>
 
           {/* Status de Verificação Biométrica */}
-          <div style={{
-            background: bioVerified ? 'rgba(16, 185, 129, 0.1)' : 'rgba(139, 92, 246, 0.1)',
-            border: bioVerified ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(139, 92, 246, 0.3)',
-            borderRadius: '14px',
-            padding: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <IonIcon
-              icon={bioVerified ? checkmarkCircleOutline : fingerPrintOutline}
-              style={{ color: bioVerified ? '#10b981' : '#8b5cf6', fontSize: '26px' }}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ color: '#ffffff', fontWeight: 700, fontSize: '0.85rem' }}>
+          <div
+            className="rz-panel"
+            style={{
+              background: bioVerified ? 'var(--rz-success-soft)' : 'var(--rz-bg-surface)',
+              borderColor: bioVerified ? 'var(--rz-success-line)' : 'var(--rz-border)',
+              padding: '14px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}
+          >
+            <div className={`rz-icon-tile ${bioVerified ? 'success' : 'violet'}`}>
+              {bioVerified ? <CheckCircle2 /> : <Fingerprint />}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span style={{ color: 'var(--rz-text-primary)', fontWeight: 700, fontSize: 'var(--rz-text-sm)' }}>
                 {bioVerified ? 'Biometria Validada no Hardware' : 'Autorização Biométrica Requerida'}
               </span>
-              <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
-                {bioVerified ? 'Leitura do leitor aprovada com sucesso.' : 'O prompt nativo será exibido ao clicar no botão.'}
+              <span style={{ color: 'var(--rz-text-secondary)', fontSize: 'var(--rz-text-xs)' }}>
+                {bioVerified
+                  ? 'Leitura do leitor aprovada com sucesso.'
+                  : 'O prompt nativo será exibido ao clicar no botão.'}
               </span>
             </div>
           </div>
 
           {/* Botão de Gravação Criptográfica Biométrica */}
-          <IonButton
-            expand="block"
+          <button
+            type="button"
             onClick={handleRotateMasterKey}
             disabled={isProcessing || !newMasterKey || newMasterKey !== confirmMasterKey || !strength.isValid}
-            style={{
-              '--background': 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-              '--border-radius': '14px',
-              height: '50px',
-              fontWeight: 800,
-              boxShadow: '0 4px 20px rgba(239, 68, 68, 0.3)',
-              marginTop: '10px'
-            }}
+            className="rz-btn rz-btn-danger rz-btn-lg rz-btn-block"
+            style={{ marginTop: '4px' }}
           >
             {isProcessing ? (
-              <IonSpinner name="crescent" style={{ color: '#ffffff' }} />
+              <IonSpinner name="crescent" style={{ width: '18px', height: '18px' }} />
             ) : (
               <>
-                <IonIcon icon={fingerPrintOutline} slot="start" />
-                Validar Biometria & Alterar Chave
+                <Fingerprint />
+                <span>Validar Biometria &amp; Alterar Chave</span>
               </>
             )}
-          </IonButton>
-
+          </button>
         </div>
 
         <IonToast

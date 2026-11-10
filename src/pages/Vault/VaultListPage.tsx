@@ -18,21 +18,27 @@ import {
   Lock,
   ShieldCheck,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { useHistory } from 'react-router-dom';
 import { useVault } from '../../contexts/VaultContext';
 import { useSecurity } from '../../contexts/SecurityContext';
 import { PasswordGenerator } from '../../components/Vault/PasswordGenerator';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { OrbitLoader, OrbitRing } from '../../components/brand';
 import { ClipboardService } from '../../services/clipboard';
 import { StorageService } from '../../services/storage';
 import { SessionService } from '../../services/session';
+import { VaultCategory } from '../../types';
 import './VaultListPage.css';
 
 export const VaultListPage: React.FC = () => {
   const history = useHistory();
   const {
+    items,
     filteredItems,
     loading,
     searchQuery,
@@ -191,7 +197,8 @@ export const VaultListPage: React.FC = () => {
     }
   };
 
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setDeleteTargetId(id);
   };
 
@@ -227,13 +234,13 @@ export const VaultListPage: React.FC = () => {
     );
   };
 
-  const CATEGORIES = [
+  const CATEGORIES: { id: VaultCategory | 'ALL'; label: string }[] = [
     { id: 'ALL', label: 'Todos' },
     { id: 'LOGIN', label: 'Logins' },
     { id: 'CARD', label: 'Cartões' },
     { id: 'NOTE', label: 'Notas' },
     { id: 'IDENTITY', label: 'Identidades' },
-  ] as const;
+  ];
 
   const CATEGORY_LABELS: Record<string, string> = {
     LOGIN: 'Login',
@@ -243,80 +250,98 @@ export const VaultListPage: React.FC = () => {
     OTHER: 'Outro',
   };
 
+  const totpPercent = totpData
+    ? Math.round((totpData.remainingSeconds / (totpData.period || 30)) * 100)
+    : 0;
+
   return (
     <IonPage className="vault-page">
       <IonContent fullscreen className="vault-content">
-        <div className="vault-workspace">
-          {/* Header Corporativo */}
-          <header className="vault-topbar">
-            <div>
-              <h1 className="vault-main-heading">Cofre de Credenciais</h1>
-              <p className="vault-main-sub">
+        <div className="rz-page-container">
+          <PageHeader
+            eyebrow="Cofre Zero-Knowledge"
+            title="Credenciais"
+            subtitle={
+              <>
                 Criptografia autenticada AES-256-GCM em repouso e área de transferência com autodestruição (30s).
-              </p>
-            </div>
-
-            <div className="vault-topbar-actions">
-              {healthStats && (
-                <div className="vault-kpi-strip">
-                  <span className="vault-kpi-pill">
-                    Total: <strong>{healthStats.total}</strong>
+                {healthStats && (
+                  <span className="vault-kpi-strip" style={{ marginTop: 8 }}>
+                    <span className="rz-badge rz-badge-blue">
+                      Total: <strong className="rz-num">{healthStats.total}</strong>
+                    </span>
+                    {healthStats.weak > 0 && (
+                      <span className="rz-badge rz-badge-warning">
+                        Fracas: <strong className="rz-num">{healthStats.weak}</strong>
+                      </span>
+                    )}
+                    {healthStats.reused > 0 && (
+                      <span className="rz-badge rz-badge-danger">
+                        Repetidas: <strong className="rz-num">{healthStats.reused}</strong>
+                      </span>
+                    )}
                   </span>
-                  {healthStats.weak > 0 && (
-                    <span className="vault-kpi-pill warning">
-                      Fracas: <strong>{healthStats.weak}</strong>
-                    </span>
-                  )}
-                  {healthStats.reused > 0 && (
-                    <span className="vault-kpi-pill danger">
-                      Repetidas: <strong>{healthStats.reused}</strong>
-                    </span>
-                  )}
-                </div>
-              )}
+                )}
+              </>
+            }
+            actions={
+              <>
+                <button
+                  type="button"
+                  className="rz-btn rz-btn-secondary"
+                  onClick={() => setShowGenModal(true)}
+                >
+                  <KeyRound size={15} />
+                  <span>Gerador</span>
+                </button>
 
-              <button
-                type="button"
-                className="rz-btn rz-btn-secondary"
-                onClick={() => setShowGenModal(true)}
-              >
-                <KeyRound size={15} />
-                <span>Gerador</span>
-              </button>
+                <button
+                  type="button"
+                  className="rz-btn rz-btn-primary"
+                  onClick={() => history.push('/vault/add')}
+                >
+                  <Plus size={16} />
+                  <span>Nova Credencial</span>
+                </button>
+              </>
+            }
+          />
 
-              <button
-                type="button"
-                className="rz-btn rz-btn-primary"
-                onClick={() => history.push('/vault/add')}
-              >
-                <Plus size={16} />
-                <span>Nova Credencial</span>
-              </button>
-            </div>
-          </header>
-
-          {/* Barra de Filtros e Busca */}
-          <div className="vault-filter-bar">
-            <div className="vault-search-box">
-              <Search size={16} className="vault-search-icon" />
+          {/* Barra Fixa de Busca + Chips Horizontais */}
+          <div className="vault-sticky-controls">
+            <div className="rz-input-group vault-search-group">
+              <Search />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filtrar por serviço, usuário ou domínio..."
-                className="vault-search-input"
+                className="rz-input"
+                aria-label="Filtrar credenciais"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="rz-icon-btn"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Limpar busca"
+                  style={{ width: 28, height: 28 }}
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
-            <div className="vault-category-tabs">
+            <div className="rz-scroll-x" role="tablist" aria-label="Categorias do cofre">
               {CATEGORIES.map((cat) => {
                 const active = selectedCategory === cat.id;
                 return (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => setSelectedCategory(cat.id as any)}
-                    className={`vault-cat-tab ${active ? 'active' : ''}`}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`rz-chip ${active ? 'is-active' : ''}`}
                   >
                     {cat.label}
                   </button>
@@ -325,30 +350,53 @@ export const VaultListPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Layout Master-Detail Split View */}
+          {/* Conteúdo Principal: Carregando / Estado Vazio / Master-Detail */}
           {loading ? (
-            <div className="vault-empty-box">
-              <span>Descriptografando registros em memória...</span>
+            <div className="rz-panel">
+              <OrbitLoader label="Descriptografando registros em memória..." />
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="vault-empty-box">
-              <Lock size={28} className="text-zinc-500" />
-              <h3>Nenhuma credencial encontrada</h3>
-              <p>Adicione sua primeira credencial protegida por AES-256-GCM ou ajuste o filtro de busca.</p>
-              <button
-                type="button"
-                className="rz-btn rz-btn-primary"
-                style={{ marginTop: 8 }}
-                onClick={() => history.push('/vault/add')}
-              >
-                <Plus size={15} />
-                <span>Adicionar Credencial</span>
-              </button>
+            <div className="rz-panel">
+              <EmptyState
+                mascot={true}
+                mascotVariant="question"
+                mascotHeight={170}
+                icon={<Lock />}
+                title={items.length === 0 ? 'Seu cofre está vazio' : 'Nenhuma credencial encontrada'}
+                description={
+                  items.length === 0
+                    ? 'Adicione sua primeira credencial protegida por AES-256-GCM e derivação Argon2id. Nenhuma chave mestra deixa o seu dispositivo.'
+                    : 'Nenhum registro corresponde ao filtro ou termo pesquisado. Ajuste a busca ou troque de categoria.'
+                }
+                action={
+                  items.length === 0 ? (
+                    <button
+                      type="button"
+                      className="rz-btn rz-btn-primary"
+                      onClick={() => history.push('/vault/add')}
+                    >
+                      <Plus size={15} />
+                      <span>Adicionar Credencial</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rz-btn rz-btn-secondary"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedCategory('ALL');
+                      }}
+                    >
+                      <span>Limpar Filtros</span>
+                    </button>
+                  )
+                }
+              />
             </div>
           ) : (
             <div className="vault-split-grid">
-              {/* Coluna Esquerda: Lista de Itens */}
-              <div className="vault-master-list" role="listbox" aria-label="Lista de credenciais">
+              {/* Coluna Esquerda: Lista Densa de Credenciais (.rz-list / .rz-row) */}
+              <div className="rz-list vault-master-list" role="listbox" aria-label="Lista de credenciais">
                 {filteredItems.map((item) => {
                   const favicon = getDomainFavicon(item.url);
                   const weak = isPasswordWeak(item._plaintextPassword);
@@ -360,7 +408,7 @@ export const VaultListPage: React.FC = () => {
                       role="option"
                       aria-selected={isSelected}
                       onClick={() => setSelectedId(item.id)}
-                      className={`vault-list-row ${isSelected ? 'selected' : ''}`}
+                      className={`rz-row is-interactive vault-cred-row ${isSelected ? 'is-selected' : ''}`}
                     >
                       <div className="vault-row-avatar">
                         {favicon ? (
@@ -376,9 +424,12 @@ export const VaultListPage: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="vault-row-main">
+                      <div className="rz-row-main">
                         <div className="vault-row-title-line">
-                          <span className="vault-row-title">{item.title}</span>
+                          <span className="rz-row-title">{item.title}</span>
+                          <span className="rz-badge rz-badge-neutral">
+                            {CATEGORY_LABELS[item.category || 'LOGIN']}
+                          </span>
                           {item.encryptedTotpSecret && (
                             <span className="rz-badge rz-badge-blue">2FA</span>
                           )}
@@ -386,22 +437,44 @@ export const VaultListPage: React.FC = () => {
                             <span className="rz-badge rz-badge-warning">Fraca</span>
                           )}
                         </div>
-                        <span className="vault-row-sub">
+                        <div className="rz-row-meta">
                           {item.username || 'Sem identificador'}
-                        </span>
+                        </div>
                       </div>
 
                       <div className="vault-row-actions">
                         {item.username && (
                           <button
                             type="button"
-                            className="vault-icon-action"
+                            className="rz-icon-btn"
                             title="Copiar usuário"
+                            aria-label={`Copiar usuário de ${item.title}`}
                             onClick={(e) => copySecure(item.username, 'Usuário', e)}
                           >
-                            <Copy size={14} />
+                            <Copy />
                           </button>
                         )}
+                        <button
+                          type="button"
+                          className="rz-icon-btn"
+                          title="Inspecionar credencial"
+                          aria-label={`Ver detalhes de ${item.title}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            history.push(`/vault/detail/${item.id}`);
+                          }}
+                        >
+                          <Eye />
+                        </button>
+                        <button
+                          type="button"
+                          className="rz-icon-btn is-danger"
+                          title="Excluir credencial"
+                          aria-label={`Excluir ${item.title}`}
+                          onClick={(e) => handleDeleteItem(item.id, e)}
+                        >
+                          <Trash2 />
+                        </button>
                       </div>
                     </div>
                   );
@@ -410,21 +483,21 @@ export const VaultListPage: React.FC = () => {
 
               {/* Coluna Direita: Painel de Detalhes (Inspector) */}
               {activeItem && (
-                <aside className="vault-detail-pane" aria-label="Detalhes da credencial selecionada">
+                <aside className="rz-panel vault-detail-pane" aria-label="Detalhes da credencial selecionada">
                   <div className="vault-detail-header">
                     <div className="vault-detail-title-group">
                       <div className="vault-detail-avatar">
                         <span>{(activeItem.title || '?').charAt(0).toUpperCase()}</span>
                       </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <h2>{activeItem.title}</h2>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <h2 className="vault-detail-heading">{activeItem.title}</h2>
                           <span className="rz-badge rz-badge-neutral">
                             {CATEGORY_LABELS[activeItem.category || 'LOGIN']}
                           </span>
                         </div>
                         <span className="vault-detail-meta">
-                          <ShieldCheck size={13} /> Cifrado com AES-256-GCM
+                          <ShieldCheck size={14} /> Cifrado com AES-256-GCM
                         </span>
                       </div>
                     </div>
@@ -432,7 +505,15 @@ export const VaultListPage: React.FC = () => {
                     <div className="vault-detail-header-btns">
                       <button
                         type="button"
-                        className="rz-btn rz-btn-secondary"
+                        className="rz-btn rz-btn-secondary rz-btn-sm"
+                        onClick={() => history.push(`/vault/detail/${activeItem.id}`)}
+                      >
+                        <Eye size={14} />
+                        <span>Tela Cheia</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="rz-btn rz-btn-secondary rz-btn-sm"
                         onClick={() => history.push(`/vault/edit/${activeItem.id}`)}
                       >
                         <Edit3 size={14} />
@@ -440,7 +521,7 @@ export const VaultListPage: React.FC = () => {
                       </button>
                       <button
                         type="button"
-                        className="rz-btn rz-btn-danger"
+                        className="rz-btn rz-btn-danger rz-btn-sm"
                         onClick={() => handleDeleteItem(activeItem.id)}
                         title="Excluir credencial"
                       >
@@ -450,8 +531,8 @@ export const VaultListPage: React.FC = () => {
                   </div>
 
                   {isPasswordWeak(activeItem._plaintextPassword) && (
-                    <div className="vault-weak-banner">
-                      <AlertTriangle size={15} className="shrink-0" />
+                    <div className="rz-alert rz-alert-warning">
+                      <AlertTriangle />
                       <span>
                         Esta senha possui baixa entropia ou menos de 12 caracteres. Recomendamos atualizá-la usando o Gerador CSPRNG.
                       </span>
@@ -463,12 +544,12 @@ export const VaultListPage: React.FC = () => {
                     <div className="vault-field-row">
                       <div className="vault-field-info">
                         <span className="vault-field-label">USUÁRIO / E-MAIL</span>
-                        <span className="vault-field-val">{activeItem.username || '—'}</span>
+                        <span className="vault-field-val rz-font-mono">{activeItem.username || '—'}</span>
                       </div>
                       {activeItem.username && (
                         <button
                           type="button"
-                          className="rz-btn rz-btn-secondary"
+                          className="rz-btn rz-btn-secondary rz-btn-sm"
                           onClick={() => copySecure(activeItem.username, 'Usuário')}
                         >
                           <Copy size={14} />
@@ -488,7 +569,7 @@ export const VaultListPage: React.FC = () => {
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button
                           type="button"
-                          className="rz-btn rz-btn-secondary"
+                          className="rz-btn rz-btn-secondary rz-btn-sm"
                           onClick={handleRevealClick}
                           title={isRevealed ? 'Ocultar senha' : 'Revelar senha'}
                         >
@@ -496,7 +577,7 @@ export const VaultListPage: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          className="rz-btn rz-btn-secondary"
+                          className="rz-btn rz-btn-secondary rz-btn-sm"
                           onClick={async () => {
                             const pwd = isRevealed ? plaintextPassword : await revealPassword(activeItem.id);
                             copySecure(pwd, 'Senha');
@@ -510,17 +591,26 @@ export const VaultListPage: React.FC = () => {
 
                     {/* 2FA / TOTP */}
                     {totpData && (
-                      <div className="vault-field-row totp-row">
+                      <div className="vault-field-row">
                         <div className="vault-field-info">
                           <span className="vault-field-label">CÓDIGO 2FA (TOTP AO VIVO)</span>
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                          <div className="vault-totp-box">
+                            <OrbitRing
+                              value={totpPercent}
+                              size={42}
+                              stroke={3.5}
+                              tone={totpData.remainingSeconds <= 5 ? 'danger' : 'accent'}
+                              globe={false}
+                              label={`Expira em ${totpData.remainingSeconds} segundos`}
+                            >
+                              <span className="vault-totp-timer">{totpData.remainingSeconds}s</span>
+                            </OrbitRing>
                             <span className="vault-totp-digits">{totpData.code}</span>
-                            <span className="vault-totp-timer">{totpData.remainingSeconds}s</span>
                           </div>
                         </div>
                         <button
                           type="button"
-                          className="rz-btn rz-btn-primary"
+                          className="rz-btn rz-btn-primary rz-btn-sm"
                           onClick={() => copySecure(totpData.code, 'Código 2FA')}
                         >
                           <Copy size={14} />
@@ -534,21 +624,23 @@ export const VaultListPage: React.FC = () => {
                       <div className="vault-field-row">
                         <div className="vault-field-info">
                           <span className="vault-field-label">ENDEREÇO WEB (URL)</span>
-                          <span className="vault-field-val url-text">{activeItem.url}</span>
+                          <span className="vault-field-val rz-font-mono" style={{ fontSize: 'var(--rz-text-sm)' }}>
+                            {activeItem.url}
+                          </span>
                         </div>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <a
                             href={activeItem.url.startsWith('http') ? activeItem.url : `https://${activeItem.url}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="rz-btn rz-btn-secondary"
+                            className="rz-btn rz-btn-secondary rz-btn-sm"
                             style={{ textDecoration: 'none' }}
                           >
                             <ExternalLink size={14} />
                           </a>
                           <button
                             type="button"
-                            className="rz-btn rz-btn-secondary"
+                            className="rz-btn rz-btn-secondary rz-btn-sm"
                             onClick={() => copySecure(activeItem.url, 'URL')}
                           >
                             <Copy size={14} />
@@ -559,7 +651,7 @@ export const VaultListPage: React.FC = () => {
 
                     {/* Notas */}
                     {activeItem._plaintextNotes && (
-                      <div className="vault-field-row notes-row">
+                      <div className="vault-field-row">
                         <div className="vault-field-info" style={{ width: '100%' }}>
                           <span className="vault-field-label">NOTAS PROTEGIDAS</span>
                           <p className="vault-notes-content">{activeItem._plaintextNotes}</p>
@@ -584,8 +676,7 @@ export const VaultListPage: React.FC = () => {
                             </div>
                             <button
                               type="button"
-                              className="rz-btn rz-btn-secondary"
-                              style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                              className="rz-btn rz-btn-secondary rz-btn-sm"
                               onClick={() => handleRevealHistoryClick(hist.id)}
                             >
                               <Eye size={13} />
@@ -606,20 +697,14 @@ export const VaultListPage: React.FC = () => {
         <IonModal
           isOpen={showGenModal}
           onDidDismiss={() => setShowGenModal(false)}
-          style={{
-            '--background': '#121215',
-            '--border-radius': '12px',
-            '--width': '92%',
-            '--max-width': '480px',
-            '--height': 'fit-content',
-          }}
+          className="rz-dialog"
         >
-          <div style={{ padding: '20px', background: '#121215', border: '1px solid #27272a', borderRadius: '12px' }}>
+          <div className="rz-dialog-body">
             <PasswordGenerator />
             <button
               type="button"
-              className="rz-btn rz-btn-secondary"
-              style={{ width: '100%', marginTop: '12px' }}
+              className="rz-btn rz-btn-secondary rz-btn-block"
+              style={{ marginTop: 12 }}
               onClick={() => setShowGenModal(false)}
             >
               Fechar Gerador
@@ -634,21 +719,20 @@ export const VaultListPage: React.FC = () => {
             setShowPinModal(false);
             setEnteredPin('');
           }}
-          style={{
-            '--background': '#121215',
-            '--border-radius': '12px',
-            '--width': '90%',
-            '--max-width': '360px',
-            '--height': 'fit-content',
-          }}
+          className="rz-dialog"
         >
-          <div style={{ padding: '24px', background: '#121215', border: '1px solid #27272a', borderRadius: '12px' }}>
-            <h3 style={{ margin: '0 0 6px 0', color: '#fafafa', fontSize: '1rem', fontWeight: 700 }}>
-              Confirmação de PIN
-            </h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', color: '#a1a1aa' }}>
-              Digite seu PIN de 6 dígitos para descriptografar e exibir a senha.
-            </p>
+          <div className="rz-dialog-body">
+            <div className="rz-dialog-head" style={{ marginBottom: 16 }}>
+              <div className="rz-icon-tile lg">
+                <KeyRound />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <h3 className="rz-dialog-title">Confirmação de PIN</h3>
+                <p className="rz-dialog-text">
+                  Digite seu PIN de 6 dígitos para descriptografar e exibir a senha.
+                </p>
+              </div>
+            </div>
             <input
               type="password"
               inputMode="numeric"
@@ -656,14 +740,13 @@ export const VaultListPage: React.FC = () => {
               value={enteredPin}
               onChange={(e) => setEnteredPin(e.target.value.replace(/\D/g, ''))}
               placeholder="••••••"
-              className="rz-input"
-              style={{ textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.1rem', marginBottom: '16px' }}
+              className="rz-input is-mono"
+              style={{ textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.1rem' }}
             />
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="rz-dialog-actions">
               <button
                 type="button"
                 className="rz-btn rz-btn-secondary"
-                style={{ flex: 1 }}
                 onClick={() => setShowPinModal(false)}
               >
                 Cancelar
@@ -671,7 +754,6 @@ export const VaultListPage: React.FC = () => {
               <button
                 type="button"
                 className="rz-btn rz-btn-primary"
-                style={{ flex: 1 }}
                 onClick={verifyPinAndProceed}
               >
                 Confirmar

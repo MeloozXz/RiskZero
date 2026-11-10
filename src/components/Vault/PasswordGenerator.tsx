@@ -1,19 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  IonCard,
-  IonCardContent,
-  IonCardHeader,
-  IonCardTitle,
-  IonButton,
-  IonIcon,
   IonRange,
-  IonItem,
-  IonLabel,
   IonToggle,
-  IonText,
   IonToast,
 } from '@ionic/react';
-import { copyOutline, refreshOutline, shieldCheckmarkOutline } from 'ionicons/icons';
+import { Copy, RefreshCw, ShieldCheck, Check } from 'lucide-react';
 import { Clipboard } from '@capacitor/clipboard';
 
 interface PasswordGeneratorProps {
@@ -46,7 +37,7 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({ onSelectPa
 
     const array = new Uint32Array(length);
     window.crypto.getRandomValues(array);
-    
+
     let generated = '';
     for (let i = 0; i < length; i++) {
       generated += charset[array[i] % charset.length];
@@ -71,7 +62,7 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({ onSelectPa
     const finalPass = adjusted.join('');
     setPassword(finalPass);
 
-    // Calcula a pontuação de segurança
+    // Calcula a pontuação de segurança (bits de entropia)
     const poolSize = charset.length;
     const computedEntropy = length * Math.log2(poolSize);
     setEntropy(Math.round(computedEntropy));
@@ -93,145 +84,193 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({ onSelectPa
   };
 
   const getStrengthLabel = () => {
-    if (entropy < 40) return { label: 'Muito fraca', color: '#ff4961', percentage: 20 };
-    if (entropy < 60) return { label: 'Fraca', color: '#ffc409', percentage: 40 };
-    if (entropy < 80) return { label: 'Razoável', color: '#3dc2ff', percentage: 65 };
-    if (entropy < 100) return { label: 'Forte', color: '#2dd36f', percentage: 85 };
-    return { label: 'Excelente', color: '#00e676', percentage: 100 };
+    if (entropy < 40) return { label: 'Muito fraca', color: 'var(--rz-danger)', badge: 'rz-badge-danger', percentage: 20 };
+    if (entropy < 60) return { label: 'Fraca', color: 'var(--rz-warning)', badge: 'rz-badge-warning', percentage: 40 };
+    if (entropy < 80) return { label: 'Razoável', color: 'var(--rz-info)', badge: 'rz-badge-blue', percentage: 65 };
+    if (entropy < 100) return { label: 'Forte', color: 'var(--rz-success)', badge: 'rz-badge-success', percentage: 85 };
+    return { label: 'Excelente', color: 'var(--rz-success)', badge: 'rz-badge-success', percentage: 100 };
   };
 
   const strength = getStrengthLabel();
 
   return (
-    <IonCard className="glass-card" style={{
-      background: 'rgba(255, 255, 255, 0.05)',
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '24px',
-      margin: '16px 0',
-      boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)'
-    }}>
-      <IonCardHeader style={{ paddingBottom: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <IonIcon icon={shieldCheckmarkOutline} style={{ fontSize: '24px', color: '#3880ff' }} />
-          <IonCardTitle style={{ fontSize: '1.2rem', fontWeight: '700', color: '#fff' }}>
-            Gerador de Senhas
-          </IonCardTitle>
+    <div
+      style={{
+        background: 'var(--rz-bg-elevated)',
+        color: 'var(--rz-text-primary)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+      }}
+    >
+      {/* Cabeçalho */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="rz-icon-tile">
+            <ShieldCheck />
+          </span>
+          <div>
+            <h3
+              style={{
+                fontFamily: 'var(--rz-font-display)',
+                fontSize: '1.25rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.02em',
+                color: 'var(--rz-text-primary)',
+                margin: 0,
+              }}
+            >
+              Gerador CSPRNG
+            </h3>
+            <span style={{ fontSize: 'var(--rz-text-xs)', color: 'var(--rz-text-muted)' }}>
+              Entropia criptográfica WebCrypto API
+            </span>
+          </div>
         </div>
-      </IonCardHeader>
+        <span className={`rz-badge ${strength.badge}`}>{strength.label}</span>
+      </div>
 
-      <IonCardContent>
-        {/* Senha Gerada */}
-        <div style={{
-          background: 'rgba(0, 0, 0, 0.3)',
-          borderRadius: '16px',
-          padding: '16px',
+      {/* Poço da Senha Gerada */}
+      <div
+        style={{
+          background: 'var(--rz-bg-deep)',
+          border: '1px solid var(--rz-border)',
+          borderRadius: 'var(--rz-radius-sm)',
+          padding: '14px 16px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          overflow: 'hidden'
-        }}>
-          <IonText style={{
-            fontFamily: 'monospace',
-            fontSize: password.length > 20 ? '1.1rem' : '1.3rem',
-            color: '#fff',
+          gap: 10,
+        }}
+      >
+        <span
+          className="rz-font-mono"
+          style={{
+            fontSize: password.length > 24 ? '0.95rem' : '1.125rem',
+            fontWeight: 600,
+            color: password ? 'var(--rz-ice)' : 'var(--rz-text-muted)',
             wordBreak: 'break-all',
-            flex: '1',
-            letterSpacing: '1px',
-            userSelect: 'all'
-          }}>
-            {password || 'Selecione ao menos uma opção'}
-          </IonText>
-          <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
-            <IonButton fill="clear" color="primary" onClick={generatePassword} style={{ '--padding-start': '8px', '--padding-end': '8px' }}>
-              <IonIcon slot="icon-only" icon={refreshOutline} />
-            </IonButton>
-            <IonButton fill="clear" color="success" onClick={copyToClipboard} style={{ '--padding-start': '8px', '--padding-end': '8px' }}>
-              <IonIcon slot="icon-only" icon={copyOutline} />
-            </IonButton>
-          </div>
-        </div>
-
-        {/* Indicador de Força & Entropia */}
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <IonText style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem' }}>
-              Segurança: <span style={{ color: strength.color, fontWeight: '700' }}>{strength.label}</span>
-            </IonText>
-            <IonText style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem' }}>
-              Pontuação: <span style={{ color: '#fff', fontWeight: 'bold' }}>{entropy} pontos</span>
-            </IonText>
-          </div>
-          <div style={{
-            height: '6px',
-            background: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '3px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${strength.percentage}%`,
-              background: strength.color,
-              transition: 'width 0.3s ease, background-color 0.3s ease'
-            }} />
-          </div>
-        </div>
-
-        {/* Configurações do Gerador */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ padding: '0 8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', marginBottom: '2px' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>Quantidade de caracteres</span>
-              <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#3880ff' }}>{length}</span>
-            </div>
-            <IonRange
-              min={8}
-              max={64}
-              value={length}
-              onIonInput={(e) => setLength(e.detail.value as number)}
-              style={{ '--knob-background': '#3880ff', '--bar-background': 'rgba(255, 255, 255, 0.1)', '--bar-background-active': '#3880ff' }}
-            />
-          </div>
-
-          <IonItem lines="none" style={{ '--background': 'transparent', '--color': '#fff' }}>
-            <IonLabel style={{ fontSize: '0.95rem' }}>Maiúsculas (A-Z)</IonLabel>
-            <IonToggle checked={useUppercase} onIonChange={(e) => setUseUppercase(e.detail.checked)} slot="end" />
-          </IonItem>
-
-          <IonItem lines="none" style={{ '--background': 'transparent', '--color': '#fff' }}>
-            <IonLabel style={{ fontSize: '0.95rem' }}>Minúsculas (a-z)</IonLabel>
-            <IonToggle checked={useLowercase} onIonChange={(e) => setUseLowercase(e.detail.checked)} slot="end" />
-          </IonItem>
-
-          <IonItem lines="none" style={{ '--background': 'transparent', '--color': '#fff' }}>
-            <IonLabel style={{ fontSize: '0.95rem' }}>Números (0-9)</IonLabel>
-            <IonToggle checked={useNumbers} onIonChange={(e) => setUseNumbers(e.detail.checked)} slot="end" />
-          </IonItem>
-
-          <IonItem lines="none" style={{ '--background': 'transparent', '--color': '#fff' }}>
-            <IonLabel style={{ fontSize: '0.95rem' }}>Símbolos (!@#$)</IonLabel>
-            <IonToggle checked={useSymbols} onIonChange={(e) => setUseSymbols(e.detail.checked)} slot="end" />
-          </IonItem>
-        </div>
-
-        {onSelectPassword && (
-          <IonButton
-            expand="block"
-            onClick={() => onSelectPassword(password)}
-            disabled={!password}
-            style={{
-              marginTop: '20px',
-              '--background': 'linear-gradient(135deg, #3880ff 0%, #1e57c6 100%)',
-              '--border-radius': '14px',
-              fontWeight: '600'
-            }}
+            flex: 1,
+            letterSpacing: '0.04em',
+            userSelect: 'all',
+          }}
+        >
+          {password || 'Selecione ao menos uma opção'}
+        </span>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <button
+            type="button"
+            className="rz-icon-btn is-bordered"
+            onClick={generatePassword}
+            title="Gerar nova senha"
+            aria-label="Gerar nova senha"
           >
-            Usar esta Senha
-          </IonButton>
-        )}
-      </IonCardContent>
+            <RefreshCw />
+          </button>
+          <button
+            type="button"
+            className="rz-icon-btn is-bordered"
+            onClick={copyToClipboard}
+            title="Copiar senha"
+            aria-label="Copiar senha"
+            style={{ color: 'var(--rz-success)' }}
+          >
+            <Copy />
+          </button>
+        </div>
+      </div>
+
+      {/* Indicador de Força & Entropia */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ color: 'var(--rz-text-secondary)', fontSize: 'var(--rz-text-xs)' }}>
+            Segurança: <strong style={{ color: strength.color }}>{strength.label}</strong>
+          </span>
+          <span style={{ color: 'var(--rz-text-secondary)', fontSize: 'var(--rz-text-xs)' }}>
+            Entropia: <strong className="rz-font-mono" style={{ color: 'var(--rz-text-primary)' }}>{entropy} bits</strong>
+          </span>
+        </div>
+        <div className="rz-meter">
+          <span style={{ width: `${strength.percentage}%`, background: strength.color }} />
+        </div>
+      </div>
+
+      {/* Configurações do Gerador */}
+      <div
+        style={{
+          background: 'var(--rz-bg-deep)',
+          border: '1px solid var(--rz-border)',
+          borderRadius: 'var(--rz-radius-sm)',
+          padding: '12px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{ paddingBottom: 10, borderBottom: '1px solid var(--rz-border-subtle)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <span style={{ fontSize: 'var(--rz-text-sm)', fontWeight: 600, color: 'var(--rz-text-primary)' }}>
+              Quantidade de caracteres
+            </span>
+            <span
+              className="rz-num"
+              style={{
+                fontSize: '1.15rem',
+                fontWeight: 700,
+                color: 'var(--rz-ice)',
+              }}
+            >
+              {length}
+            </span>
+          </div>
+          <IonRange
+            min={8}
+            max={64}
+            value={length}
+            onIonInput={(e) => setLength(e.detail.value as number)}
+          />
+        </div>
+
+        <div className="rz-setting-row" style={{ padding: '10px 0' }}>
+          <span style={{ fontSize: 'var(--rz-text-sm)', fontWeight: 600, color: 'var(--rz-text-primary)' }}>
+            Maiúsculas (A-Z)
+          </span>
+          <IonToggle checked={useUppercase} onIonChange={(e) => setUseUppercase(e.detail.checked)} />
+        </div>
+
+        <div className="rz-setting-row" style={{ padding: '10px 0' }}>
+          <span style={{ fontSize: 'var(--rz-text-sm)', fontWeight: 600, color: 'var(--rz-text-primary)' }}>
+            Minúsculas (a-z)
+          </span>
+          <IonToggle checked={useLowercase} onIonChange={(e) => setUseLowercase(e.detail.checked)} />
+        </div>
+
+        <div className="rz-setting-row" style={{ padding: '10px 0' }}>
+          <span style={{ fontSize: 'var(--rz-text-sm)', fontWeight: 600, color: 'var(--rz-text-primary)' }}>
+            Números (0-9)
+          </span>
+          <IonToggle checked={useNumbers} onIonChange={(e) => setUseNumbers(e.detail.checked)} />
+        </div>
+
+        <div className="rz-setting-row" style={{ padding: '10px 0', borderBottom: 0 }}>
+          <span style={{ fontSize: 'var(--rz-text-sm)', fontWeight: 600, color: 'var(--rz-text-primary)' }}>
+            Símbolos (!@#$)
+          </span>
+          <IonToggle checked={useSymbols} onIonChange={(e) => setUseSymbols(e.detail.checked)} />
+        </div>
+      </div>
+
+      {onSelectPassword && (
+        <button
+          type="button"
+          className="rz-btn rz-btn-primary rz-btn-block"
+          onClick={() => onSelectPassword(password)}
+          disabled={!password}
+        >
+          <Check size={16} />
+          <span>Usar esta Senha</span>
+        </button>
+      )}
 
       <IonToast
         isOpen={showToast}
@@ -241,6 +280,6 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({ onSelectPa
         color="dark"
         position="bottom"
       />
-    </IonCard>
+    </div>
   );
 };

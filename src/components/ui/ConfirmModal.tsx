@@ -13,6 +13,10 @@ interface ConfirmModalProps {
   onCancel: () => void;
 }
 
+/**
+ * Diálogo de confirmação. No desktop é um diálogo centralizado;
+ * no celular vira uma folha ancorada na base (estilos em .rz-dialog).
+ */
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   isOpen,
   title,
@@ -23,94 +27,34 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
-  const isDanger = variant === 'danger';
+  const tone = variant === 'danger' ? 'danger' : variant === 'warning' ? 'warning' : '';
+  const Icon = variant === 'danger' ? Trash2 : variant === 'warning' ? AlertTriangle : Info;
 
   return (
-    <IonModal
-      isOpen={isOpen}
-      onDidDismiss={onCancel}
-      style={{
-        '--background': '#121215',
-        '--border-radius': '12px',
-        '--width': '92%',
-        '--max-width': '420px',
-        '--height': 'fit-content',
-      }}
-    >
-      <div
-        style={{
-          padding: '24px',
-          background: '#121215',
-          border: '1px solid #27272a',
-          borderRadius: '12px',
-          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '16px' }}>
-          <div
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              background: isDanger ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-              border: `1px solid ${isDanger ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
-              color: isDanger ? '#ef4444' : '#f59e0b',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            {isDanger ? <Trash2 size={20} /> : variant === 'warning' ? <AlertTriangle size={20} /> : <Info size={20} />}
+    <IonModal isOpen={isOpen} onDidDismiss={onCancel} className="rz-dialog">
+      <div className="rz-dialog-body" role="alertdialog" aria-labelledby="rz-confirm-title" aria-describedby="rz-confirm-text">
+        <div className="rz-dialog-head">
+          <div className={`rz-icon-tile lg ${tone}`}>
+            <Icon />
           </div>
-          <div>
-            <h3
-              style={{
-                margin: '0 0 6px 0',
-                fontSize: '1.05rem',
-                fontWeight: 700,
-                color: '#fafafa',
-                letterSpacing: '-0.015em',
-              }}
-            >
+          <div style={{ minWidth: 0 }}>
+            <h3 id="rz-confirm-title" className="rz-dialog-title">
               {title}
             </h3>
-            <p
-              style={{
-                margin: 0,
-                fontSize: '0.825rem',
-                color: '#a1a1aa',
-                lineHeight: 1.5,
-              }}
-            >
+            <p id="rz-confirm-text" className="rz-dialog-text">
               {message}
             </p>
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '10px',
-            marginTop: '20px',
-            paddingTop: '16px',
-            borderTop: '1px solid #27272a',
-          }}
-        >
-          <button
-            type="button"
-            className="rz-btn rz-btn-secondary"
-            onClick={onCancel}
-            style={{ minWidth: '90px' }}
-          >
+        <div className="rz-dialog-actions">
+          <button type="button" className="rz-btn rz-btn-secondary" onClick={onCancel}>
             {cancelText}
           </button>
           <button
             type="button"
-            className={`rz-btn ${isDanger ? 'rz-btn-danger' : 'rz-btn-primary'}`}
+            className={`rz-btn ${variant === 'danger' ? 'rz-btn-danger' : 'rz-btn-primary'}`}
             onClick={onConfirm}
-            style={{ minWidth: '110px' }}
           >
             {confirmText}
           </button>
@@ -119,4 +63,3 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     </IonModal>
   );
 };
-

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { IonIcon } from '@ionic/react';
-import { fingerPrintOutline, checkmarkCircle, shieldCheckmarkOutline } from 'ionicons/icons';
+import { Fingerprint, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { OrbitRing } from '../brand';
 import { registerBiometricPromptHandler, BiometricType } from '../../services/biometrics';
 import './BiometricScannerModal.css';
 
@@ -89,49 +89,62 @@ export const BiometricScannerModal: React.FC = () => {
 
   return (
     <div className="cyber-bio-modal-backdrop" onClick={handleCancel}>
-      <div 
-        className="cyber-bio-modal-card" 
+      <div
+        className="cyber-bio-modal-card rz-meridian-bg"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="bio-modal-title"
       >
         <div className="cyber-bio-header">
           <div className="cyber-bio-badge">
-            <IonIcon icon={shieldCheckmarkOutline} />
+            <ShieldCheck className="w-3.5 h-3.5" />
             <span>Zero-Knowledge Secure Sensor</span>
           </div>
-          <h3 className="cyber-bio-title">
+          <h3 id="bio-modal-title" className="cyber-bio-title">
             {request.mode === 'REGISTER' ? 'Cadastrar Biometria' : 'Autenticação Biométrica'}
           </h3>
           <p className="cyber-bio-subtitle">
-            Conta: <strong style={{ color: '#60a5fa' }}>{request.email}</strong>
+            Conta: <strong className="cyber-bio-email">{request.email}</strong>
           </p>
         </div>
 
-        <button
-          type="button"
-          className={`cyber-sensor-pad ${isScanning ? 'scanning' : ''} ${isVerified ? 'verified' : ''}`}
-          onClick={handleTouchSensor}
-          aria-label="Sensor Biométrico"
-        >
-          <div className="cyber-sensor-pulse-ring" />
-          <IonIcon
-            icon={isVerified ? checkmarkCircle : fingerPrintOutline}
-            className="cyber-sensor-icon"
-          />
-          {isScanning && <div className="cyber-scan-laser" />}
-        </button>
+        <div className="cyber-sensor-orbit-wrap">
+          <OrbitRing
+            size={164}
+            stroke={4}
+            value={isVerified ? 100 : isScanning ? undefined : 72}
+            spinning={isScanning}
+            tone={isVerified ? 'success' : 'accent'}
+            label="Anel orbital do sensor biométrico"
+          >
+            <button
+              type="button"
+              className={`cyber-sensor-pad ${isScanning ? 'scanning' : ''} ${isVerified ? 'verified' : ''}`}
+              onClick={handleTouchSensor}
+              aria-label="Sensor Biométrico"
+            >
+              <div className="cyber-sensor-pulse-ring" />
+              {isVerified ? (
+                <CheckCircle2 className="cyber-sensor-icon" />
+              ) : (
+                <Fingerprint className="cyber-sensor-icon" />
+              )}
+              {isScanning && <div className="cyber-scan-laser" />}
+            </button>
+          </OrbitRing>
+        </div>
 
-        <div className="cyber-instruction-text" style={{ color: isVerified ? '#10b981' : '#e2e8f0' }}>
+        <div className={`cyber-instruction-text ${isVerified ? 'is-verified' : ''}`}>
           {instruction}
         </div>
         <div className="cyber-instruction-hint">
           {isVerified ? 'Liberando acesso...' : 'Clique ou encoste o dedo no sensor acima'}
         </div>
 
-        <button 
-          type="button" 
-          className="cyber-bio-cancel-btn" 
+        <button
+          type="button"
+          className="rz-btn rz-btn-secondary rz-btn-lg rz-btn-block cyber-bio-cancel-btn"
           onClick={handleCancel}
           disabled={isScanning || isVerified}
         >

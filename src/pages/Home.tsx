@@ -20,16 +20,25 @@ import {
   RefreshCw,
   Copy,
   CheckCircle2,
-  ArrowUpRight
+  ArrowUpRight,
+  Plus,
+  X,
+  ChevronRight,
 } from 'lucide-react';
 import { useSecurity } from '../contexts/SecurityContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
+import { useVault } from '../contexts/VaultContext';
+import { PageHeader } from '../components/ui/PageHeader';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { Mascot, OrbitRing, OrbitTone } from '../components/brand';
 import { StorageService } from '../services/storage';
 import { SessionService } from '../services/session';
+import { VpnService, VpnStats } from '../services/vpn';
 import { AuditLog } from '../types';
 import { getErrorMessage } from '../lib/utils';
 import './Home.css';
+
+const WELCOME_STORAGE_KEY = 'rz_welcome_dismissed';
 
 const Home: React.FC = () => {
   const history = useHistory();
@@ -47,6 +56,17 @@ const Home: React.FC = () => {
     isBiometricEnabled,
   } = useSecurity();
   const { isPro, isUltra } = useSubscription();
+  const { items, healthStats } = useVault();
+
+  const [welcomeDismissed, setWelcomeDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(WELCOME_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [vpnStats, setVpnStats] = useState<VpnStats>(() => VpnService.getStats());
 
   const [pinInput, setPinInput] = useState<string>('');
   const [pinError, setPinError] = useState<string | null>(null);
@@ -71,13 +91,26 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     loadLogs();
+    const unsubVpn = VpnService.subscribe((stats) => setVpnStats(stats));
     const handleFocus = () => {
       loadLogs();
       runVaultHealthCheck();
     };
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    return () => {
+      unsubVpn();
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [runVaultHealthCheck]);
+
+  const handleDismissWelcome = () => {
+    try {
+      localStorage.setItem(WELCOME_STORAGE_KEY, 'true');
+    } catch {
+      // Ignora caso storage esteja restrito
+    }
+    setWelcomeDismissed(true);
+  };
 
   const handleSavePIN = async () => {
     setPinError(null);
@@ -170,388 +203,745 @@ const Home: React.FC = () => {
     }
   };
 
-  const healthScore = vaultHealth ? vaultHealth.score : 100;
-  const totalCreds = vaultHealth ? vaultHealth.total : 0;
-  const weakOrReused = vaultHealth ? vaultHealth.weak + vaultHealth.reused : 0;
+  const securityScore = vaultHealth ? vaultHealth.score : 100;
+  const totalCreds = healthStats ? healthStats.total : items.length;
+  const weakOrReused = vaultHealth
+    ? vaultHealth.weak + vaultHealth.reused
+    : healthStats
+      ? healthStats.weak + healthStats.reused
+      : 0;
   const breachedCount = vaultHealth ? vaultHealth.breached : 0;
+
+  const scoreTone: OrbitTone =
+    securityScore >= 80 ? 'success' : securityScore >= 50 ? 'warning' : 'danger';
+
+  const vpnConnected = vpnStats.status === 'CONNECTED';
+  const deviceShielded = hasPIN && (totpEnabled || isBiometricEnabled);
+  const recentCredentials = items.slice(0, 5);
 
   return (
     <IonPage className="home-page">
       <IonContent fullscreen className="home-content">
         <div className="rz-page-container">
-          {/* Header Executivo */}
-          <header className="rz-page-header">
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <h1 className="rz-page-title">Painel de Segurança</h1>
-                <span className="rz-badge rz-badge-blue">
+          <PageHeader
+            eyebrow="Centro de Comando"
+            title="Postura de Segurança"
+            subtitle={
+              <>
+                Sessão criptografada ativa para{' '}
+                <strong style={{ color: 'var(--rz-text-primary)' }}>
+                  {activeEmail || 'usuário local'}
+                </strong>{' '}
+                · Envelope AES-256-GCM + Argon2id ·{' '}
+                <span className={`rz-badge ${isUltra || isPro ? 'rz-badge-violet' : 'rz-badge-blue'}`} style={{ verticalAlign: 'middle' }}>
                   Plano {isUltra ? 'Ultra' : isPro ? 'Pro' : 'Essencial'}
                 </span>
-              </div>
-              <p className="rz-page-subtitle">
-                Sessão criptografada ativa para <strong>{activeEmail || 'usuário local'}</strong> · Envelope AES-256-GCM + Argon2id
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="rz-btn rz-btn-secondary"
-                onClick={() => {
-                  runVaultHealthCheck();
-                  loadLogs();
-                  setToastMsg('Telemetria atualizada.');
-                  setShowToast(true);
-                }}
-              >
-                <RefreshCw size={14} />
-                <span>Atualizar</span>
-              </button>
-
-              <button
-                type="button"
-                className="rz-btn rz-btn-primary"
-                onClick={lockApp}
-              >
-                <Lock size={14} />
-                <span>Bloquear Cofre</span>
-              </button>
-            </div>
-          </header>
-
-          {/* 1. KPI Grid */}
-          <section className="home-kpi-grid" aria-label="Indicadores de segurança">
-            <div className="home-kpi-card">
-              <div className="home-kpi-top">
-                <span>Índice de Postura</span>
-                <ShieldCheck size={16} className="text-blue-500" />
-              </div>
-              <div className="home-kpi-value" style={{ color: healthScore >= 80 ? '#10b981' : healthScore >= 50 ? '#f59e0b' : '#ef4444' }}>
-                {healthScore}%
-              </div>
-              <div className="home-kpi-foot">
-                Cifragem Zero-Knowledge ativa
-              </div>
-            </div>
-
-            <div className="home-kpi-card" onClick={() => history.push('/vault')} style={{ cursor: 'pointer' }}>
-              <div className="home-kpi-top">
-                <span>Credenciais no Cofre</span>
-                <Lock size={16} className="text-zinc-400" />
-              </div>
-              <div className="home-kpi-value">{totalCreds}</div>
-              <div className="home-kpi-foot">
-                Gerenciar registros <ArrowUpRight size={12} style={{ display: 'inline' }} />
-              </div>
-            </div>
-
-            <div className="home-kpi-card" onClick={() => history.push('/analysis')} style={{ cursor: 'pointer' }}>
-              <div className="home-kpi-top">
-                <span>Senhas Fracas / Repetidas</span>
-                <Activity size={16} className="text-amber-500" />
-              </div>
-              <div className="home-kpi-value" style={{ color: weakOrReused > 0 ? '#f59e0b' : '#fafafa' }}>
-                {weakOrReused}
-              </div>
-              <div className="home-kpi-foot">
-                Diagnóstico de entropia <ArrowUpRight size={12} style={{ display: 'inline' }} />
-              </div>
-            </div>
-
-            <div className="home-kpi-card" onClick={() => history.push('/breach')} style={{ cursor: 'pointer' }}>
-              <div className="home-kpi-top">
-                <span>Exposições HIBP</span>
-                <AlertTriangle size={16} className="text-red-500" />
-              </div>
-              <div className="home-kpi-value" style={{ color: breachedCount > 0 ? '#ef4444' : '#fafafa' }}>
-                {breachedCount}
-              </div>
-              <div className="home-kpi-foot">
-                Auditoria k-Anonymity <ArrowUpRight size={12} style={{ display: 'inline' }} />
-              </div>
-            </div>
-          </section>
-
-          {/* 2. Módulos Operacionais */}
-          <section style={{ marginBottom: 24 }}>
-            <h2 className="home-section-heading">Módulos Operacionais</h2>
-            <div className="home-modules-grid">
-              <button type="button" className="home-module-item" onClick={() => history.push('/vault')}>
-                <div className="home-module-icon"><Lock size={18} /></div>
-                <div className="home-module-text">
-                  <strong>Cofre de Credenciais</strong>
-                  <span>Senhas, cartões, notas e códigos TOTP</span>
-                </div>
-              </button>
-
-              <button type="button" className="home-module-item" onClick={() => history.push('/biometric-settings')}>
-                <div className="home-module-icon"><Fingerprint size={18} /></div>
-                <div className="home-module-text">
-                  <strong>Biometria de Hardware</strong>
-                  <span>{isBiometricEnabled ? 'Sensor físico vinculado e ativo' : 'Configurar leitor biométrico nativo'}</span>
-                </div>
-              </button>
-
-              <button type="button" className="home-module-item" onClick={() => history.push('/breach')}>
-                <div className="home-module-icon"><AlertTriangle size={18} /></div>
-                <div className="home-module-text">
-                  <strong>Vazamentos (HIBP)</strong>
-                  <span>Verificação SHA-1 k-Anonymity</span>
-                </div>
-              </button>
-
-              <button type="button" className="home-module-item" onClick={() => history.push('/link-detector')}>
-                <div className="home-module-icon"><Globe size={18} /></div>
-                <div className="home-module-text">
-                  <strong>Detector Anti-Phishing</strong>
-                  <span>Inspeção heurística de URLs suspeitas</span>
-                </div>
-              </button>
-
-              <button type="button" className="home-module-item" onClick={() => history.push('/vpn')}>
-                <div className="home-module-icon"><Wifi size={18} /></div>
-                <div className="home-module-text">
-                  <strong>Rede & VPN</strong>
-                  <span>Auditoria de exposição de IP e túnel</span>
-                </div>
-              </button>
-
-              <button type="button" className="home-module-item" onClick={() => history.push('/hardening')}>
-                <div className="home-module-icon"><Sliders size={18} /></div>
-                <div className="home-module-text">
-                  <strong>Blindagem do Dispositivo</strong>
-                  <span>Auto-lock, clipboard e privacidade</span>
-                </div>
-              </button>
-
-              <button type="button" className="home-module-item" onClick={() => history.push('/analysis')}>
-                <div className="home-module-icon"><Activity size={18} /></div>
-                <div className="home-module-text">
-                  <strong>Saúde das Senhas</strong>
-                  <span>Análise de força e reutilização</span>
-                </div>
-              </button>
-
-              <button type="button" className="home-module-item" onClick={() => history.push('/education')}>
-                <div className="home-module-icon"><BookOpen size={18} /></div>
-                <div className="home-module-text">
-                  <strong>Base de Conhecimento</strong>
-                  <span>Guias práticos e conformidade LGPD</span>
-                </div>
-              </button>
-            </div>
-          </section>
-
-          {/* 3. Controles de Autenticação Rápida (PIN & 2FA) */}
-          <section className="home-controls-grid">
-            {/* PIN Local */}
-            <div className="rz-card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <KeyRound size={18} className="text-blue-500" />
-                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#fafafa' }}>
-                    PIN de Reentrada Rápida
-                  </h3>
-                </div>
-                <span className={`rz-badge ${hasPIN ? 'rz-badge-success' : 'rz-badge-warning'}`}>
-                  {hasPIN ? 'Ativo' : 'Pendente'}
-                </span>
-              </div>
-
-              <p style={{ fontSize: '0.8rem', color: '#a1a1aa', margin: '0 0 14px 0', lineHeight: 1.5 }}>
-                Permite desbloquear a tela de bloqueio temporário com 6 dígitos numéricos sem redigitar a Senha Mestra completa.
-              </p>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="Novo PIN (6 dígitos)"
-                  value={pinInput}
-                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
-                  className="rz-input"
-                  style={{ flex: 1 }}
-                />
+              </>
+            }
+            actions={
+              <>
                 <button
                   type="button"
-                  onClick={handleSavePIN}
-                  disabled={pinInput.length !== 6}
-                  className="rz-btn rz-btn-primary"
+                  className="rz-btn rz-btn-secondary"
+                  onClick={() => {
+                    runVaultHealthCheck();
+                    loadLogs();
+                    setToastMsg('Telemetria atualizada.');
+                    setShowToast(true);
+                  }}
                 >
-                  {hasPIN ? 'Atualizar' : 'Definir PIN'}
+                  <RefreshCw size={15} />
+                  <span>Atualizar</span>
                 </button>
-              </div>
-              {pinError && (
-                <p style={{ color: '#f87171', fontSize: '0.75rem', margin: '8px 0 0 0' }}>{pinError}</p>
-              )}
-            </div>
 
-            {/* 2FA TOTP */}
-            <div className="rz-card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <ShieldCheck size={18} className="text-blue-500" />
-                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#fafafa' }}>
-                    Segundo Fator (2FA TOTP)
-                  </h3>
-                </div>
-                <span className={`rz-badge ${totpEnabled ? 'rz-badge-success' : 'rz-badge-neutral'}`}>
-                  {totpEnabled ? 'Ativado' : 'Opcional'}
-                </span>
-              </div>
+                <button
+                  type="button"
+                  className="rz-btn rz-btn-primary"
+                  onClick={lockApp}
+                >
+                  <Lock size={15} />
+                  <span>Bloquear Cofre</span>
+                </button>
+              </>
+            }
+          />
 
-              {totpEnabled ? (
-                <div>
-                  <p style={{ fontSize: '0.8rem', color: '#a1a1aa', margin: '0 0 14px 0', lineHeight: 1.5 }}>
-                    Sua conta exige códigos TOTP de 6 dígitos gerados por aplicativo autenticador a cada novo login.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleDisable2FA}
-                    className="rz-btn rz-btn-danger"
-                  >
-                    Desativar 2FA
-                  </button>
+          {/* Banner Orbital Dispensável com Mascote */}
+          {!welcomeDismissed && (
+            <section className="home-welcome-banner rz-meridian-bg" aria-label="Boas-vindas ao RiskZero">
+              <button
+                type="button"
+                className="rz-icon-btn home-welcome-dismiss"
+                onClick={handleDismissWelcome}
+                aria-label="Dispensar boas-vindas"
+                title="Dispensar"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="home-welcome-left">
+                <div className="home-welcome-mascot-wrap">
+                  <Mascot height={115} />
                 </div>
-              ) : !show2FASetup ? (
-                <div>
-                  <p style={{ fontSize: '0.8rem', color: '#a1a1aa', margin: '0 0 14px 0', lineHeight: 1.5 }}>
-                    Vincule o Google Authenticator, Authy ou Microsoft Authenticator para exigir verificação em duas etapas.
+
+                <div className="home-welcome-copy">
+                  <span className="rz-eyebrow" style={{ marginBottom: 2 }}>
+                    Arquitetura Zero-Knowledge Ativa
+                  </span>
+                  <h2 className="home-welcome-title">
+                    {totalCreds === 0
+                      ? 'Seu cofre blindado está pronto para a primeira credencial'
+                      : 'Postura orbital monitorada em tempo real'}
+                  </h2>
+                  <p className="home-welcome-text">
+                    Suas chaves derivadas por Argon2id permanecem exclusivamente na memória volátil (RAM).
+                    Nenhum dado em texto claro deixa o seu dispositivo.
                   </p>
-                  <button
-                    type="button"
-                    onClick={handleStart2FA}
-                    className="rz-btn rz-btn-secondary"
-                  >
-                    Configurar Autenticador 2FA
-                  </button>
+                  <div className="home-welcome-actions">
+                    <button
+                      type="button"
+                      className="rz-btn rz-btn-primary rz-btn-sm"
+                      onClick={() => history.push('/vault/add')}
+                    >
+                      <Plus size={14} />
+                      <span>Adicionar Credencial</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="rz-btn rz-btn-secondary rz-btn-sm"
+                      onClick={() => history.push('/education')}
+                    >
+                      <BookOpen size={14} />
+                      <span>Guia Zero-Knowledge & LGPD</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="rz-btn rz-btn-ghost rz-btn-sm"
+                      onClick={handleDismissWelcome}
+                    >
+                      <span>Dispensar aviso</span>
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#09090b', padding: 10, borderRadius: 8, border: '1px solid #27272a' }}>
-                    {currentLocalSecret && (
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
-                          `otpauth://totp/RiskZero:${encodeURIComponent(activeEmail || 'usuario')}?secret=${currentLocalSecret}&issuer=RiskZero`
-                        )}`}
-                        alt="QR Code 2FA"
-                        style={{ width: 88, height: 88, borderRadius: 6, background: '#fff', padding: 4 }}
-                      />
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="rz-label">SEGREDO BASE32</div>
-                      <code style={{ display: 'block', fontSize: '0.75rem', color: '#fafafa', wordBreak: 'break-all', marginBottom: 6 }}>
-                        {currentLocalSecret}
-                      </code>
-                      <button
-                        type="button"
-                        className="rz-btn rz-btn-secondary"
-                        style={{ padding: '4px 8px', fontSize: '0.72rem' }}
-                        onClick={() => currentLocalSecret && handleCopySecret(currentLocalSecret)}
-                      >
-                        <Copy size={12} />
-                        <span>Copiar chave</span>
-                      </button>
+              </div>
+            </section>
+          )}
+
+          {/* Layout de 2 Colunas no Desktop (≥1280px) */}
+          <div className="rz-split">
+            {/* Coluna Principal */}
+            <div>
+              {/* 1. Security Score Hero Panel */}
+              <section className="rz-panel rz-panel-accent rz-meridian-bg home-hero-panel" aria-label="Índice de Postura de Segurança">
+                <div className="home-score-stage">
+                  <OrbitRing
+                    value={securityScore}
+                    size={136}
+                    stroke={8}
+                    tone={scoreTone}
+                    label="Índice de Postura de Segurança"
+                  >
+                    <span className="rz-num home-score-value">{securityScore}%</span>
+                    <span className="home-score-unit">SCORE ORBITAL</span>
+                  </OrbitRing>
+                  <span className={`rz-badge ${securityScore >= 80 ? 'rz-badge-success' : securityScore >= 50 ? 'rz-badge-warning' : 'rz-badge-danger'}`}>
+                    {securityScore >= 80 ? 'Blindagem Elevada' : securityScore >= 50 ? 'Atenção Requerida' : 'Risco Crítico'}
+                  </span>
+                </div>
+
+                <div className="home-posture-body">
+                  <div className="home-posture-head">
+                    <div>
+                      <h2 className="home-posture-title">Diagnóstico de Postura Criptográfica</h2>
+                      <p className="home-posture-sub">
+                        Indicadores operacionais da sessão local, higiene de senhas e superfície do aparelho.
+                      </p>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="home-posture-grid">
+                    <button
+                      type="button"
+                      className="home-posture-item"
+                      onClick={() => history.push('/vault')}
+                    >
+                      <span className="rz-icon-tile success">
+                        <Lock />
+                      </span>
+                      <span className="home-posture-item-info">
+                        <span className="home-posture-item-label">Cofre AES-256</span>
+                        <span className="home-posture-item-status">
+                          Ativo · {totalCreds} registro(s)
+                        </span>
+                      </span>
+                      <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="home-posture-item"
+                      onClick={() => history.push('/vpn')}
+                    >
+                      <span className={`rz-icon-tile ${vpnConnected ? 'success' : 'neutral'}`}>
+                        <Wifi />
+                      </span>
+                      <span className="home-posture-item-info">
+                        <span className="home-posture-item-label">Status VPN</span>
+                        <span className="home-posture-item-status">
+                          {vpnConnected ? `Conectado · ${vpnStats.selectedServer.country}` : 'Túnel em espera'}
+                        </span>
+                      </span>
+                      <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="home-posture-item"
+                      onClick={() => history.push('/analysis')}
+                    >
+                      <span className={`rz-icon-tile ${weakOrReused > 0 ? 'warning' : 'success'}`}>
+                        <Activity />
+                      </span>
+                      <span className="home-posture-item-info">
+                        <span className="home-posture-item-label">Senhas Fracas / Reutilizadas</span>
+                        <span className="home-posture-item-status">
+                          {weakOrReused > 0 ? `${weakOrReused} requer(em) rotação` : '100% alta entropia'}
+                        </span>
+                      </span>
+                      <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="home-posture-item"
+                      onClick={() => history.push('/hardening')}
+                    >
+                      <span className={`rz-icon-tile ${deviceShielded ? 'success' : 'warning'}`}>
+                        <Sliders />
+                      </span>
+                      <span className="home-posture-item-info">
+                        <span className="home-posture-item-label">Blindagem do Aparelho</span>
+                        <span className="home-posture-item-status">
+                          {deviceShielded ? 'PIN + MFA ativos' : 'Configurar camadas'}
+                        </span>
+                      </span>
+                      <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* 2. Faixa Dividida de Métricas (.rz-metrics) */}
+              <section className="rz-metrics home-metrics-strip" aria-label="Indicadores de segurança">
+                <div className="rz-metric">
+                  <div className="home-metric-top">
+                    <span className="rz-stat-label" style={{ marginBottom: 0 }}>Índice de Postura</span>
+                    <ShieldCheck size={15} style={{ color: 'var(--rz-accent-light)' }} />
+                  </div>
+                  <div
+                    className="rz-stat-value rz-num"
+                    style={{
+                      color:
+                        securityScore >= 80
+                          ? 'var(--rz-success)'
+                          : securityScore >= 50
+                            ? 'var(--rz-warning)'
+                            : 'var(--rz-danger)',
+                    }}
+                  >
+                    {securityScore}%
+                  </div>
+                  <div className="home-metric-foot">Cifragem Zero-Knowledge ativa</div>
+                </div>
+
+                <button
+                  type="button"
+                  className="rz-metric home-metric-interactive"
+                  onClick={() => history.push('/vault')}
+                >
+                  <div className="home-metric-top">
+                    <span className="rz-stat-label" style={{ marginBottom: 0 }}>Credenciais no Cofre</span>
+                    <Lock size={15} style={{ color: 'var(--rz-ice)' }} />
+                  </div>
+                  <div className="rz-stat-value rz-num">{totalCreds}</div>
+                  <div className="home-metric-foot">
+                    Gerenciar registros <ArrowUpRight size={12} />
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="rz-metric home-metric-interactive"
+                  onClick={() => history.push('/analysis')}
+                >
+                  <div className="home-metric-top">
+                    <span className="rz-stat-label" style={{ marginBottom: 0 }}>Fracas / Repetidas</span>
+                    <Activity size={15} style={{ color: 'var(--rz-warning)' }} />
+                  </div>
+                  <div
+                    className="rz-stat-value rz-num"
+                    style={{ color: weakOrReused > 0 ? 'var(--rz-warning)' : 'var(--rz-text-primary)' }}
+                  >
+                    {weakOrReused}
+                  </div>
+                  <div className="home-metric-foot">
+                    Diagnóstico de entropia <ArrowUpRight size={12} />
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="rz-metric home-metric-interactive"
+                  onClick={() => history.push('/breach')}
+                >
+                  <div className="home-metric-top">
+                    <span className="rz-stat-label" style={{ marginBottom: 0 }}>Exposições HIBP</span>
+                    <AlertTriangle size={15} style={{ color: 'var(--rz-danger)' }} />
+                  </div>
+                  <div
+                    className="rz-stat-value rz-num"
+                    style={{ color: breachedCount > 0 ? 'var(--rz-danger)' : 'var(--rz-text-primary)' }}
+                  >
+                    {breachedCount}
+                  </div>
+                  <div className="home-metric-foot">
+                    Auditoria k-Anonymity <ArrowUpRight size={12} />
+                  </div>
+                </button>
+              </section>
+
+              {/* 3. Matriz de Defesa / Módulos Operacionais */}
+              <section className="rz-section">
+                <div className="rz-section-head">
+                  <h2 className="rz-section-title">
+                    Matriz de Defesa & Módulos Operacionais
+                    <span className="rz-count">08</span>
+                  </h2>
+                </div>
+
+                <div className="home-modules-grid">
+                  <button type="button" className="home-module-item" onClick={() => history.push('/vault')}>
+                    <div className="rz-icon-tile"><Lock /></div>
+                    <div className="home-module-text">
+                      <strong>Cofre de Credenciais</strong>
+                      <span>Senhas, cartões, notas e códigos TOTP</span>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                  </button>
+
+                  <button type="button" className="home-module-item" onClick={() => history.push('/biometric-settings')}>
+                    <div className={`rz-icon-tile ${isBiometricEnabled ? 'success' : ''}`}><Fingerprint /></div>
+                    <div className="home-module-text">
+                      <strong>Biometria de Hardware</strong>
+                      <span>{isBiometricEnabled ? 'Sensor físico vinculado e ativo' : 'Configurar leitor biométrico nativo'}</span>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                  </button>
+
+                  <button type="button" className="home-module-item" onClick={() => history.push('/breach')}>
+                    <div className={`rz-icon-tile ${breachedCount > 0 ? 'danger' : ''}`}><AlertTriangle /></div>
+                    <div className="home-module-text">
+                      <strong>Vazamentos (HIBP)</strong>
+                      <span>Verificação SHA-1 k-Anonymity</span>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                  </button>
+
+                  <button type="button" className="home-module-item" onClick={() => history.push('/link-detector')}>
+                    <div className="rz-icon-tile"><Globe /></div>
+                    <div className="home-module-text">
+                      <strong>Detector Anti-Phishing</strong>
+                      <span>Inspeção heurística de URLs suspeitas</span>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                  </button>
+
+                  <button type="button" className="home-module-item" onClick={() => history.push('/vpn')}>
+                    <div className={`rz-icon-tile ${vpnConnected ? 'success' : ''}`}><Wifi /></div>
+                    <div className="home-module-text">
+                      <strong>Rede & VPN</strong>
+                      <span>Auditoria de exposição de IP e túnel</span>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                  </button>
+
+                  <button type="button" className="home-module-item" onClick={() => history.push('/hardening')}>
+                    <div className="rz-icon-tile"><Sliders /></div>
+                    <div className="home-module-text">
+                      <strong>Blindagem do Dispositivo</strong>
+                      <span>Auto-lock, clipboard e privacidade</span>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                  </button>
+
+                  <button type="button" className="home-module-item" onClick={() => history.push('/analysis')}>
+                    <div className={`rz-icon-tile ${weakOrReused > 0 ? 'warning' : ''}`}><Activity /></div>
+                    <div className="home-module-text">
+                      <strong>Saúde das Senhas</strong>
+                      <span>Análise de força e reutilização</span>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                  </button>
+
+                  <button type="button" className="home-module-item" onClick={() => history.push('/education')}>
+                    <div className="rz-icon-tile"><BookOpen /></div>
+                    <div className="home-module-text">
+                      <strong>Base de Conhecimento</strong>
+                      <span>Guias práticos e conformidade LGPD</span>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                  </button>
+                </div>
+              </section>
+
+              {/* 4. Controles de Autenticação Rápida (PIN & 2FA) */}
+              <section className="home-controls-grid" aria-label="Controles de Autenticação Rápida">
+                {/* PIN Local */}
+                <div className="rz-card">
+                  <div className="rz-card-header">
+                    <div className="rz-card-title-group">
+                      <span className="rz-icon-tile">
+                        <KeyRound />
+                      </span>
+                      <h3 className="rz-card-title">PIN de Reentrada Rápida</h3>
+                    </div>
+                    <span className={`rz-badge ${hasPIN ? 'rz-badge-success' : 'rz-badge-warning'}`}>
+                      {hasPIN ? 'Ativo' : 'Pendente'}
+                    </span>
+                  </div>
+
+                  <p className="rz-text-muted" style={{ marginBottom: 14 }}>
+                    Permite desbloquear a tela de bloqueio temporário com 6 dígitos numéricos sem redigitar a Senha Mestra completa.
+                  </p>
+
+                  <div className="home-pin-form">
                     <input
-                      type="text"
+                      type="password"
                       inputMode="numeric"
                       maxLength={6}
-                      placeholder="Código de 6 dígitos"
-                      value={totpTokenInput}
-                      onChange={(e) => setTotpTokenInput(e.target.value.replace(/\D/g, ''))}
-                      className="rz-input"
-                      style={{ flex: 1 }}
+                      placeholder="Novo PIN (6 dígitos)"
+                      value={pinInput}
+                      onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                      className="rz-input is-mono"
                     />
                     <button
                       type="button"
-                      onClick={handleConfirm2FA}
-                      disabled={totpTokenInput.length !== 6}
+                      onClick={handleSavePIN}
+                      disabled={pinInput.length !== 6}
                       className="rz-btn rz-btn-primary"
                     >
-                      Ativar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShow2FASetup(false)}
-                      className="rz-btn rz-btn-secondary"
-                    >
-                      Cancelar
+                      {hasPIN ? 'Atualizar' : 'Definir PIN'}
                     </button>
                   </div>
-                  {mfaError && (
-                    <p style={{ color: '#f87171', fontSize: '0.75rem', margin: 0 }}>{mfaError}</p>
+                  {pinError && (
+                    <p className="rz-field-error" style={{ marginTop: 8, marginBottom: 0 }}>{pinError}</p>
                   )}
                 </div>
-              )}
-            </div>
-          </section>
 
-          {/* 4. Trilha de Auditoria LGPD */}
-          <section className="rz-card" style={{ marginTop: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600, color: '#fafafa' }}>
-                  Trilha de Auditoria Local (LGPD Art. 7º & ISO/IEC 27001)
-                </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#a1a1aa' }}>
-                  Registro cronológico de eventos de autenticação, leitura e modificação do cofre.
-                </p>
-              </div>
+                {/* 2FA TOTP */}
+                <div className="rz-card">
+                  <div className="rz-card-header">
+                    <div className="rz-card-title-group">
+                      <span className="rz-icon-tile">
+                        <ShieldCheck />
+                      </span>
+                      <h3 className="rz-card-title">Segundo Fator (2FA TOTP)</h3>
+                    </div>
+                    <span className={`rz-badge ${totpEnabled ? 'rz-badge-success' : 'rz-badge-neutral'}`}>
+                      {totpEnabled ? 'Ativado' : 'Opcional'}
+                    </span>
+                  </div>
 
-              <button
-                type="button"
-                onClick={handleExportAuditCSV}
-                disabled={isExportingCSV || auditLogs.length === 0}
-                className="rz-btn rz-btn-secondary"
-              >
-                <Download size={14} />
-                <span>{isExportingCSV ? 'Exportando...' : 'Exportar CSV'}</span>
-              </button>
-            </div>
+                  {totpEnabled ? (
+                    <div>
+                      <p className="rz-text-muted" style={{ marginBottom: 14 }}>
+                        Sua conta exige códigos TOTP de 6 dígitos gerados por aplicativo autenticador a cada novo login.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleDisable2FA}
+                        className="rz-btn rz-btn-danger"
+                      >
+                        Desativar 2FA
+                      </button>
+                    </div>
+                  ) : !show2FASetup ? (
+                    <div>
+                      <p className="rz-text-muted" style={{ marginBottom: 14 }}>
+                        Vincule o Google Authenticator, Authy ou Microsoft Authenticator para exigir verificação em duas etapas.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleStart2FA}
+                        className="rz-btn rz-btn-secondary"
+                      >
+                        Configurar Autenticador 2FA
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div className="home-2fa-qr-box">
+                        {currentLocalSecret && (
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
+                              `otpauth://totp/RiskZero:${encodeURIComponent(activeEmail || 'usuario')}?secret=${currentLocalSecret}&issuer=RiskZero`
+                            )}`}
+                            alt="QR Code 2FA"
+                            className="home-2fa-qr-img"
+                          />
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="rz-label">SEGREDO BASE32</div>
+                          <code className="home-2fa-secret-code">{currentLocalSecret}</code>
+                          <button
+                            type="button"
+                            className="rz-btn rz-btn-secondary rz-btn-sm"
+                            onClick={() => currentLocalSecret && handleCopySecret(currentLocalSecret)}
+                          >
+                            <Copy size={12} />
+                            <span>Copiar chave</span>
+                          </button>
+                        </div>
+                      </div>
 
-            {auditLogs.length === 0 ? (
-              <div style={{ padding: '24px', textAlign: 'center', color: '#71717a', fontSize: '0.825rem', background: '#09090b', borderRadius: 8, border: '1px solid #27272a' }}>
-                Nenhum evento de auditoria registrado até o momento.
-              </div>
-            ) : (
-              <div className="home-audit-table-wrap">
-                <table className="home-audit-table">
-                  <thead>
-                    <tr>
-                      <th>Evento</th>
-                      <th>Descrição</th>
-                      <th>Data / Hora</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditLogs.slice(0, 12).map((log) => {
-                      const isOk = log.action.includes('SUCCESS') || log.action.includes('CREATED');
-                      const isErr = log.action.includes('FAILED') || log.action.includes('BREACH');
-                      return (
-                        <tr key={log.id}>
-                          <td>
-                            <span className={`rz-badge ${isOk ? 'rz-badge-success' : isErr ? 'rz-badge-danger' : 'rz-badge-neutral'}`}>
-                              {isOk && <CheckCircle2 size={11} />}
-                              {log.action}
-                            </span>
-                          </td>
-                          <td className="audit-details-cell">{log.details}</td>
-                          <td className="audit-time-cell">
-                            {new Date(log.timestamp).toLocaleString('pt-BR')}
-                          </td>
+                      <div className="home-2fa-verify-row">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="Código de 6 dígitos"
+                          value={totpTokenInput}
+                          onChange={(e) => setTotpTokenInput(e.target.value.replace(/\D/g, ''))}
+                          className="rz-input is-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleConfirm2FA}
+                          disabled={totpTokenInput.length !== 6}
+                          className="rz-btn rz-btn-primary"
+                        >
+                          Ativar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShow2FASetup(false)}
+                          className="rz-btn rz-btn-secondary"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                      {mfaError && (
+                        <p className="rz-field-error" style={{ margin: 0 }}>{mfaError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* 5. Trilha de Auditoria LGPD */}
+              <section className="rz-card">
+                <div className="rz-card-header" style={{ flexWrap: 'wrap' }}>
+                  <div>
+                    <h3 className="rz-card-title">
+                      Trilha de Auditoria Local (LGPD Art. 7º & ISO/IEC 27001)
+                    </h3>
+                    <p className="rz-text-muted" style={{ marginTop: 2 }}>
+                      Registro cronológico de eventos de autenticação, leitura e modificação do cofre.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleExportAuditCSV}
+                    disabled={isExportingCSV || auditLogs.length === 0}
+                    className="rz-btn rz-btn-secondary rz-btn-sm"
+                  >
+                    <Download size={14} />
+                    <span>{isExportingCSV ? 'Exportando...' : 'Exportar CSV'}</span>
+                  </button>
+                </div>
+
+                {auditLogs.length === 0 ? (
+                  <div className="home-audit-empty">
+                    Nenhum evento de auditoria registrado até o momento.
+                  </div>
+                ) : (
+                  <div className="home-audit-table-wrap">
+                    <table className="home-audit-table">
+                      <thead>
+                        <tr>
+                          <th>Evento</th>
+                          <th>Descrição</th>
+                          <th>Data / Hora</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {auditLogs.slice(0, 12).map((log) => {
+                          const isOk = log.action.includes('SUCCESS') || log.action.includes('CREATED');
+                          const isErr = log.action.includes('FAILED') || log.action.includes('BREACH');
+                          return (
+                            <tr key={log.id}>
+                              <td>
+                                <span className={`rz-badge ${isOk ? 'rz-badge-success' : isErr ? 'rz-badge-danger' : 'rz-badge-neutral'}`}>
+                                  {isOk && <CheckCircle2 size={11} />}
+                                  {log.action}
+                                </span>
+                              </td>
+                              <td className="audit-details-cell">{log.details}</td>
+                              <td className="audit-time-cell">
+                                {new Date(log.timestamp).toLocaleString('pt-BR')}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            </div>
+
+            {/* Coluna Lateral (Aside Desktop ≥1280px / Empilhada no Mobile) */}
+            <aside className="rz-split-aside home-aside-stack" aria-label="Ações rápidas e credenciais recentes">
+              {/* Ações Rápidas */}
+              <div className="rz-panel">
+                <div className="rz-section-head" style={{ marginBottom: 12 }}>
+                  <h2 className="rz-section-title">Ações Rápidas</h2>
+                </div>
+                <div className="home-quick-actions-grid">
+                  <button
+                    type="button"
+                    className="home-quick-tile"
+                    onClick={() => history.push('/vault/add')}
+                  >
+                    <span className="rz-icon-tile">
+                      <Plus />
+                    </span>
+                    <span>Nova Credencial</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="home-quick-tile"
+                    onClick={() => history.push('/breach')}
+                  >
+                    <span className="rz-icon-tile warning">
+                      <AlertTriangle />
+                    </span>
+                    <span>Varredura HIBP</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="home-quick-tile"
+                    onClick={() => history.push('/link-detector')}
+                  >
+                    <span className="rz-icon-tile">
+                      <Globe />
+                    </span>
+                    <span>Analisar URL</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="home-quick-tile"
+                    onClick={() => history.push('/vpn')}
+                  >
+                    <span className="rz-icon-tile success">
+                      <Wifi />
+                    </span>
+                    <span>Túnel WireGuard</span>
+                  </button>
+                </div>
               </div>
-            )}
-          </section>
+
+              {/* Credenciais Recentes */}
+              <div className="rz-panel">
+                <div className="rz-section-head" style={{ marginBottom: 12 }}>
+                  <h2 className="rz-section-title">
+                    Credenciais Recentes
+                    <span className="rz-count">{recentCredentials.length}</span>
+                  </h2>
+                  <button
+                    type="button"
+                    className="rz-btn rz-btn-ghost rz-btn-sm"
+                    onClick={() => history.push('/vault')}
+                  >
+                    Ver cofre
+                  </button>
+                </div>
+
+                {recentCredentials.length === 0 ? (
+                  <div className="home-audit-empty">
+                    <p style={{ margin: '0 0 10px' }}>Nenhuma credencial armazenada ainda.</p>
+                    <button
+                      type="button"
+                      className="rz-btn rz-btn-primary rz-btn-sm"
+                      onClick={() => history.push('/vault/add')}
+                    >
+                      <Plus size={14} />
+                      <span>Adicionar Primeira</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rz-list">
+                    {recentCredentials.map((cred) => (
+                      <button
+                        key={cred.id}
+                        type="button"
+                        className="rz-row"
+                        onClick={() => history.push(`/vault/detail/${cred.id}`)}
+                      >
+                        <span className="home-recent-avatar">
+                          {(cred.title || '?').charAt(0).toUpperCase()}
+                        </span>
+                        <span className="rz-row-main">
+                          <span className="rz-row-title" style={{ display: 'block' }}>
+                            {cred.title}
+                          </span>
+                          <span className="rz-row-meta" style={{ display: 'block' }}>
+                            {cred.username || 'Sem identificador'}
+                          </span>
+                        </span>
+                        <span className="rz-row-trailing">
+                          {cred.encryptedTotpSecret && (
+                            <span className="rz-badge rz-badge-blue">2FA</span>
+                          )}
+                          <ChevronRight size={16} />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Telemetria do Envelope Zero-Knowledge */}
+              <div className="rz-panel">
+                <div className="rz-section-head" style={{ marginBottom: 10 }}>
+                  <h2 className="rz-section-title">Envelope Criptográfico</h2>
+                  <span className="rz-dot success is-live" />
+                </div>
+                <div className="rz-setting-row" style={{ padding: '8px 0' }}>
+                  <span className="rz-text-muted">Cifra de Cofre</span>
+                  <span className="rz-font-mono" style={{ fontSize: 'var(--rz-text-xs)', color: 'var(--rz-ice)' }}>
+                    AES-256-GCM
+                  </span>
+                </div>
+                <div className="rz-setting-row" style={{ padding: '8px 0' }}>
+                  <span className="rz-text-muted">Derivação KDF</span>
+                  <span className="rz-font-mono" style={{ fontSize: 'var(--rz-text-xs)', color: 'var(--rz-ice)' }}>
+                    Argon2id
+                  </span>
+                </div>
+                <div className="rz-setting-row" style={{ padding: '8px 0' }}>
+                  <span className="rz-text-muted">Auto-Lock Inatividade</span>
+                  <span className="rz-font-mono" style={{ fontSize: 'var(--rz-text-xs)', color: 'var(--rz-success)' }}>
+                    5 min / Background
+                  </span>
+                </div>
+              </div>
+            </aside>
+          </div>
         </div>
 
         <IonToast

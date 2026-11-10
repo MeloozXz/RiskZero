@@ -1,20 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import {
   IonModal,
-  IonIcon,
-  IonSpinner
+  IonSpinner,
 } from '@ionic/react';
 import {
-  closeOutline,
-  searchOutline,
-  flashOutline,
-  globeOutline,
-  phonePortraitOutline,
-  shieldCheckmarkOutline,
-  personOutline,
-  lockClosedOutline,
-  sparklesOutline
-} from 'ionicons/icons';
+  X,
+  Search,
+  Zap,
+  Globe,
+  Smartphone,
+  ShieldCheck,
+  UserRound,
+  Lock,
+  Sparkles,
+} from 'lucide-react';
 import { App } from '@capacitor/app';
 import { useVault } from '../../contexts/VaultContext';
 import { AutofillService, AutofillRequestedEvent } from '../../services/autofill';
@@ -79,7 +78,7 @@ function matchesRequest(item: VaultItem, requestData: AutofillRequestedEvent | n
 export const AutofillSelectorModal: React.FC<AutofillSelectorModalProps> = ({
   isOpen,
   requestData,
-  onClose
+  onClose,
 }) => {
   const { items, revealPassword } = useVault();
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -159,159 +158,69 @@ export const AutofillSelectorModal: React.FC<AutofillSelectorModalProps> = ({
     <IonModal
       isOpen={isOpen}
       onDidDismiss={handleModalClose}
+      className="rz-dialog"
       style={{
-        '--background': 'rgba(7, 10, 19, 0.95)',
-        '--border-radius': '24px',
-        '--width': '94%',
         '--max-width': '500px',
-        '--height': 'fit-content',
-        '--max-height': '90vh'
       }}
     >
       <div
+        className="rz-dialog-body"
         style={{
-          padding: '24px',
-          background: 'linear-gradient(180deg, rgba(13, 19, 34, 0.98) 0%, rgba(7, 10, 19, 0.99) 100%)',
-          border: '1px solid rgba(96, 165, 250, 0.3)',
-          borderRadius: '24px',
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 35px rgba(96, 165, 250, 0.15)',
-          color: '#f8fafc',
+          background: 'var(--rz-bg-elevated)',
+          color: 'var(--rz-text-primary)',
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '90vh',
-          boxSizing: 'border-box'
+          gap: 16,
+          maxHeight: '88vh',
         }}
       >
-        {/* Botão Fechar / Cancelar Superior */}
-        <button
-          onClick={handleModalClose}
-          aria-label="Fechar preenchimento automático"
-          style={{
-            position: 'absolute',
-            top: '18px',
-            right: '18px',
-            background: 'rgba(255, 255, 255, 0.06)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '50%',
-            width: '32px',
-            height: '32px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#94a3b8',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            zIndex: 10
-          }}
-        >
-          <IonIcon icon={closeOutline} style={{ fontSize: '20px' }} />
-        </button>
-
-        {/* Cabeçalho */}
-        <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              padding: '12px',
-              borderRadius: '18px',
-              background: 'rgba(96, 165, 250, 0.12)',
-              border: '1px solid rgba(96, 165, 250, 0.3)',
-              marginBottom: '10px',
-              boxShadow: '0 0 20px rgba(96, 165, 250, 0.2)'
-            }}
-          >
-            <IonIcon
-              icon={isWebTarget ? globeOutline : phonePortraitOutline}
-              style={{
-                color: '#60a5fa',
-                fontSize: '28px'
-              }}
-            />
+        {/* Cabeçalho Orbital */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <span className="rz-icon-tile lg">
+              {isWebTarget ? <Globe /> : <Smartphone />}
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <p className="rz-eyebrow" style={{ marginBottom: 2 }}>
+                Autofill Nativo
+              </p>
+              <h2 className="rz-dialog-title" style={{ marginBottom: 4 }}>
+                Preenchimento Automático
+              </h2>
+              {targetIdentifier ? (
+                <span className="rz-badge rz-badge-blue" style={{ maxWidth: '100%' }}>
+                  <Sparkles size={12} />
+                  <span className="rz-truncate rz-font-mono">{targetIdentifier}</span>
+                </span>
+              ) : (
+                <p className="rz-dialog-text">
+                  Selecione uma conta do cofre para preencher
+                </p>
+              )}
+            </div>
           </div>
 
-          <h2
-            style={{
-              margin: '0 0 6px 0',
-              fontSize: '1.25rem',
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              color: '#ffffff'
-            }}
+          <button
+            type="button"
+            onClick={handleModalClose}
+            aria-label="Fechar preenchimento automático"
+            className="rz-icon-btn is-bordered"
           >
-            Preenchimento Automático
-          </h2>
-
-          {targetIdentifier ? (
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 12px',
-                borderRadius: '12px',
-                background: 'rgba(96, 165, 250, 0.08)',
-                border: '1px solid rgba(96, 165, 250, 0.2)',
-                color: '#60a5fa',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                maxWidth: '90%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <IonIcon icon={sparklesOutline} style={{ fontSize: '14px', flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {targetIdentifier}
-              </span>
-            </div>
-          ) : (
-            <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>
-              Selecione uma conta do cofre para preencher
-            </p>
-          )}
+            <X />
+          </button>
         </div>
 
         {/* Barra de Pesquisa Rápida */}
-        <div
-          style={{
-            position: 'relative',
-            marginBottom: '16px'
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#64748b',
-              display: 'flex',
-              alignItems: 'center',
-              pointerEvents: 'none'
-            }}
-          >
-            <IonIcon icon={searchOutline} style={{ fontSize: '18px' }} />
-          </div>
+        <div className="rz-input-group">
+          <Search />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Pesquisar conta, usuário ou URL..."
             aria-label="Pesquisar credencial para preenchimento"
-            style={{
-              width: '100%',
-              padding: '10px 14px 10px 38px',
-              borderRadius: '12px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              color: '#ffffff',
-              fontSize: '0.85rem',
-              outline: 'none',
-              boxSizing: 'border-box',
-              transition: 'border-color 0.2s ease'
-            }}
+            className="rz-input"
           />
         </div>
 
@@ -320,206 +229,102 @@ export const AutofillSelectorModal: React.FC<AutofillSelectorModalProps> = ({
           style={{
             flex: 1,
             overflowY: 'auto',
-            paddingRight: '2px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px',
-            marginBottom: '16px'
+            gap: 14,
+            minHeight: 160,
+            maxHeight: 340,
           }}
         >
           {/* Seção 1: Itens Sugeridos para o App/Site */}
           {suggestedItems.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: '#60a5fa'
-                }}
-              >
-                <IonIcon icon={sparklesOutline} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="rz-section-title" style={{ color: 'var(--rz-ice)', fontSize: '0.78rem' }}>
+                <Sparkles size={14} />
                 <span>Sugeridos para este aplicativo / site</span>
               </div>
 
-              {suggestedItems.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 14px',
-                    borderRadius: '14px',
-                    background: 'rgba(96, 165, 250, 0.05)',
-                    border: '1px solid rgba(96, 165, 250, 0.25)',
-                    boxShadow: '0 4px 14px rgba(96, 165, 250, 0.08)',
-                    gap: '12px'
-                  }}
-                >
-                  <div style={{ overflow: 'hidden', flex: 1 }}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: '0.92rem',
-                        color: '#ffffff',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      {item.title}
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '0.78rem',
-                        color: '#94a3b8',
-                        marginTop: '2px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      <IonIcon icon={personOutline} style={{ fontSize: '13px' }} />
-                      <span>{item.username || 'Sem usuário'}</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleFill(item)}
-                    disabled={!!fillingItemId}
+              <div className="rz-list" style={{ borderColor: 'var(--rz-accent-line)' }}>
+                {suggestedItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rz-row"
                     style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '8px 16px',
-                      borderRadius: '10px',
-                      background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
-                      border: 'none',
-                      color: '#070a13',
-                      fontWeight: 700,
-                      fontSize: '0.82rem',
-                      cursor: fillingItemId ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 2px 10px rgba(96, 165, 250, 0.3)',
-                      transition: 'transform 0.15s ease, opacity 0.15s ease',
-                      flexShrink: 0
+                      background: 'var(--rz-accent-soft)',
+                      justifyContent: 'space-between',
                     }}
                   >
-                    {fillingItemId === item.id ? (
-                      <IonSpinner name="crescent" style={{ width: '16px', height: '16px', color: '#070a13' }} />
-                    ) : (
-                      <>
-                        <IonIcon icon={flashOutline} style={{ fontSize: '14px' }} />
-                        <span>Preencher</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              ))}
+                    <div className="rz-row-main">
+                      <div className="rz-row-title">{item.title}</div>
+                      <div className="rz-row-meta" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <UserRound size={12} />
+                        <span className="rz-truncate">{item.username || 'Sem usuário'}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleFill(item)}
+                      disabled={!!fillingItemId}
+                      className="rz-btn rz-btn-primary rz-btn-sm"
+                    >
+                      {fillingItemId === item.id ? (
+                        <IonSpinner name="crescent" style={{ width: 15, height: 15, color: '#fff' }} />
+                      ) : (
+                        <>
+                          <Zap size={13} />
+                          <span>Preencher</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {/* Seção 2: Outras Contas / Todas as Contas */}
           {otherItems.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {suggestedItems.length > 0 && (
-                <div
-                  style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: '#64748b',
-                    marginTop: '6px'
-                  }}
-                >
-                  Outras Contas do Cofre
+                <div className="rz-section-title" style={{ fontSize: '0.78rem' }}>
+                  <span>Outras Contas do Cofre</span>
                 </div>
               )}
 
-              {otherItems.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 14px',
-                    borderRadius: '14px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    gap: '12px',
-                    transition: 'background 0.2s ease'
-                  }}
-                >
-                  <div style={{ overflow: 'hidden', flex: 1 }}>
-                    <div
-                      style={{
-                        fontWeight: 600,
-                        fontSize: '0.9rem',
-                        color: '#f1f5f9',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      {item.title}
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '0.76rem',
-                        color: '#94a3b8',
-                        marginTop: '2px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      <IonIcon icon={personOutline} style={{ fontSize: '13px' }} />
-                      <span>{item.username || 'Sem usuário'}</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleFill(item)}
-                    disabled={!!fillingItemId}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '8px 14px',
-                      borderRadius: '10px',
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      color: '#e2e8f0',
-                      fontWeight: 600,
-                      fontSize: '0.8rem',
-                      cursor: fillingItemId ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.15s ease',
-                      flexShrink: 0
-                    }}
+              <div className="rz-list" style={{ background: 'var(--rz-bg-deep)' }}>
+                {otherItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rz-row"
+                    style={{ justifyContent: 'space-between' }}
                   >
-                    {fillingItemId === item.id ? (
-                      <IonSpinner name="crescent" style={{ width: '16px', height: '16px', color: '#e2e8f0' }} />
-                    ) : (
-                      <>
-                        <IonIcon icon={flashOutline} style={{ fontSize: '14px', color: '#60a5fa' }} />
-                        <span>Preencher</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              ))}
+                    <div className="rz-row-main">
+                      <div className="rz-row-title">{item.title}</div>
+                      <div className="rz-row-meta" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <UserRound size={12} />
+                        <span className="rz-truncate">{item.username || 'Sem usuário'}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleFill(item)}
+                      disabled={!!fillingItemId}
+                      className="rz-btn rz-btn-secondary rz-btn-sm"
+                    >
+                      {fillingItemId === item.id ? (
+                        <IonSpinner name="crescent" style={{ width: 15, height: 15 }} />
+                      ) : (
+                        <>
+                          <Zap size={13} style={{ color: 'var(--rz-ice)' }} />
+                          <span>Preencher</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -528,12 +333,15 @@ export const AutofillSelectorModal: React.FC<AutofillSelectorModalProps> = ({
             <div
               style={{
                 textAlign: 'center',
-                padding: '30px 16px',
-                color: '#64748b'
+                padding: '28px 16px',
+                background: 'var(--rz-bg-deep)',
+                border: '1px solid var(--rz-border)',
+                borderRadius: 'var(--rz-radius-sm)',
+                color: 'var(--rz-text-muted)',
               }}
             >
-              <IonIcon icon={lockClosedOutline} style={{ fontSize: '32px', marginBottom: '8px', opacity: 0.6 }} />
-              <p style={{ margin: 0, fontSize: '0.85rem' }}>
+              <Lock size={26} style={{ margin: '0 auto 8px', opacity: 0.7 }} />
+              <p style={{ margin: 0, fontSize: 'var(--rz-text-sm)' }}>
                 {searchQuery ? 'Nenhuma credencial compatível com a pesquisa.' : 'Nenhuma credencial disponível no cofre.'}
               </p>
             </div>
@@ -545,25 +353,15 @@ export const AutofillSelectorModal: React.FC<AutofillSelectorModalProps> = ({
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-            paddingTop: '14px'
+            gap: 10,
+            borderTop: '1px solid var(--rz-border)',
+            paddingTop: 14,
           }}
         >
           <button
+            type="button"
             onClick={handleModalClose}
-            style={{
-              width: '100%',
-              padding: '10px',
-              borderRadius: '12px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#94a3b8',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-              transition: 'background 0.2s ease'
-            }}
+            className="rz-btn rz-btn-secondary rz-btn-block"
           >
             Cancelar
           </button>
@@ -573,14 +371,14 @@ export const AutofillSelectorModal: React.FC<AutofillSelectorModalProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              color: '#60a5fa',
-              fontSize: '0.7rem',
-              fontWeight: 500,
-              opacity: 0.85
+              gap: 6,
+              color: 'var(--rz-ice)',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              opacity: 0.9,
             }}
           >
-            <IonIcon icon={shieldCheckmarkOutline} style={{ fontSize: '13px' }} />
+            <ShieldCheck size={13} />
             <span>Zero-Knowledge • Credenciais descriptografadas sob demanda na RAM</span>
           </div>
         </div>

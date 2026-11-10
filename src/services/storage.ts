@@ -189,6 +189,14 @@ export const StorageService = {
   },
 
   /**
+   * Remove o PIN de Acesso Local
+   */
+  async removePINHash(email: string): Promise<void> {
+    const key = `${KEYS.ACTIVE_PIN}_${email.toLowerCase().trim()}`;
+    await removeSecureItem(key);
+  },
+
+  /**
    * Salva o PIN Secundário de Pânico & Camuflagem (Duress PIN) indexado por e-mail
    */
   async savePanicPINHash(email: string, pinHash: string): Promise<void> {

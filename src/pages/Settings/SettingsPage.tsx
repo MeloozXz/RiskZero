@@ -1,43 +1,78 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
-  IonCard, IonCardContent, IonCardHeader, IonCardTitle,
-  IonButton, IonIcon, IonItem, IonLabel, IonInput,
-  IonToggle, IonToast, IonBadge, IonList, useIonAlert,
+  IonPage,
+  IonContent,
+  IonToggle,
+  IonToast,
+  useIonAlert,
 } from '@ionic/react';
 import {
-  downloadOutline, cloudUploadOutline, trashOutline,
-  hardwareChipOutline, keyOutline,
-  alertCircleOutline, fingerPrintOutline, documentTextOutline,
-  swapHorizontalOutline, checkmarkCircleOutline, sparklesOutline,
-  shieldCheckmarkOutline, eyeOutline, eyeOffOutline, openOutline,
-  refreshOutline
-} from 'ionicons/icons';
+  Download,
+  UploadCloud,
+  Trash2,
+  Cpu,
+  KeyRound,
+  AlertTriangle,
+  Fingerprint,
+  FileSpreadsheet,
+  ArrowLeftRight,
+  Sparkles,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  RefreshCw,
+  Timer,
+  ClipboardCheck,
+  MonitorOff,
+  Puzzle,
+  Lock,
+  LogOut,
+  CheckCircle2,
+} from 'lucide-react';
+import { useHistory } from 'react-router-dom';
 import { VaultService } from '../../services/vault';
 import { StorageService } from '../../services/storage';
 import { SessionService } from '../../services/session';
+import { ClipboardService } from '../../services/clipboard';
 import { ImporterService, ParsedImportItem, SupportedImportFormat } from '../../services/importer';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { MasterKeyModal } from '../../components/MasterKeyModal';
 import { useSecurity } from '../../contexts/SecurityContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { ActiveSession } from '../../types';
 import './SettingsPage.css';
 
 export const SettingsPage: React.FC = () => {
-  const { 
-    logout, 
-    activeEmail, 
-    isBiometricsEnrolled, 
-    registerBiometrics, 
+  const history = useHistory();
+  const {
+    logout,
+    lockApp,
+    activeEmail,
+    isBiometricsEnrolled,
+    registerBiometrics,
     disableBiometrics,
     rememberSession,
-    setRememberSession
+    setRememberSession,
   } = useSecurity();
   const { tier, subscription, isPro, isUltra } = useSubscription();
   const [presentAlert] = useIonAlert();
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const [deviceInfo, setDeviceInfo] = useState<string>('');
-  
+
+  // Preferências locais de Hardening (Auto-Lock, Clipboard, Privacy Screen)
+  const [autoLockMinutes, setAutoLockMinutes] = useState<string>(
+    () => localStorage.getItem('rz_autolock_minutes') || '5'
+  );
+  const [clipboardSeconds, setClipboardSeconds] = useState<string>(
+    () => localStorage.getItem('rz_clipboard_seconds') || '30'
+  );
+  const [privacyScreenEnabled, setPrivacyScreenEnabled] = useState<boolean>(
+    () => localStorage.getItem('rz_privacy_screen') !== 'false'
+  );
+  const [showMasterKeyModal, setShowMasterKeyModal] = useState<boolean>(false);
+
   // Estados para Restauração de Backup JSON
   const [backupText, setBackupText] = useState<string>('');
   const [backupPassword, setBackupPassword] = useState<string>('');
@@ -84,26 +119,24 @@ export const SettingsPage: React.FC = () => {
     const email = SessionService.getActiveUserEmail();
     if (!email) return;
     const stored = await StorageService.getAuditLogs(email);
-    const logins = stored.filter(log => log.action === 'LOGIN_SUCCESS');
-    
-    // Monta a lista de dispositivos conectados com base no histórico de acessos
+    const logins = stored.filter((log) => log.action === 'LOGIN_SUCCESS');
+
     const sessionsList: ActiveSession[] = logins.map((log, index) => {
       const isCurrent = index === 0;
       return {
         id: log.id,
         deviceName: isCurrent ? `Este dispositivo (${deviceInfo || 'Celular'})` : 'Dispositivo anterior',
         lastActive: log.timestamp,
-        ipPlaceholder: isCurrent ? 'Conexão ativa' : 'Acesso registrado'
+        ipPlaceholder: isCurrent ? 'Conexão ativa' : 'Acesso registrado',
       };
     });
 
-    // Garante pelo menos uma sessão ativa corrente
     if (sessionsList.length === 0) {
       sessionsList.push({
         id: 'current',
         deviceName: `Este Dispositivo (${navigator.platform})`,
         lastActive: new Date().toISOString(),
-        ipPlaceholder: 'Conexão ativa'
+        ipPlaceholder: 'Conexão ativa',
       });
     }
 
@@ -113,14 +146,19 @@ export const SettingsPage: React.FC = () => {
   useEffect(() => {
     loadSessions();
     detectDeviceInfo();
-    // Carrega a chave HIBP salva no storage local
-    StorageService.getHibpApiKey().then(key => {
+    StorageService.getHibpApiKey().then((key) => {
       if (key) {
         setHibpKey(key);
         setHasSavedHibpKey(true);
       }
     });
   }, [loadSessions]);
+
+  const showFeedback = (msg: string, color: string = 'dark') => {
+    setToastMsg(msg);
+    setToastColor(color);
+    setShowToast(true);
+  };
 
   const handleSaveHibpKey = async () => {
     const trimmed = hibpKey.trim();
@@ -151,22 +189,16 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const showFeedback = (msg: string, color: string = 'dark') => {
-    setToastMsg(msg);
-    setToastColor(color);
-    setShowToast(true);
-  };
-
   // Exportar Backup Seguro
   const handleExportBackup = async () => {
     try {
       const blobStr = await VaultService.exportEncryptedBlob();
       const blob = new Blob([blobStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      
+
       const link = document.createElement('a');
       link.href = url;
-      link.download = `backup-seguro-${new Date().toISOString().slice(0,10)}.json`;
+      link.download = `backup-seguro-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -174,7 +206,7 @@ export const SettingsPage: React.FC = () => {
 
       showFeedback('Backup exportado.', 'success');
     } catch {
-      showFeedback(`Não foi possível exportar o backup. Tente novamente.`, 'danger');
+      showFeedback('Não foi possível exportar o backup. Tente novamente.', 'danger');
     }
   };
 
@@ -213,7 +245,7 @@ export const SettingsPage: React.FC = () => {
         loadSessions();
       }
     } catch {
-      showFeedback(`Não foi possível restaurar o backup. Verifique a senha e tente novamente.`, 'danger');
+      showFeedback('Não foi possível restaurar o backup. Verifique a senha e tente novamente.', 'danger');
     }
   };
 
@@ -231,7 +263,7 @@ export const SettingsPage: React.FC = () => {
         setCsvFormat(format);
         setCsvItems(items);
         showFeedback(`Formato reconhecido: ${format} (${items.length} itens).`, 'success');
-      } catch (err: unknown) {
+      } catch {
         showFeedback('Erro ao processar o arquivo CSV.', 'danger');
         setCsvItems([]);
       }
@@ -301,8 +333,9 @@ export const SettingsPage: React.FC = () => {
               URL.revokeObjectURL(url);
 
               showFeedback('Arquivo CSV exportado.', 'success');
-            } catch (err: any) {
-              showFeedback(err?.message || 'Não foi possível exportar o CSV.', 'danger');
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : 'Não foi possível exportar o CSV.';
+              showFeedback(msg, 'danger');
             }
           },
         },
@@ -320,10 +353,9 @@ export const SettingsPage: React.FC = () => {
     const email = SessionService.getActiveUserEmail();
     if (!email) return;
 
-    // Confirma a identidade do usuário antes de prosseguir
     const profile = await StorageService.getUserProfile(email);
     if (!profile) return;
-    
+
     try {
       const authRes = await SessionService.authenticateMaster(email, confirmWipePassword);
       if (authRes.success) {
@@ -332,7 +364,7 @@ export const SettingsPage: React.FC = () => {
         showFeedback('Senha mestra incorreta. A operação foi cancelada.', 'danger');
       }
     } catch {
-      showFeedback(`Não foi possível confirmar sua identidade. Tente novamente.`, 'danger');
+      showFeedback('Não foi possível confirmar sua identidade. Tente novamente.', 'danger');
     }
   };
 
@@ -353,589 +385,767 @@ export const SettingsPage: React.FC = () => {
     }
     const email = SessionService.getActiveUserEmail();
     if (!email) return;
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
     await StorageService.addAuditLog(email, 'PIN_LOCKED', `Dispositivo [${sessionId.substring(0, 6)}] desconectado.`);
     showFeedback('Dispositivo desconectado com sucesso.', 'success');
   };
 
+  const handleDownloadExtensionInfo = () => {
+    showFeedback('Pacote WebExtension (Manifest V3) disponível no diretório /browser-extension do projeto.', 'success');
+  };
+
+  const enrolledBio = activeEmail ? isBiometricsEnrolled(activeEmail) : false;
+
   return (
-    <IonPage className="settings-page">
-      <IonHeader className="ion-no-border">
-        <IonToolbar className="settings-toolbar">
-          <IonTitle className="settings-title">
-            Configurações
-          </IonTitle>
-        </IonToolbar>
-      </IonHeader>
-
-      <IonContent className="settings-content">
-        <div className="settings-container">
-
-          {/* Meu Plano & Assinatura */}
-          <IonCard className="settings-card" style={{
-            background: isUltra
-              ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(20, 28, 45, 0.95) 100%)'
-              : isPro
-              ? 'linear-gradient(135deg, rgba(96, 165, 250, 0.12) 0%, rgba(20, 28, 45, 0.95) 100%)'
-              : 'linear-gradient(135deg, rgba(20, 28, 45, 0.95) 0%, rgba(11, 15, 26, 0.95) 100%)',
-            border: isUltra
-              ? '1px solid rgba(168, 85, 247, 0.4)'
-              : isPro
-              ? '1px solid rgba(96, 165, 250, 0.4)'
-              : '1px solid rgba(255, 255, 255, 0.08)',
-          }}>
-            <IonCardHeader>
-              <div className="settings-card-title-row" style={{ justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <IonIcon icon={sparklesOutline} style={{ color: isUltra ? '#c084fc' : isPro ? '#60a5fa' : '#3880ff', fontSize: '22px' }} />
-                  <IonCardTitle className="settings-card-title">
-                    Meu Plano & Assinatura
-                  </IonCardTitle>
-                </div>
-                <span style={{
-                  fontSize: '0.8rem',
-                  fontWeight: 900,
-                  textTransform: 'uppercase',
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  background: isUltra ? 'rgba(168, 85, 247, 0.25)' : isPro ? 'rgba(96, 165, 250, 0.25)' : 'rgba(255, 255, 255, 0.08)',
-                  color: isUltra ? '#e9d5ff' : isPro ? '#60a5fa' : '#94a3b8',
-                  border: isUltra ? '1px solid rgba(168, 85, 247, 0.5)' : isPro ? '1px solid rgba(96, 165, 250, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
-                }}>
-                  {tier === 'ULTRA' ? 'ULTRA' : tier === 'PRO' ? 'PRO' : 'FREE'}
-                </span>
-              </div>
-            </IonCardHeader>
-            <IonCardContent>
-              <p className="settings-card-desc">
-                {isUltra
-                  ? 'Você possui o plano Ultra Familiar com proteção absoluta, até 6 membros, PIN de Pânico e armazenamento de 10 GB.'
-                  : isPro
-                  ? 'Você possui o plano Pro com 2FA ilimitado, até 5 dispositivos e monitoramento Dark Web diário.'
-                  : 'Você está no plano Gratuito com senhas ilimitadas em 1 dispositivo. Faça upgrade para desbloquear 2FA e múltiplos aparelhos.'}
-              </p>
-
-              {subscription?.expiresAt && (
-                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '12px' }}>
-                  Renovação: <strong style={{ color: '#e2e8f0' }}>{new Date(subscription.expiresAt).toLocaleDateString()}</strong> ({subscription.billingCycle === 'ANNUAL' ? 'Plano Anual' : 'Plano Mensal'})
-                </div>
-              )}
-
-              <IonButton
-                expand="block"
-                routerLink="/plans"
-                style={{
-                  '--background': isUltra
-                    ? 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)'
-                    : 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
-                  '--color': isUltra ? '#ffffff' : '#000000',
-                  '--border-radius': '14px',
-                  fontWeight: 800,
-                  height: '44px',
-                  margin: '4px 0 0',
-                }}
-              >
-                {tier === 'FREE' ? 'Fazer upgrade de plano' : 'Gerenciar / Mudar de Plano'}
-              </IonButton>
-            </IonCardContent>
-          </IonCard>
-
-          {/* Backup Criptografado */}
-          <IonCard className="settings-card">
-            <IonCardHeader>
-              <div className="settings-card-title-row">
-                <IonIcon icon={downloadOutline} style={{ color: '#3880ff', fontSize: '22px' }} />
-                <IonCardTitle className="settings-card-title">
-                  Backup Seguro
-                </IonCardTitle>
-              </div>
-            </IonCardHeader>
-            <IonCardContent>
-              <p className="settings-card-desc">
-                Salve uma cópia protegida das suas credenciais. O arquivo é totalmente criptografado e só pode ser aberto com a sua senha mestra.
-              </p>
-              
-              <IonButton
-                expand="block"
-                onClick={handleExportBackup}
-                className="settings-btn-primary"
-              >
-                <IonIcon icon={downloadOutline} slot="start" />
-                Baixar Backup
-              </IonButton>
-
-              <hr className="settings-divider" />
-
-              <div className="import-form-container">
-                <h4 className="settings-sub-title">
-                  Restaurar Backup
-                </h4>
-                
-                {/* Input de Arquivo Customizado */}
-                <div className="file-picker-wrapper">
-                  <input
-                    type="file"
-                    accept=".json"
-                    id="backup-file-input"
-                    onChange={handleFileChange}
-                    className="file-picker-input"
-                  />
-                  <IonButton
-                    expand="block"
-                    fill="outline"
-                    className="file-picker-btn"
-                  >
-                    <IonIcon icon={cloudUploadOutline} slot="start" style={{ color: '#3880ff' }} />
-                    {fileSelected ? `Arquivo: ${fileSelected}` : 'Selecionar Arquivo .json'}
-                  </IonButton>
-                </div>
-
-                {backupText && (
-                  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-                    <IonItem lines="none" className="import-input-item">
-                      <IonIcon icon={keyOutline} slot="start" style={{ color: '#ffc409' }} />
-                      <IonInput
-                        type="password"
-                        placeholder="Senha Mestra do Backup"
-                        value={backupPassword}
-                        onIonInput={e => setBackupPassword(e.detail.value ?? '')}
-                      />
-                    </IonItem>
-
-                    <IonItem lines="none" className="import-toggle-item">
-                      <IonLabel>
-                        Mesclar com itens existentes?
-                      </IonLabel>
-                      <IonToggle
-                        checked={mergeBackup}
-                        onIonChange={e => setMergeBackup(e.detail.checked)}
-                        slot="end"
-                      />
-                    </IonItem>
-
-                    <IonButton
-                      expand="block"
-                      onClick={handleImportBackup}
-                      className="settings-btn-success"
-                    >
-                      Restaurar Credenciais
-                    </IonButton>
-                  </div>
-                )}
-              </div>
-            </IonCardContent>
-          </IonCard>
-
-          {/* Migração & Importação Universal (Bitwarden, 1Password, Chrome, CSV) */}
-          <IonCard className="settings-card">
-            <IonCardHeader>
-              <div className="settings-card-title-row">
-                <IonIcon icon={swapHorizontalOutline} style={{ color: '#3880ff', fontSize: '22px' }} />
-                <IonCardTitle className="settings-card-title">
-                  Migração Universal (Bitwarden / 1Password / Chrome / CSV)
-                </IonCardTitle>
-              </div>
-            </IonCardHeader>
-            <IonCardContent>
-              <p className="settings-card-desc">
-                Importe suas credenciais de outros gerenciadores com detecção automática de colunas e cifragem Zero-Knowledge instantânea no seu aparelho.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div className="file-picker-wrapper">
-                  <input
-                    type="file"
-                    accept=".csv,text/csv"
-                    id="csv-file-input"
-                    onChange={handleCSVFileChange}
-                    className="file-picker-input"
-                  />
-                  <IonButton
-                    expand="block"
-                    fill="outline"
-                    className="file-picker-btn"
-                  >
-                    <IonIcon icon={documentTextOutline} slot="start" style={{ color: '#60a5fa' }} />
-                    {csvFileSelected ? `CSV: ${csvFileSelected}` : 'Selecionar Arquivo .csv'}
-                  </IonButton>
-                </div>
-
-                {csvItems.length > 0 && (
-                  <div style={{
-                    background: 'rgba(96, 165, 250, 0.08)',
-                    border: '1px solid rgba(96, 165, 250, 0.25)',
-                    borderRadius: '14px',
-                    padding: '12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: '#e2e8f0', fontSize: '0.85rem', fontWeight: 600 }}>
-                        Formato Detectado:
-                      </span>
-                      <span style={{ color: '#60a5fa', fontWeight: 800, fontSize: '0.85rem' }}>
-                        {csvFormat}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: '#e2e8f0', fontSize: '0.85rem', fontWeight: 600 }}>
-                        Credenciais Prontas para Cifragem:
-                      </span>
-                      <span style={{ color: '#10b981', fontWeight: 800, fontSize: '0.9rem' }}>
-                        {csvItems.length} itens
-                      </span>
-                    </div>
-                    <IonButton
-                      expand="block"
-                      onClick={handleConfirmCSVImport}
-                      disabled={isImportingCSV}
-                      className="settings-btn-success"
-                      style={{ marginTop: '6px' }}
-                    >
-                      {isImportingCSV ? 'Criptografando...' : `Importar ${csvItems.length} credenciais`}
-                    </IonButton>
-                  </div>
-                )}
-
-                <IonButton
-                  expand="block"
-                  fill="outline"
-                  onClick={handleExportCSV}
-                  style={{
-                    '--border-color': 'rgba(255, 255, 255, 0.15)',
-                    '--border-radius': '12px',
-                    color: '#e2e8f0',
-                    fontWeight: 600,
-                    margin: '4px 0 0',
+    <IonPage className="rz-page settings-page">
+      <IonContent className="rz-content settings-content">
+        <div className="rz-container">
+          <PageHeader
+            eyebrow="Sistema & Governança"
+            title="Configurações"
+            subtitle="Gerencie políticas de sessão, biometria FIDO2, backups criptografados Zero-Knowledge e ciclo de vida dos seus dados."
+            actions={
+              <>
+                <button
+                  type="button"
+                  className="rz-btn rz-btn-secondary"
+                  onClick={() => {
+                    lockApp();
+                    showFeedback('Cofre bloqueado manualmente.', 'success');
                   }}
                 >
-                  <IonIcon icon={downloadOutline} slot="start" />
-                  Exportar Cofre como Planilha CSV
-                </IonButton>
-              </div>
-            </IonCardContent>
-          </IonCard>
+                  <Lock size={16} />
+                  <span>Bloquear Agora</span>
+                </button>
+                <button
+                  type="button"
+                  className="rz-btn rz-btn-ghost"
+                  onClick={() => logout()}
+                >
+                  <LogOut size={16} />
+                  <span>Encerrar Sessão</span>
+                </button>
+              </>
+            }
+          />
 
-          {/* Biometria (Touch ID / Face ID / Windows Hello) */}
-          <IonCard className="settings-card">
-            <IonCardHeader>
-              <div className="settings-card-title-row">
-                <IonIcon icon={fingerPrintOutline} style={{ color: '#60a5fa', fontSize: '22px' }} />
-                <IonCardTitle className="settings-card-title">
-                  Biometria (Touch ID / Face ID)
-                </IonCardTitle>
-              </div>
-            </IonCardHeader>
-            <IonCardContent>
-              <p className="settings-card-desc">
-                Ative o desbloqueio biométrico para acessar seu cofre rapidamente ou recuperar sua senha mestra localmente caso a esqueça.
-              </p>
-
-              {activeEmail && isBiometricsEnrolled(activeEmail) ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontSize: '0.85rem', fontWeight: 700, marginBottom: '8px' }}>
-                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span>
-                    Biometria ativa neste dispositivo
-                  </div>
-                  <IonButton
-                    expand="block"
-                    routerLink="/biometric-settings"
-                    className="settings-btn-primary"
-                    style={{ marginBottom: '6px' }}
+          <div className="rz-settings-grid">
+            {/* ════════════════════════════════════════════════════════════════
+                COLUNA ESQUERDA: PLANO, SESSÃO/HARDENING, BIOMETRIA, HIBP
+               ════════════════════════════════════════════════════════════════ */}
+            <div className="rz-settings-col">
+              {/* 1. Meu Plano & Assinatura */}
+              <section className="rz-section" style={{ marginBottom: 0 }}>
+                <div className="rz-section-head">
+                  <h2 className="rz-section-title">
+                    <Sparkles size={16} />
+                    Licenciamento &amp; Plano
+                  </h2>
+                  <span
+                    className={`rz-badge ${
+                      isUltra ? 'rz-badge-violet' : isPro ? 'rz-badge-info' : 'rz-badge-neutral'
+                    }`}
                   >
-                    Painel de Biometria & Chave Mestra
-                  </IonButton>
-                  <IonButton
-                    expand="block"
-                    color="danger"
-                    fill="outline"
-                    onClick={() => {
-                      disableBiometrics();
-                      showFeedback('Biometria desativada com sucesso.', 'success');
-                    }}
-                  >
-                    Desativar Biometria
-                  </IonButton>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <IonButton
-                    expand="block"
-                    routerLink="/biometric-settings"
-                    className="settings-btn-primary"
-                    style={{ marginBottom: '4px' }}
-                  >
-                    Painel Avançado de Biometria & Chave Mestra
-                  </IonButton>
-
-                  <div style={{ background: 'rgba(2, 6, 23, 0.4)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(96, 165, 250, 0.15)' }}>
-                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
-                      CADASTRAR BIOMETRIA (DIGITAL / ROSTO):
-                    </span>
-                    <IonItem lines="none" className="settings-wipe-input-item" style={{ marginBottom: '8px' }}>
-                      <IonIcon icon={keyOutline} slot="start" style={{ color: '#60a5fa' }} />
-                      <IonInput
-                        type="password"
-                        placeholder="Digite sua Senha Mestra"
-                        value={bioPassword}
-                        onIonInput={e => setBioPassword(e.detail.value ?? '')}
-                      />
-                    </IonItem>
-                    <IonButton
-                      expand="block"
-                      className="settings-btn-primary"
-                      onClick={async () => {
-                        if (!bioPassword.trim()) {
-                          showFeedback('Por favor, informe sua senha mestra para prosseguir.', 'warning');
-                          return;
-                        }
-                        const res = await registerBiometrics(bioPassword);
-                        if (res.success) {
-                          showFeedback('Biometria ativada.', 'success');
-                          setBioPassword('');
-                        } else {
-                          showFeedback(res.error || 'Erro ao ativar biometria.', 'danger');
-                        }
-                      }}
-                    >
-                      Cadastrar e ativar biometria
-                    </IonButton>
-                  </div>
-                </div>
-              )}
-            </IonCardContent>
-          </IonCard>
-
-          {/* Auditoria de E-mails (Have I Been Pwned API v3) */}
-          <IonCard className="settings-card">
-            <IonCardHeader>
-              <div className="settings-card-title-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <IonIcon icon={shieldCheckmarkOutline} style={{ color: '#60a5fa', fontSize: '22px' }} />
-                  <IonCardTitle className="settings-card-title">
-                    Auditoria de E-mails (Have I Been Pwned)
-                  </IonCardTitle>
-                </div>
-                <IonBadge color={hasSavedHibpKey ? 'success' : 'warning'} style={{ fontSize: '0.7rem' }}>
-                  {hasSavedHibpKey ? 'Configurada' : 'Simulação'}
-                </IonBadge>
-              </div>
-            </IonCardHeader>
-            <IonCardContent>
-              <p className="settings-card-desc">
-                Conecte sua API Key pessoal da v3 do <strong>Have I Been Pwned</strong> para auditar vazamentos reais de e-mails em tempo real.
-              </p>
-
-              <div style={{
-                background: 'rgba(2, 6, 23, 0.4)',
-                border: '1px solid rgba(96, 165, 250, 0.15)',
-                borderRadius: '12px',
-                padding: '14px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                  <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 700 }}>
-                    CHAVE DE API PESSOAL (HIBP-API-KEY):
+                    {tier === 'ULTRA' ? 'ULTRA' : tier === 'PRO' ? 'PRO' : 'FREE'}
                   </span>
-                  <a
-                    href="https://haveibeenpwned.com/API/Key"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      color: '#60a5fa',
-                      fontSize: '0.75rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      textDecoration: 'none'
-                    }}
-                  >
-                    Obter Chave HIBP <IonIcon icon={openOutline} />
-                  </a>
                 </div>
 
-                <div style={{ position: 'relative' }}>
-                  <IonItem lines="none" className="settings-wipe-input-item" style={{ margin: 0 }}>
-                    <IonIcon icon={keyOutline} slot="start" style={{ color: '#60a5fa' }} />
-                    <IonInput
-                      type={showHibpKey ? 'text' : 'password'}
-                      placeholder="Insira sua chave HIBP (Ex: a1b2c3d4...)"
-                      value={hibpKey}
-                      onIonInput={e => setHibpKey(e.detail.value ?? '')}
-                    />
-                    <IonButton
-                      fill="clear"
-                      slot="end"
-                      onClick={() => setShowHibpKey(!showHibpKey)}
-                      style={{ color: '#94a3b8', margin: 0 }}
-                    >
-                      <IonIcon icon={showHibpKey ? eyeOffOutline : eyeOutline} slot="icon-only" />
-                    </IonButton>
-                  </IonItem>
-                </div>
-
-                <div style={{
-                  fontSize: '0.75rem',
-                  color: '#94a3b8',
-                  lineHeight: '1.4',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  padding: '8px 10px',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(255, 255, 255, 0.06)'
-                }}>
-                  <strong>Privacidade:</strong> Sua chave é armazenada exclusivamente na memória segura deste dispositivo e nunca é enviada ao Firestore ou à nuvem.
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                  <IonButton
-                    expand="block"
-                    className="settings-btn-primary"
-                    disabled={isSavingHibpKey || !hibpKey.trim()}
-                    onClick={handleSaveHibpKey}
-                    style={{ flex: 1, margin: 0 }}
-                  >
-                    {isSavingHibpKey ? 'Salvando...' : 'Salvar Chave'}
-                  </IonButton>
-
-                  {hasSavedHibpKey && (
-                    <IonButton
-                      expand="block"
-                      fill="outline"
-                      color="danger"
-                      onClick={handleClearHibpKey}
-                      style={{ margin: 0 }}
-                    >
-                      <IonIcon icon={trashOutline} slot="icon-only" />
-                    </IonButton>
-                  )}
-                </div>
-              </div>
-            </IonCardContent>
-          </IonCard>
-
-
-          {/* Persistência de Sessão (Manter Conectado ao Atualizar) */}
-          <IonCard className="settings-card">
-            <IonCardHeader>
-              <div className="settings-card-title-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <IonIcon icon={refreshOutline} style={{ color: '#60a5fa', fontSize: '22px' }} />
-                  <IonCardTitle className="settings-card-title">
-                    Manter Conectado ao Atualizar (F5)
-                  </IonCardTitle>
-                </div>
-                <IonToggle
-                  checked={rememberSession}
-                  onIonChange={async (e) => {
-                    const enabled = e.detail.checked;
-                    await setRememberSession(enabled);
-                    showFeedback(
-                      enabled
-                        ? 'Sessão persistente ativada. Você continuará conectado ao recarregar a página.'
-                        : 'Sessão temporária ativada (apenas RAM). Ao atualizar ou fechar a aba, o login será solicitado.',
-                      enabled ? 'success' : 'warning'
-                    );
-                  }}
-                />
-              </div>
-            </IonCardHeader>
-            <IonCardContent>
-              <p className="settings-card-desc">
-                {rememberSession
-                  ? 'Ativado: Sua sessão é protegida com criptografia vinculada exclusivamente a este dispositivo e restaurada automaticamente ao atualizar a página (F5), mantendo você conectado sem interrupções.'
-                  : 'Desativado: Sua sessão reside unicamente na memória volátil (RAM). Qualquer recarregamento de página ou fechamento de aba encerra a sessão imediatamente para máxima segurança em computadores públicos ou compartilhados.'}
-              </p>
-            </IonCardContent>
-          </IonCard>
-
-          {/* Gerenciamento de Sessões */}
-          <IonCard className="settings-card">
-            <IonCardHeader>
-              <div className="settings-card-title-row">
-                <IonIcon icon={hardwareChipOutline} style={{ color: '#2dd36f', fontSize: '22px' }} />
-                <IonCardTitle className="settings-card-title">
-                  Dispositivos Conectados
-                </IonCardTitle>
-              </div>
-            </IonCardHeader>
-            <IonCardContent style={{ padding: '0 16px 16px' }}>
-              <p className="settings-card-desc">
-                Veja os dispositivos que acessaram sua conta e gerencie suas conexões ativas.
-              </p>
-              
-              <IonList className="session-list-container">
-                {sessions.map((s, idx) => (
-                  <div key={s.id} className="session-card-item">
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span className="session-device-name">
-                          {s.deviceName}
-                        </span>
-                        {idx === 0 && <IonBadge color="success" style={{ fontSize: '0.65rem' }}>Atual</IonBadge>}
+                <div
+                  className={`rz-panel ${
+                    isUltra ? 'rz-panel-premium' : isPro ? 'rz-panel-accent' : ''
+                  }`}
+                >
+                  <div className="rz-card-header">
+                    <div className="rz-card-title-group">
+                      <div className={`rz-icon-tile ${isUltra ? 'violet' : ''}`}>
+                        <Sparkles />
                       </div>
-                      <div className="session-metadata">
-                        {s.ipPlaceholder} • Último acesso: {new Date(s.lastActive).toLocaleTimeString()}
+                      <div>
+                        <h3 className="rz-card-title">Meu Plano &amp; Assinatura</h3>
+                        <span className="rz-row-meta">
+                          {activeEmail || 'Conta Zero-Knowledge ativa'}
+                        </span>
                       </div>
                     </div>
-                    {idx > 0 && (
-                      <IonButton
-                        fill="clear"
-                        color="danger"
-                        size="small"
-                        onClick={() => handleRevokeSession(s.id)}
-                        className="session-revoke-btn"
+                  </div>
+
+                  <p className="rz-text-muted" style={{ marginBottom: '14px' }}>
+                    {isUltra
+                      ? 'Você possui o plano Ultra Familiar com proteção absoluta, até 6 membros, PIN de Pânico e armazenamento de 10 GB.'
+                      : isPro
+                        ? 'Você possui o plano Pro com 2FA ilimitado, até 5 dispositivos e monitoramento Dark Web diário.'
+                        : 'Você está no plano Gratuito com senhas ilimitadas em 1 dispositivo. Faça upgrade para desbloquear 2FA e múltiplos aparelhos.'}
+                  </p>
+
+                  {subscription?.expiresAt && (
+                    <div className="rz-setting-row" style={{ paddingTop: '8px', paddingBottom: '12px' }}>
+                      <span className="rz-setting-desc">Próxima renovação</span>
+                      <span className="rz-stat-value-sm">
+                        {new Date(subscription.expiresAt).toLocaleDateString()} (
+                        {subscription.billingCycle === 'ANNUAL' ? 'Plano Anual' : 'Plano Mensal'})
+                      </span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => history.push('/plans')}
+                    className={`rz-btn rz-btn-block ${
+                      isUltra ? 'rz-btn-premium' : 'rz-btn-primary'
+                    }`}
+                  >
+                    <Sparkles size={16} />
+                    <span>
+                      {tier === 'FREE' ? 'Fazer upgrade de plano' : 'Gerenciar / Mudar de Plano'}
+                    </span>
+                  </button>
+                </div>
+              </section>
+
+              {/* 2. Políticas de Sessão & Hardening */}
+              <section className="rz-section" style={{ marginBottom: 0 }}>
+                <div className="rz-section-head">
+                  <h2 className="rz-section-title">
+                    <RefreshCw size={16} />
+                    Políticas de Sessão &amp; Hardening
+                  </h2>
+                </div>
+
+                <div className="rz-panel">
+                  {/* Persistência de Sessão (F5) */}
+                  <div className="rz-setting-row">
+                    <div className="rz-setting-info">
+                      <div className="rz-setting-title">Manter Conectado ao Atualizar (F5)</div>
+                      <p className="rz-setting-desc">
+                        {rememberSession
+                          ? 'Ativado: Sessão protegida por salt de dispositivo e restaurada ao atualizar.'
+                          : 'Desativado: Sessão estritamente volátil em RAM. Recarregar encerra o acesso.'}
+                      </p>
+                    </div>
+                    <div className="rz-setting-control">
+                      <IonToggle
+                        checked={rememberSession}
+                        onIonChange={async (e) => {
+                          const enabled = e.detail.checked;
+                          await setRememberSession(enabled);
+                          showFeedback(
+                            enabled
+                              ? 'Sessão persistente ativada. Você continuará conectado ao recarregar a página.'
+                              : 'Sessão temporária ativada (apenas RAM). Ao atualizar ou fechar a aba, o login será solicitado.',
+                            enabled ? 'success' : 'warning'
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Timer de Auto-Lock */}
+                  <div className="rz-setting-row is-stackable">
+                    <div className="rz-setting-info">
+                      <div className="rz-setting-title">Timer de Auto-Lock por Inatividade</div>
+                      <p className="rz-setting-desc">
+                        Bloqueia automaticamente o cofre na ausência de interação ou ao ocultar a aba.
+                      </p>
+                    </div>
+                    <div className="rz-setting-control">
+                      <Timer size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                      <select
+                        aria-label="Timer de Auto-Lock"
+                        className="rz-select-inline"
+                        value={autoLockMinutes}
+                        onChange={(e) => {
+                          setAutoLockMinutes(e.target.value);
+                          localStorage.setItem('rz_autolock_minutes', e.target.value);
+                          showFeedback(`Timer de Auto-Lock ajustado para ${e.target.value} min.`, 'success');
+                        }}
                       >
-                        Desconectar
-                      </IonButton>
+                        <option value="1">1 minuto</option>
+                        <option value="5">5 minutos (Padrão)</option>
+                        <option value="15">15 minutos</option>
+                        <option value="0">Imediato ao minimizar</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Hardening de Clipboard */}
+                  <div className="rz-setting-row is-stackable">
+                    <div className="rz-setting-info">
+                      <div className="rz-setting-title">Limpeza da Área de Transferência</div>
+                      <p className="rz-setting-desc">
+                        Apaga senhas e chaves PIX copiadas após o tempo limite estipulado.
+                      </p>
+                    </div>
+                    <div className="rz-setting-control">
+                      <select
+                        aria-label="Tempo de limpeza da área de transferência"
+                        className="rz-select-inline"
+                        value={clipboardSeconds}
+                        onChange={(e) => {
+                          setClipboardSeconds(e.target.value);
+                          localStorage.setItem('rz_clipboard_seconds', e.target.value);
+                          showFeedback(`Auto-clear do clipboard definido para ${e.target.value}s.`, 'success');
+                        }}
+                      >
+                        <option value="15">15 segundos</option>
+                        <option value="30">30 segundos (Padrão)</option>
+                        <option value="60">60 segundos</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="rz-btn rz-btn-sm rz-btn-secondary"
+                        onClick={async () => {
+                          await ClipboardService.clearNow();
+                          showFeedback('Área de transferência limpa.', 'success');
+                        }}
+                        title="Limpar área de transferência agora"
+                      >
+                        <ClipboardCheck size={14} />
+                        <span>Limpar</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Privacy Screen */}
+                  <div className="rz-setting-row">
+                    <div className="rz-setting-info">
+                      <div className="rz-setting-title">Tela de Privacidade (Anti-Screenshot)</div>
+                      <p className="rz-setting-desc">
+                        Oculta a pré-visualização no multitarefas Android e bloqueia capturas de tela.
+                      </p>
+                    </div>
+                    <div className="rz-setting-control">
+                      <MonitorOff size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                      <IonToggle
+                        checked={privacyScreenEnabled}
+                        onIonChange={(e) => {
+                          const checked = e.detail.checked;
+                          setPrivacyScreenEnabled(checked);
+                          localStorage.setItem('rz_privacy_screen', String(checked));
+                          showFeedback(
+                            checked
+                              ? 'Proteção de tela (FLAG_SECURE) ativada.'
+                              : 'Proteção de tela desativada.',
+                            checked ? 'success' : 'warning'
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Extensão Autofill */}
+                  <div className="rz-setting-row is-stackable">
+                    <div className="rz-setting-info">
+                      <div className="rz-setting-title">Extensão Web de Preenchimento (Autofill)</div>
+                      <p className="rz-setting-desc">
+                        Integração Manifest V3 para navegadores Chromium/Firefox com verificação de domínio.
+                      </p>
+                    </div>
+                    <div className="rz-setting-control">
+                      <button
+                        type="button"
+                        onClick={handleDownloadExtensionInfo}
+                        className="rz-btn rz-btn-sm rz-btn-secondary"
+                      >
+                        <Puzzle size={14} />
+                        <span>Obter Extensão</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* 3. Biometria (Touch ID / Face ID / Windows Hello) & Chave Mestra */}
+              <section className="rz-section" style={{ marginBottom: 0 }}>
+                <div className="rz-section-head">
+                  <h2 className="rz-section-title">
+                    <Fingerprint size={16} />
+                    Biometria &amp; Chave Mestra
+                  </h2>
+                  <span className={`rz-badge ${enrolledBio ? 'rz-badge-success' : 'rz-badge-neutral'}`}>
+                    {enrolledBio ? 'Vinculada' : 'Não configurada'}
+                  </span>
+                </div>
+
+                <div className="rz-panel">
+                  <div className="rz-card-header">
+                    <div className="rz-card-title-group">
+                      <div className={`rz-icon-tile ${enrolledBio ? 'success' : ''}`}>
+                        <Fingerprint />
+                      </div>
+                      <div>
+                        <h3 className="rz-card-title">Biometria (Touch ID / Face ID)</h3>
+                        <span className="rz-row-meta">Autenticação FIDO2 / WebAuthn de hardware</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="rz-text-muted" style={{ marginBottom: '16px' }}>
+                    Ative o desbloqueio biométrico para acessar seu cofre rapidamente ou recuperar sua senha mestra localmente caso a esqueça.
+                  </p>
+
+                  {enrolledBio ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div className="rz-alert rz-alert-success">
+                        <CheckCircle2 size={18} />
+                        <span>Biometria ativa neste dispositivo</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => history.push('/biometric-settings')}
+                          className="rz-btn rz-btn-primary"
+                          style={{ flex: 1 }}
+                        >
+                          <Fingerprint size={16} />
+                          <span>Painel de Biometria &amp; Chave Mestra</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="rz-btn rz-btn-danger"
+                          onClick={() => {
+                            disableBiometrics();
+                            showFeedback('Biometria desativada com sucesso.', 'success');
+                          }}
+                        >
+                          <Trash2 size={16} />
+                          <span>Desativar Biometria</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <button
+                        type="button"
+                        onClick={() => history.push('/biometric-settings')}
+                        className="rz-btn rz-btn-secondary rz-btn-block"
+                      >
+                        <Fingerprint size={16} />
+                        <span>Painel Avançado de Biometria &amp; Chave Mestra</span>
+                      </button>
+
+                      <div
+                        style={{
+                          background: 'var(--rz-bg-deep)',
+                          padding: '14px',
+                          borderRadius: 'var(--rz-radius-sm)',
+                          border: '1px solid var(--rz-border)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                        }}
+                      >
+                        <span className="rz-stat-label" style={{ marginBottom: 0 }}>
+                          CADASTRAR BIOMETRIA (DIGITAL / ROSTO):
+                        </span>
+                        <div className="rz-input-group">
+                          <KeyRound size={17} />
+                          <input
+                            type="password"
+                            className="rz-input"
+                            placeholder="Digite sua Senha Mestra"
+                            value={bioPassword}
+                            onChange={(e) => setBioPassword(e.target.value)}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className="rz-btn rz-btn-primary rz-btn-block"
+                          onClick={async () => {
+                            if (!bioPassword.trim()) {
+                              showFeedback('Por favor, informe sua senha mestra para prosseguir.', 'warning');
+                              return;
+                            }
+                            const res = await registerBiometrics(bioPassword);
+                            if (res.success) {
+                              showFeedback('Biometria ativada.', 'success');
+                              setBioPassword('');
+                            } else {
+                              showFeedback(res.error || 'Erro ao ativar biometria.', 'danger');
+                            }
+                          }}
+                        >
+                          <Fingerprint size={16} />
+                          <span>Cadastrar e ativar biometria</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <hr className="rz-divider" style={{ margin: '16px 0' }} />
+
+                  <div className="rz-setting-row" style={{ padding: 0, borderBottom: 0 }}>
+                    <div className="rz-setting-info">
+                      <div className="rz-setting-title">Rotação da Senha Mestra</div>
+                      <p className="rz-setting-desc">
+                        Recriptografa a DEK do cofre com novo salt Argon2id.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowMasterKeyModal(true)}
+                      className="rz-btn rz-btn-sm rz-btn-secondary"
+                    >
+                      <KeyRound size={14} />
+                      <span>Redefinir Chave</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* 4. Auditoria de E-mails (Have I Been Pwned API v3) */}
+              <section className="rz-section" style={{ marginBottom: 0 }}>
+                <div className="rz-section-head">
+                  <h2 className="rz-section-title">
+                    <ShieldCheck size={16} />
+                    Auditoria de E-mails (Have I Been Pwned)
+                  </h2>
+                  <span className={`rz-badge ${hasSavedHibpKey ? 'rz-badge-success' : 'rz-badge-warning'}`}>
+                    {hasSavedHibpKey ? 'Configurada' : 'Simulação'}
+                  </span>
+                </div>
+
+                <div className="rz-panel">
+                  <p className="rz-text-muted" style={{ marginBottom: '14px' }}>
+                    Conecte sua API Key pessoal da v3 do <strong>Have I Been Pwned</strong> para auditar vazamentos reais de e-mails em tempo real.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                      <span className="rz-stat-label" style={{ marginBottom: 0 }}>
+                        CHAVE DE API PESSOAL (HIBP-API-KEY):
+                      </span>
+                      <a
+                        href="https://haveibeenpwned.com/API/Key"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: 'var(--rz-ice)',
+                          fontSize: 'var(--rz-text-xs)',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        Obter Chave HIBP <ExternalLink size={12} />
+                      </a>
+                    </div>
+
+                    <div className="rz-input-group">
+                      <KeyRound size={17} />
+                      <input
+                        type={showHibpKey ? 'text' : 'password'}
+                        className="rz-input is-mono"
+                        placeholder="Insira sua chave HIBP (Ex: a1b2c3d4...)"
+                        value={hibpKey}
+                        onChange={(e) => setHibpKey(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="rz-icon-btn"
+                        onClick={() => setShowHibpKey(!showHibpKey)}
+                        aria-label={showHibpKey ? 'Ocultar chave HIBP' : 'Mostrar chave HIBP'}
+                      >
+                        {showHibpKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+
+                    <div className="rz-alert rz-alert-info">
+                      <ShieldCheck size={16} />
+                      <span>
+                        <strong>Privacidade:</strong> Sua chave é armazenada exclusivamente na memória segura deste dispositivo e nunca é enviada ao Firestore ou à nuvem.
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        className="rz-btn rz-btn-primary"
+                        disabled={isSavingHibpKey || !hibpKey.trim()}
+                        onClick={handleSaveHibpKey}
+                        style={{ flex: 1 }}
+                      >
+                        <span>{isSavingHibpKey ? 'Salvando...' : 'Salvar Chave'}</span>
+                      </button>
+
+                      {hasSavedHibpKey && (
+                        <button
+                          type="button"
+                          className="rz-btn rz-btn-danger"
+                          onClick={handleClearHibpKey}
+                          aria-label="Remover chave HIBP"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* ════════════════════════════════════════════════════════════════
+                COLUNA DIREITA: BACKUP, MIGRAÇÃO CSV, SESSÕES, ZONA DE RISCO
+               ════════════════════════════════════════════════════════════════ */}
+            <div className="rz-settings-col">
+              {/* 5. Backup Criptografado */}
+              <section className="rz-section" style={{ marginBottom: 0 }}>
+                <div className="rz-section-head">
+                  <h2 className="rz-section-title">
+                    <Download size={16} />
+                    Backup Seguro (AES-256-GCM)
+                  </h2>
+                </div>
+
+                <div className="rz-panel">
+                  <p className="rz-text-muted" style={{ marginBottom: '14px' }}>
+                    Salve uma cópia protegida das suas credenciais. O arquivo é totalmente criptografado e só pode ser aberto com a sua senha mestra.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handleExportBackup}
+                    className="rz-btn rz-btn-primary rz-btn-block"
+                  >
+                    <Download size={16} />
+                    <span>Baixar Backup</span>
+                  </button>
+
+                  <hr className="rz-divider" />
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <h3 className="rz-card-title" style={{ fontSize: '0.95rem' }}>
+                      Restaurar Backup
+                    </h3>
+
+                    <div className="file-picker-wrapper">
+                      <input
+                        type="file"
+                        accept=".json"
+                        id="backup-file-input"
+                        onChange={handleFileChange}
+                        className="file-picker-input"
+                      />
+                      <button
+                        type="button"
+                        className="rz-btn rz-btn-secondary rz-btn-block"
+                      >
+                        <UploadCloud size={16} />
+                        <span>
+                          {fileSelected ? `Arquivo: ${fileSelected}` : 'Selecionar Arquivo .json'}
+                        </span>
+                      </button>
+                    </div>
+
+                    {backupText && (
+                      <div className="rz-enter" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                        <div className="rz-input-group">
+                          <KeyRound size={17} />
+                          <input
+                            type="password"
+                            className="rz-input"
+                            placeholder="Senha Mestra do Backup"
+                            value={backupPassword}
+                            onChange={(e) => setBackupPassword(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="rz-setting-row" style={{ padding: '6px 0' }}>
+                          <span className="rz-setting-desc">Mesclar com itens existentes?</span>
+                          <IonToggle
+                            checked={mergeBackup}
+                            onIonChange={(e) => setMergeBackup(e.detail.checked)}
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleImportBackup}
+                          className="rz-btn rz-btn-success rz-btn-block"
+                        >
+                          <CheckCircle2 size={16} />
+                          <span>Restaurar Credenciais</span>
+                        </button>
+                      </div>
                     )}
                   </div>
-                ))}
-              </IonList>
-            </IonCardContent>
-          </IonCard>
+                </div>
+              </section>
 
-          {/* Wipe de Segurança */}
-          <IonCard className="settings-card">
-            <IonCardHeader>
-              <div className="settings-card-title-row">
-                <IonIcon icon={alertCircleOutline} style={{ color: '#ff4961', fontSize: '22px' }} />
-                <IonCardTitle className="settings-card-title">
-                  Excluir Todos os Dados
-                </IonCardTitle>
-              </div>
-            </IonCardHeader>
-            <IonCardContent>
-              <p className="settings-card-desc">
-                Remove permanentemente todas as suas senhas, dados da conta e configurações deste dispositivo. Essa ação é irreversível.
-              </p>
+              {/* 6. Migração & Importação Universal */}
+              <section className="rz-section" style={{ marginBottom: 0 }}>
+                <div className="rz-section-head">
+                  <h2 className="rz-section-title">
+                    <ArrowLeftRight size={16} />
+                    Migração Universal (Bitwarden / 1Password / Chrome / CSV)
+                  </h2>
+                </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <IonItem lines="none" className="settings-wipe-input-item">
-                  <IonIcon icon={keyOutline} slot="start" style={{ color: '#ff4961' }} />
-                  <IonInput
-                    type="password"
-                    placeholder="Digite sua senha mestra para confirmar"
-                    value={confirmWipePassword}
-                    onIonInput={e => setConfirmWipePassword(e.detail.value ?? '')}
-                  />
-                </IonItem>
+                <div className="rz-panel">
+                  <p className="rz-text-muted" style={{ marginBottom: '14px' }}>
+                    Importe suas credenciais de outros gerenciadores com detecção automática de colunas e cifragem Zero-Knowledge instantânea no seu aparelho.
+                  </p>
 
-                <IonButton
-                  expand="block"
-                  onClick={handleWipeData}
-                  className="settings-btn-danger"
-                >
-                  <IonIcon icon={trashOutline} slot="start" />
-                  Excluir Minha Conta e Dados
-                </IonButton>
-              </div>
-            </IonCardContent>
-          </IonCard>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div className="file-picker-wrapper">
+                      <input
+                        type="file"
+                        accept=".csv,text/csv"
+                        id="csv-file-input"
+                        onChange={handleCSVFileChange}
+                        className="file-picker-input"
+                      />
+                      <button
+                        type="button"
+                        className="rz-btn rz-btn-secondary rz-btn-block"
+                      >
+                        <FileSpreadsheet size={16} />
+                        <span>
+                          {csvFileSelected ? `CSV: ${csvFileSelected}` : 'Selecionar Arquivo .csv'}
+                        </span>
+                      </button>
+                    </div>
 
+                    {csvItems.length > 0 && (
+                      <div
+                        style={{
+                          background: 'var(--rz-bg-deep)',
+                          border: '1px solid var(--rz-accent-line)',
+                          borderRadius: 'var(--rz-radius-sm)',
+                          padding: '14px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span className="rz-setting-desc">Formato Detectado:</span>
+                          <span className="rz-badge rz-badge-info">{csvFormat}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span className="rz-setting-desc">Credenciais Prontas para Cifragem:</span>
+                          <span className="rz-badge rz-badge-success">{csvItems.length} itens</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleConfirmCSVImport}
+                          disabled={isImportingCSV}
+                          className="rz-btn rz-btn-primary rz-btn-block"
+                          style={{ marginTop: '4px' }}
+                        >
+                          <span>
+                            {isImportingCSV ? 'Criptografando...' : `Importar ${csvItems.length} credenciais`}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleExportCSV}
+                      className="rz-btn rz-btn-ghost rz-btn-block"
+                      style={{ border: '1px solid var(--rz-border)' }}
+                    >
+                      <Download size={16} />
+                      <span>Exportar Cofre como Planilha CSV</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* 7. Gerenciamento de Sessões */}
+              <section className="rz-section" style={{ marginBottom: 0 }}>
+                <div className="rz-section-head">
+                  <h2 className="rz-section-title">
+                    <Cpu size={16} />
+                    Dispositivos Conectados
+                  </h2>
+                  <span className="rz-badge rz-badge-neutral">{sessions.length} sessões</span>
+                </div>
+
+                <div className="rz-panel">
+                  <p className="rz-text-muted" style={{ marginBottom: '14px' }}>
+                    Veja os dispositivos que acessaram sua conta e gerencie suas conexões ativas.
+                  </p>
+
+                  <div className="session-list-container">
+                    {sessions.map((s, idx) => (
+                      <div key={s.id} className="session-card-item">
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span className="session-device-name">{s.deviceName}</span>
+                            {idx === 0 && (
+                              <span className="rz-badge rz-badge-success">
+                                <span className="rz-dot success is-live" />
+                                Atual
+                              </span>
+                            )}
+                          </div>
+                          <div className="session-metadata">
+                            {s.ipPlaceholder} • Último acesso: {new Date(s.lastActive).toLocaleTimeString()}
+                          </div>
+                        </div>
+                        {idx > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRevokeSession(s.id)}
+                            className="rz-btn rz-btn-sm rz-btn-danger"
+                          >
+                            Desconectar
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* 8. Wipe de Segurança (Zona de Risco) */}
+              <section className="rz-section" style={{ marginBottom: 0 }}>
+                <div className="rz-section-head">
+                  <h2 className="rz-section-title" style={{ color: 'var(--rz-danger)' }}>
+                    <AlertTriangle size={16} />
+                    Zona de Risco · Excluir Todos os Dados
+                  </h2>
+                </div>
+
+                <div className="rz-panel rz-panel-danger">
+                  <p className="rz-text-muted" style={{ marginBottom: '14px' }}>
+                    Remove permanentemente todas as suas senhas, dados da conta e configurações deste dispositivo. Essa ação é irreversível.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div className="rz-input-group">
+                      <KeyRound size={17} style={{ color: 'var(--rz-danger)' }} />
+                      <input
+                        type="password"
+                        className="rz-input"
+                        placeholder="Digite sua senha mestra para confirmar"
+                        value={confirmWipePassword}
+                        onChange={(e) => setConfirmWipePassword(e.target.value)}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleWipeData}
+                      className="rz-btn rz-btn-danger rz-btn-block"
+                    >
+                      <Trash2 size={16} />
+                      <span>Excluir Minha Conta e Dados</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
         </div>
+
+        <MasterKeyModal
+          isOpen={showMasterKeyModal}
+          onClose={() => setShowMasterKeyModal(false)}
+        />
 
         <IonToast
           isOpen={showToast}
@@ -960,3 +1170,5 @@ export const SettingsPage: React.FC = () => {
     </IonPage>
   );
 };
+
+export default SettingsPage;

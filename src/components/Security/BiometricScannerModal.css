@@ -1,23 +1,27 @@
+/* ==========================================================================
+   BIOMETRIC SCANNER MODAL — IDENTIDADE "ORBITAL"
+   ========================================================================== */
+
 .cyber-bio-modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 100000;
-  background: rgba(3, 7, 18, 0.82);
+  background: rgba(5, 11, 26, 0.86);
   backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  animation: cyberFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: rz-fade var(--rz-dur) var(--rz-ease) both;
 }
 
 .cyber-bio-modal-card {
   width: 100%;
-  max-width: 420px;
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.98) 100%);
-  border: 1px solid rgba(96, 165, 250, 0.25);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(96, 165, 250, 0.15);
-  border-radius: 24px;
+  max-width: 400px;
+  background: var(--rz-bg-elevated);
+  border: 1px solid var(--rz-border);
+  box-shadow: var(--rz-shadow-float), var(--rz-highlight);
+  border-radius: var(--rz-radius-lg);
   padding: 28px 24px 24px;
   display: flex;
   flex-direction: column;
@@ -25,180 +29,193 @@
   text-align: center;
   position: relative;
   overflow: hidden;
-  animation: cyberSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: rz-enter var(--rz-dur-slow) var(--rz-ease) both;
 }
 
-/* Brilho superior cibernético */
-.cyber-bio-modal-card::before {
+.cyber-bio-modal-card::after {
   content: '';
   position: absolute;
   top: 0;
-  left: 15%;
-  right: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 72px;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #60a5fa, #8b5cf6, transparent);
-  box-shadow: 0 0 12px #60a5fa;
+  background: var(--rz-accent);
+  box-shadow: 0 0 12px rgba(47, 123, 255, 0.7);
 }
 
 .cyber-bio-header {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .cyber-bio-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(96, 165, 250, 0.1);
-  border: 1px solid rgba(96, 165, 250, 0.25);
-  color: #60a5fa;
+  background: var(--rz-accent-soft);
+  border: 1px solid var(--rz-accent-line);
+  color: var(--rz-ice);
+  font-family: var(--rz-font-display);
   font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 4px 12px;
-  border-radius: 20px;
+  border-radius: 999px;
   margin-bottom: 12px;
 }
 
 .cyber-bio-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #ffffff;
+  font-family: var(--rz-font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--rz-text-primary);
   margin: 0 0 6px 0;
-  letter-spacing: -0.01em;
 }
 
 .cyber-bio-subtitle {
-  font-size: 0.85rem;
-  color: #94a3b8;
+  font-size: var(--rz-text-xs);
+  color: var(--rz-text-secondary);
   margin: 0;
   line-height: 1.4;
 }
 
-/* Área do Sensor Biométrico */
+.cyber-bio-email {
+  color: var(--rz-ice);
+  font-family: var(--rz-font-mono);
+}
+
+.cyber-sensor-orbit-wrap {
+  margin: 8px 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Área do Sensor Biométrico dentro do OrbitRing */
 .cyber-sensor-pad {
   position: relative;
-  width: 130px;
-  height: 130px;
-  margin: 12px 0 24px;
+  width: 118px;
+  height: 118px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(96, 165, 250, 0.08) 0%, rgba(15, 23, 42, 0.4) 70%);
-  border: 2px solid rgba(96, 165, 250, 0.2);
+  background: radial-gradient(circle, var(--rz-accent-soft) 0%, var(--rz-bg-deep) 74%);
+  border: 1.5px solid var(--rz-accent-line);
   cursor: pointer;
   outline: none;
-  transition: all 0.25s ease;
+  transition: all var(--rz-dur) var(--rz-ease);
   user-select: none;
 }
 
 .cyber-sensor-pad:hover {
-  border-color: rgba(96, 165, 250, 0.5);
-  box-shadow: 0 0 25px rgba(96, 165, 250, 0.25);
+  border-color: var(--rz-accent-light);
+  box-shadow: 0 0 24px rgba(47, 123, 255, 0.32);
   transform: scale(1.03);
 }
 
 .cyber-sensor-pad:active,
 .cyber-sensor-pad.scanning {
-  border-color: #60a5fa;
-  box-shadow: 0 0 35px rgba(96, 165, 250, 0.4), inset 0 0 20px rgba(96, 165, 250, 0.2);
+  border-color: var(--rz-accent);
+  box-shadow: 0 0 32px rgba(47, 123, 255, 0.45), inset 0 0 18px rgba(47, 123, 255, 0.22);
   transform: scale(0.97);
 }
 
 .cyber-sensor-pad.verified {
-  border-color: #10b981;
-  box-shadow: 0 0 35px rgba(16, 185, 129, 0.4), inset 0 0 20px rgba(16, 185, 129, 0.2);
+  background: radial-gradient(circle, var(--rz-success-soft) 0%, var(--rz-bg-deep) 74%);
+  border-color: var(--rz-success);
+  box-shadow: 0 0 32px rgba(43, 217, 160, 0.4), inset 0 0 18px rgba(43, 217, 160, 0.2);
 }
 
 /* Círculos de pulso ao redor do sensor */
 .cyber-sensor-pulse-ring {
   position: absolute;
-  inset: -12px;
+  inset: -8px;
   border-radius: 50%;
-  border: 1px solid rgba(96, 165, 250, 0.3);
-  animation: cyberPulse 2s infinite cubic-bezier(0.25, 0.1, 0.25, 1);
+  border: 1px dashed var(--rz-accent-line);
+  animation: cyberPulse 2.2s infinite var(--rz-ease);
   pointer-events: none;
 }
 
+.cyber-sensor-pad.verified .cyber-sensor-pulse-ring {
+  border-color: var(--rz-success-line);
+}
+
 .cyber-sensor-icon {
-  font-size: 64px;
-  color: #60a5fa;
-  transition: all 0.3s ease;
-  filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.5));
+  width: 54px;
+  height: 54px;
+  stroke-width: 1.6;
+  color: var(--rz-ice);
+  transition: all var(--rz-dur) var(--rz-ease);
+  filter: drop-shadow(0 0 8px rgba(47, 123, 255, 0.5));
 }
 
 .cyber-sensor-pad.verified .cyber-sensor-icon {
-  color: #10b981;
-  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.6));
+  color: var(--rz-success);
+  filter: drop-shadow(0 0 10px rgba(43, 217, 160, 0.6));
 }
 
 /* Linha de Laser de Escaneamento */
 .cyber-scan-laser {
   position: absolute;
-  left: 15px;
-  right: 15px;
+  left: 14px;
+  right: 14px;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #60a5fa, #ffffff, #60a5fa, transparent);
-  box-shadow: 0 0 8px #60a5fa, 0 0 14px #60a5fa;
+  background: linear-gradient(90deg, transparent, var(--rz-accent-light), var(--rz-text-primary), var(--rz-accent-light), transparent);
+  box-shadow: 0 0 8px var(--rz-accent-light), 0 0 14px var(--rz-accent);
   border-radius: 2px;
-  top: 15px;
-  animation: laserScan 1.2s infinite ease-in-out alternate;
+  top: 16px;
+  animation: laserScan 1.1s infinite ease-in-out alternate;
   pointer-events: none;
 }
 
 /* Instrução e Status */
 .cyber-instruction-text {
-  font-size: 0.9rem;
+  font-size: var(--rz-text-md);
   font-weight: 700;
-  color: #e2e8f0;
-  margin-bottom: 6px;
+  color: var(--rz-text-primary);
+  margin-bottom: 4px;
   min-height: 22px;
 }
 
+.cyber-instruction-text.is-verified {
+  color: var(--rz-success);
+}
+
 .cyber-instruction-hint {
-  font-size: 0.75rem;
-  color: #64748b;
-  margin-bottom: 24px;
-}
-
-/* Botão de Cancelar */
-.cyber-bio-cancel-btn {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  padding: 12px 20px;
-  border-radius: 14px;
-  font-weight: 700;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.cyber-bio-cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
-
-@keyframes cyberFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes cyberSlideUp {
-  from { opacity: 0; transform: translateY(20px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  font-size: var(--rz-text-xs);
+  color: var(--rz-text-muted);
+  margin-bottom: 22px;
 }
 
 @keyframes cyberPulse {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.12); opacity: 0.2; }
-  100% { transform: scale(0.95); opacity: 0.8; }
+  0% {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.25;
+  }
+  100% {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
 }
 
 @keyframes laserScan {
-  0% { top: 20px; opacity: 0.4; }
-  50% { opacity: 1; }
-  100% { top: 105px; opacity: 0.4; }
+  0% {
+    top: 20px;
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: 96px;
+    opacity: 0.4;
+  }
 }

@@ -10,11 +10,16 @@ import {
   Save,
   Eye,
   EyeOff,
-  KeyRound
+  KeyRound,
+  ShieldCheck,
+  Globe,
+  UserRound,
+  Lock,
 } from 'lucide-react';
 import { useHistory, useParams } from 'react-router-dom';
 import { useVault } from '../../contexts/VaultContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { PasswordGenerator } from '../../components/Vault/PasswordGenerator';
 import { VaultCategory } from '../../types';
 
@@ -118,13 +123,13 @@ export const VaultFormPage: React.FC = () => {
   ];
 
   return (
-    <IonPage style={{ background: '#09090b' }}>
-      <IonContent fullscreen style={{ '--background': '#09090b' }}>
-        <div className="rz-page-container" style={{ maxWidth: 680 }}>
-          <div style={{ marginBottom: 20 }}>
+    <IonPage className="rz-page">
+      <IonContent fullscreen className="rz-content">
+        <div className="rz-container-narrow">
+          <div style={{ marginBottom: 16 }}>
             <button
               type="button"
-              className="rz-btn rz-btn-secondary"
+              className="rz-btn rz-btn-secondary rz-btn-sm"
               onClick={() => history.push('/vault')}
             >
               <ArrowLeft size={15} />
@@ -132,20 +137,17 @@ export const VaultFormPage: React.FC = () => {
             </button>
           </div>
 
-          <form onSubmit={handleSave} className="rz-card" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div style={{ borderBottom: '1px solid #27272a', paddingBottom: 14 }}>
-              <h1 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-                {isEditMode ? 'Editar Credencial' : 'Nova Credencial Criptografada'}
-              </h1>
-              <p style={{ fontSize: '0.8rem', color: '#a1a1aa', margin: '4px 0 0 0' }}>
-                Os dados abaixo serão cifrados localmente com AES-256-GCM antes do armazenamento.
-              </p>
-            </div>
+          <PageHeader
+            eyebrow={isEditMode ? 'Edição Zero-Knowledge' : 'Novo Registro Blindado'}
+            title={isEditMode ? 'Editar Credencial' : 'Nova Credencial Criptografada'}
+            subtitle="Os dados abaixo serão cifrados localmente na memória RAM com AES-256-GCM antes do armazenamento."
+          />
 
+          <form onSubmit={handleSave} className="rz-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Categoria */}
-            <div>
-              <label className="rz-label">CATEGORIA</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div className="rz-field" style={{ marginBottom: 0 }}>
+              <label className="rz-label">CATEGORIA DO REGISTRO</label>
+              <div className="rz-scroll-x">
                 {CATEGORIES.map((cat) => {
                   const active = category === cat.id;
                   return (
@@ -153,8 +155,7 @@ export const VaultFormPage: React.FC = () => {
                       key={cat.id}
                       type="button"
                       onClick={() => setCategory(cat.id)}
-                      className={active ? 'rz-btn rz-btn-primary' : 'rz-btn rz-btn-secondary'}
-                      style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                      className={`rz-chip ${active ? 'is-active' : ''}`}
                     >
                       {cat.label}
                     </button>
@@ -163,63 +164,64 @@ export const VaultFormPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Nome do Serviço */}
-            <div>
-              <label htmlFor="vault-title" className="rz-label">NOME DO SERVIÇO *</label>
-              <input
-                id="vault-title"
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ex: AWS Console, GitHub, Banco Itaú"
-                className="rz-input"
-                required
-              />
+            {/* Grade de 2 colunas no Desktop, 1 coluna no Mobile */}
+            <div className="rz-grid-2">
+              {/* Nome do Serviço */}
+              <div className="rz-field" style={{ marginBottom: 0 }}>
+                <label htmlFor="vault-title" className="rz-label">NOME DO SERVIÇO *</label>
+                <div className="rz-input-group">
+                  <ShieldCheck />
+                  <input
+                    id="vault-title"
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Ex: AWS Console, GitHub, Banco Itaú"
+                    className="rz-input"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Usuário */}
+              <div className="rz-field" style={{ marginBottom: 0 }}>
+                <label htmlFor="vault-username" className="rz-label">USUÁRIO OU E-MAIL *</label>
+                <div className="rz-input-group">
+                  <UserRound />
+                  <input
+                    id="vault-username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="usuario@empresa.com"
+                    className="rz-input"
+                    required
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Usuário */}
-            <div>
-              <label htmlFor="vault-username" className="rz-label">USUÁRIO OU E-MAIL *</label>
-              <input
-                id="vault-username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="usuario@empresa.com"
-                className="rz-input"
-                required
-              />
-            </div>
-
-            {/* Senha */}
-            <div>
+            {/* Senha + Gerador */}
+            <div className="rz-field" style={{ marginBottom: 0 }}>
               <label htmlFor="vault-password" className="rz-label">SENHA DE ACESSO *</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ position: 'relative', flex: 1 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <div className="rz-input-group" style={{ flex: 1, minWidth: 220 }}>
+                  <Lock />
                   <input
                     id="vault-password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••"
-                    className="rz-input"
-                    style={{ paddingRight: 38, fontFamily: showPassword ? 'var(--rz-font-mono)' : 'inherit' }}
+                    className={`rz-input ${showPassword ? 'is-mono' : ''}`}
                     required
                   />
                   <button
                     type="button"
+                    className="rz-icon-btn"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: 8,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#71717a',
-                      cursor: 'pointer',
-                      padding: 4,
-                    }}
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    style={{ width: 32, height: 32 }}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -231,54 +233,60 @@ export const VaultFormPage: React.FC = () => {
                   title="Gerar senha forte CSPRNG"
                 >
                   <KeyRound size={15} />
-                  <span>Gerar</span>
+                  <span>Gerar CSPRNG</span>
                 </button>
               </div>
             </div>
 
-            {/* URL */}
-            <div>
-              <label htmlFor="vault-url" className="rz-label">ENDEREÇO WEB (URL)</label>
-              <input
-                id="vault-url"
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://console.aws.amazon.com"
-                className="rz-input"
-              />
-            </div>
-
-            {/* 2FA / TOTP */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label htmlFor="vault-totp" className="rz-label" style={{ marginBottom: 0 }}>
-                  SEGREDO 2FA / TOTP (BASE32 OU OTPAUTH)
-                </label>
-                {!canUseTOTP && (
-                  <button
-                    type="button"
-                    onClick={() => openUpgradeModal('o Autenticador 2FA / TOTP Integrado', 'PRO')}
-                    className="rz-badge rz-badge-blue"
-                    style={{ cursor: 'pointer', border: '1px solid rgba(59,130,246,0.4)' }}
-                  >
-                    Plano Pro
-                  </button>
-                )}
+            {/* Grade de 2 colunas para URL e Segredo TOTP */}
+            <div className="rz-grid-2">
+              {/* URL */}
+              <div className="rz-field" style={{ marginBottom: 0 }}>
+                <label htmlFor="vault-url" className="rz-label">ENDEREÇO WEB (URL)</label>
+                <div className="rz-input-group">
+                  <Globe />
+                  <input
+                    id="vault-url"
+                    type="text"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://console.aws.amazon.com"
+                    className="rz-input"
+                  />
+                </div>
               </div>
-              <input
-                id="vault-totp"
-                type="text"
-                value={totpSecret}
-                disabled={!canUseTOTP}
-                onChange={(e) => setTotpSecret(e.target.value)}
-                placeholder={canUseTOTP ? 'Ex: JBSWY3DPEHPK3PXP' : 'Disponível no Plano Pro'}
-                className="rz-input"
-              />
+
+              {/* 2FA / TOTP */}
+              <div className="rz-field" style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <label htmlFor="vault-totp" className="rz-label">
+                    SEGREDO 2FA / TOTP (BASE32)
+                  </label>
+                  {!canUseTOTP && (
+                    <button
+                      type="button"
+                      onClick={() => openUpgradeModal('o Autenticador 2FA / TOTP Integrado', 'PRO')}
+                      className="rz-badge rz-badge-violet"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      Plano Pro
+                    </button>
+                  )}
+                </div>
+                <input
+                  id="vault-totp"
+                  type="text"
+                  value={totpSecret}
+                  disabled={!canUseTOTP}
+                  onChange={(e) => setTotpSecret(e.target.value)}
+                  placeholder={canUseTOTP ? 'Ex: JBSWY3DPEHPK3PXP' : 'Disponível no Plano Pro'}
+                  className="rz-input is-mono"
+                />
+              </div>
             </div>
 
             {/* Notas */}
-            <div>
+            <div className="rz-field" style={{ marginBottom: 0 }}>
               <label htmlFor="vault-notes" className="rz-label">NOTAS PROTEGIDAS</label>
               <textarea
                 id="vault-notes"
@@ -286,12 +294,20 @@ export const VaultFormPage: React.FC = () => {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Códigos de recuperação ou observações confidenciais..."
-                className="rz-input"
-                style={{ resize: 'vertical' }}
+                className="rz-textarea"
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 8, borderTop: '1px solid #27272a' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 10,
+                paddingTop: 14,
+                borderTop: '1px solid var(--rz-border)',
+                flexWrap: 'wrap',
+              }}
+            >
               <button
                 type="button"
                 className="rz-btn rz-btn-secondary"
@@ -310,20 +326,14 @@ export const VaultFormPage: React.FC = () => {
         <IonModal
           isOpen={showGenModal}
           onDidDismiss={() => setShowGenModal(false)}
-          style={{
-            '--background': '#121215',
-            '--border-radius': '12px',
-            '--width': '92%',
-            '--max-width': '480px',
-            '--height': 'fit-content',
-          }}
+          className="rz-dialog"
         >
-          <div style={{ padding: '20px', background: '#121215', border: '1px solid #27272a', borderRadius: '12px' }}>
+          <div className="rz-dialog-body">
             <PasswordGenerator onSelectPassword={handleSelectGeneratedPassword} />
             <button
               type="button"
-              className="rz-btn rz-btn-secondary"
-              style={{ width: '100%', marginTop: '12px' }}
+              className="rz-btn rz-btn-secondary rz-btn-block"
+              style={{ marginTop: 12 }}
               onClick={() => setShowGenModal(false)}
             >
               Cancelar

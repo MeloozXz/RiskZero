@@ -1,83 +1,104 @@
 /* ==========================================================================
-   SETTINGS PAGE - CORPORATE SAAS GRAPHITE / ZINC
+   RISKZERO — CONFIGURAÇÕES ("ORBITAL")
    ========================================================================== */
 
 .settings-page,
 .settings-content {
-  --background: #09090b !important;
-  background-color: #09090b !important;
+  --background: var(--rz-bg-base) !important;
+  background-color: var(--rz-bg-base) !important;
 }
 
-.settings-toolbar {
-  --background: #09090b !important;
-  --color: #fafafa;
-  border-bottom: 1px solid #27272a;
+.rz-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
 }
 
-.settings-title {
-  font-weight: 700 !important;
-  font-size: 1.15rem !important;
-  color: #fafafa !important;
-}
-
-.settings-container {
-  max-width: 840px;
-  margin: 0 auto;
-  padding: 24px 20px 80px;
+.rz-settings-col {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
+  min-width: 0;
 }
 
-.settings-card {
-  background: #121215 !important;
-  border: 1px solid #27272a !important;
-  border-radius: 10px !important;
-  margin: 0 !important;
-  box-shadow: none !important;
+@media (max-width: 1080px) {
+  .rz-settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
-.settings-card-title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.rz-setting-info {
+  flex: 1;
+  min-width: 0;
 }
 
-.settings-card-title {
-  color: #fafafa !important;
-  font-size: 1rem !important;
-  font-weight: 600 !important;
+.rz-setting-title {
+  font-weight: 700;
+  font-size: var(--rz-text-md);
+  color: var(--rz-text-primary);
+  margin: 0 0 2px;
+  line-height: 1.35;
 }
 
-.settings-card-desc {
-  color: #a1a1aa;
-  font-size: 0.825rem;
-  margin-bottom: 16px;
+.rz-setting-desc {
+  font-size: var(--rz-text-xs);
+  color: var(--rz-text-secondary);
+  margin: 0;
   line-height: 1.5;
 }
 
-.settings-btn-primary {
-  margin: 0 0 12px 0;
-  --background: #2563eb !important;
-  --border-radius: 8px !important;
-  font-weight: 600 !important;
-  height: 42px;
-  box-shadow: none !important;
+.rz-setting-control {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.settings-divider {
-  border: none;
-  border-top: 1px solid #27272a;
-  margin: 16px 0;
-}
-
-.settings-sub-title {
-  color: #fafafa;
-  margin: 0 0 10px 0;
-  font-size: 0.9rem;
+.rz-select-inline {
+  background: var(--rz-bg-deep);
+  border: 1px solid var(--rz-border);
+  border-radius: var(--rz-radius-sm);
+  color: var(--rz-text-primary);
+  font-family: var(--rz-font-sans);
+  font-size: var(--rz-text-sm);
   font-weight: 600;
+  height: 38px;
+  padding: 0 12px;
+  min-width: 150px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--rz-dur-fast) var(--rz-ease);
 }
 
+.rz-select-inline:hover {
+  border-color: var(--rz-border-strong);
+}
+
+.rz-select-inline:focus {
+  border-color: var(--rz-accent);
+  box-shadow: 0 0 0 3px rgba(47, 123, 255, 0.22);
+}
+
+@media (max-width: 640px) {
+  .rz-setting-row.is-stackable {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .rz-setting-row.is-stackable .rz-setting-control {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .rz-select-inline {
+    width: 100%;
+    height: 44px;
+  }
+}
+
+/* ---------- Seletor de Arquivo ---------- */
 .file-picker-wrapper {
   position: relative;
   width: 100%;
@@ -85,118 +106,54 @@
 
 .file-picker-input {
   position: absolute;
-  left: 0;
-  top: 0;
+  inset: 0;
   opacity: 0;
   width: 100%;
-  height: 42px;
+  height: 100%;
   cursor: pointer;
+  z-index: 2;
 }
 
-.file-picker-btn {
-  margin: 0;
-  --border-radius: 8px !important;
-  --color: #fafafa !important;
-  --border-color: #27272a !important;
-  --background: #18181b !important;
-  font-weight: 600 !important;
-  height: 42px;
-}
-
-.import-form-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.import-input-item {
-  --background: #09090b !important;
-  --border-color: #27272a !important;
-  border: 1px solid #27272a;
-  border-radius: 8px !important;
-  --padding-start: 12px !important;
-  height: 44px;
-}
-
-.import-input-item ion-input {
-  --color: #fafafa !important;
-}
-
-.import-toggle-item {
-  --background: transparent;
-  --color: #fafafa;
-  --padding-start: 0px;
-}
-
-.import-toggle-item ion-label {
-  font-size: 0.825rem !important;
-  color: #a1a1aa !important;
-}
-
-.settings-btn-success {
-  margin: 8px 0 0 0;
-  --background: #10b981 !important;
-  --border-radius: 8px !important;
-  font-weight: 600 !important;
-  height: 42px;
-  box-shadow: none !important;
-}
-
+/* ---------- Lista de Dispositivos / Sessões ---------- */
 .session-list-container {
-  background: transparent;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  border: 1px solid var(--rz-border);
+  border-radius: var(--rz-radius-sm);
+  background: var(--rz-bg-deep);
+  overflow: hidden;
 }
 
 .session-card-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   padding: 12px 14px;
-  background: #09090b;
-  border-radius: 8px;
-  border: 1px solid #27272a;
+  border-bottom: 1px solid var(--rz-border-subtle);
+}
+
+.session-card-item:last-child {
+  border-bottom: 0;
 }
 
 .session-device-name {
-  color: #fafafa;
-  font-weight: 600;
-  font-size: 0.85rem;
+  color: var(--rz-text-primary);
+  font-weight: 700;
+  font-size: var(--rz-text-sm);
 }
 
 .session-metadata {
-  color: #71717a;
-  font-size: 0.75rem;
+  color: var(--rz-text-muted);
+  font-size: var(--rz-text-xs);
   margin-top: 2px;
+  font-family: var(--rz-font-mono);
 }
 
-.session-revoke-btn {
-  --padding-start: 8px !important;
-  --padding-end: 8px !important;
-  font-weight: 600 !important;
-  font-size: 0.78rem !important;
-}
-
-.settings-wipe-input-item {
-  --background: rgba(239, 68, 68, 0.06) !important;
-  --border-color: rgba(239, 68, 68, 0.25) !important;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  border-radius: 8px !important;
-  --padding-start: 12px !important;
-  height: 44px;
-}
-
-.settings-wipe-input-item ion-input {
-  --color: #fafafa !important;
-}
-
-.settings-btn-danger {
-  margin: 8px 0 0 0;
-  --background: #ef4444 !important;
-  --border-radius: 8px !important;
-  font-weight: 600 !important;
-  height: 42px;
-  box-shadow: none !important;
+/* ---------- Painel Zona de Risco ---------- */
+.rz-panel-danger {
+  border-color: var(--rz-danger-line);
+  background:
+    linear-gradient(180deg, rgba(255, 84, 112, 0.08), transparent 140px),
+    var(--rz-bg-elevated);
 }

@@ -1,37 +1,73 @@
 import React, { useState } from 'react';
 import {
   IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
   IonContent,
-  IonButtons,
-  IonBackButton,
-  IonButton,
-  IonIcon,
   IonModal,
-  IonInput,
-  IonItem,
   IonToast,
 } from '@ionic/react';
 import {
-  checkmarkCircle,
-  closeCircle,
-  sparklesOutline,
-  shieldCheckmarkOutline,
-  cardOutline,
-  qrCodeOutline,
-  copyOutline,
-  closeOutline,
-  lockClosedOutline,
-  peopleOutline,
-  timeOutline,
-} from 'ionicons/icons';
+  CheckCircle2,
+  XCircle,
+  Sparkles,
+  ShieldCheck,
+  CreditCard,
+  QrCode,
+  Copy,
+  X,
+  Users,
+  Layers,
+} from 'lucide-react';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { PlanTier, BillingCycle } from '../../types';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { ClipboardService } from '../../services/clipboard';
 import './PlansPage.css';
+
+const COMPARISON_ROWS = [
+  {
+    feature: 'Credenciais Criptografadas (Argon2id + AES-256-GCM)',
+    free: 'Ilimitadas',
+    pro: 'Ilimitadas',
+    ultra: 'Ilimitadas',
+  },
+  {
+    feature: 'Dispositivos Conectados Simultaneamente',
+    free: '1 aparelho',
+    pro: 'Até 5 aparelhos',
+    ultra: 'Ilimitados',
+  },
+  {
+    feature: 'Autenticador 2FA / TOTP Integrado',
+    free: false,
+    pro: true,
+    ultra: true,
+  },
+  {
+    feature: 'Monitoramento Dark Web (Have I Been Pwned)',
+    free: 'Manual',
+    pro: 'Diário Automático',
+    ultra: 'Tempo Real',
+  },
+  {
+    feature: 'Armazenamento Seguro de Anexos e Chaves',
+    free: '—',
+    pro: '1 GB cifrado',
+    ultra: '10 GB cifrados',
+  },
+  {
+    feature: 'PIN Duplo de Pânico & Modo Camuflagem',
+    free: false,
+    pro: false,
+    ultra: true,
+  },
+  {
+    feature: 'Membros Familiares com Cofres Isolados',
+    free: '1 titular',
+    pro: '1 titular',
+    ultra: 'Até 6 membros',
+  },
+];
 
 export const PlansPage: React.FC = () => {
   const { tier, subscription, upgradePlan, cancelSubscription } = useSubscription();
@@ -62,7 +98,6 @@ export const PlansPage: React.FC = () => {
   const handleConfirmPayment = async () => {
     setIsProcessing(true);
     try {
-      // Simula validação e tempo de resposta de gateway de pagamento
       await new Promise((r) => setTimeout(r, 1200));
       const success = await upgradePlan(selectedTier, cycle, paymentMethod);
       if (success) {
@@ -120,385 +155,400 @@ export const PlansPage: React.FC = () => {
   const mockPixKey = `00020126580014br.gov.bcb.pix0136riskzero-pay-${selectedTier.toLowerCase()}5204000053039865405${currentPrice.replace(',', '.')}5802BR5915RiskZero Ltda6009Sao Paulo62070503***6304`;
 
   return (
-    <IonPage style={{ background: '#09090b' }}>
-      <IonHeader className="ion-no-border">
-        <IonToolbar style={{ '--background': '#09090b', '--color': '#fafafa', borderBottom: '1px solid #27272a' }}>
-          <IonButtons slot="start">
-            <IonBackButton defaultHref="/settings" style={{ color: '#fafafa' }} />
-          </IonButtons>
-          <IonTitle style={{ fontWeight: '700', fontSize: '1.1rem' }}>Planos & Assinatura</IonTitle>
-        </IonToolbar>
-      </IonHeader>
+    <IonPage className="rz-page plans-page">
+      <IonContent className="rz-content plans-content">
+        <div className="rz-container">
+          <PageHeader
+            eyebrow="Licenciamento"
+            title="Planos & Assinatura"
+            subtitle="Criptografia Zero-Knowledge, autenticador 2FA integrado e proteção de nível institucional para você e sua família."
+            actions={
+              <div className="cycle-toggle-wrapper" role="group" aria-label="Ciclo de cobrança">
+                <button
+                  type="button"
+                  className={`cycle-toggle-btn ${cycle === 'MONTHLY' ? 'active' : ''}`}
+                  onClick={() => setCycle('MONTHLY')}
+                >
+                  Mensal
+                </button>
+                <button
+                  type="button"
+                  className={`cycle-toggle-btn ${cycle === 'ANNUAL' ? 'active' : ''}`}
+                  onClick={() => setCycle('ANNUAL')}
+                >
+                  Anual <span className="discount-pill">-41% OFF</span>
+                </button>
+              </div>
+            }
+          />
 
-      <IonContent style={{ '--background': '#09090b' }}>
-        <div className="plans-container">
+          {/* GRADE DE 3 PLANOS */}
+          <div className="rz-plans-grid">
+            {/* CARD 1: FREE */}
+            <article className="plan-card plan-card-free">
+              <div>
+                <div className="plan-top-row">
+                  <span className="plan-tier-name">Free</span>
+                  {isCurrentTier('FREE') ? (
+                    <span className="rz-badge rz-badge-neutral">Plano Atual</span>
+                  ) : (
+                    <span className="rz-badge rz-badge-neutral">Essencial</span>
+                  )}
+                </div>
+                <p className="plan-target-desc">
+                  Para uso pessoal básico no seu dispositivo principal.
+                </p>
 
-          {/* Cabeçalho */}
-          <div className="plans-header">
-            <span className="plans-badge">
-              <IonIcon icon={sparklesOutline} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-              Proteção Sem Fronteiras
-            </span>
-            <h1 className="plans-title">Escolha o nível ideal de segurança</h1>
-            <p className="plans-subtitle">
-              Criptografia Zero-Knowledge, 2FA integrado e segurança total para você e sua família.
-            </p>
+                <div className="price-row">
+                  <span className="price-currency">R$</span>
+                  <span className="price-value">0</span>
+                  <span className="price-period">/ para sempre</span>
+                </div>
+
+                <div className="features-list">
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-success)' }} />
+                    <span>
+                      <strong>Senhas Ilimitadas</strong> no cofre
+                    </span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-success)' }} />
+                    <span>Criptografia Argon2id + AES-256</span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-success)' }} />
+                    <span>1 Dispositivo ativo</span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-success)' }} />
+                    <span>Importação e Exportação CSV</span>
+                  </div>
+                  <div className="feature-item is-muted">
+                    <XCircle className="feature-icon" style={{ color: 'var(--rz-text-muted)' }} />
+                    <span>Sem Gerador de Códigos 2FA/TOTP</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={isCurrentTier('FREE')}
+                className="rz-btn rz-btn-secondary rz-btn-block"
+              >
+                <span>{isCurrentTier('FREE') ? 'Plano Ativo' : 'Plano Gratuito'}</span>
+              </button>
+            </article>
+
+            {/* CARD 2: PRO */}
+            <article className="plan-card plan-card-pro">
+              <span className="card-ribbon ribbon-pro">Mais escolhido</span>
+
+              <div>
+                <div className="plan-top-row">
+                  <span className="plan-tier-name" style={{ color: 'var(--rz-ice)' }}>
+                    Pro
+                  </span>
+                  {isCurrentTier('PRO') ? (
+                    <span className="rz-badge rz-badge-info">Plano ativo</span>
+                  ) : (
+                    <span className="rz-badge rz-badge-info">Recomendado</span>
+                  )}
+                </div>
+                <p className="plan-target-desc">
+                  Para quem busca conveniência, 2FA integrado e múltiplos aparelhos.
+                </p>
+
+                <div className="price-row">
+                  <span className="price-currency">R$</span>
+                  <span className="price-value" style={{ color: 'var(--rz-ice)' }}>
+                    {cycle === 'ANNUAL' ? pricing.PRO.annualMonthlyEquiv : pricing.PRO.monthly}
+                  </span>
+                  <span className="price-period">/ mês</span>
+                </div>
+                {cycle === 'ANNUAL' && (
+                  <div className="price-billing-detail">
+                    Faturado anualmente por R$ {pricing.PRO.annualTotal}
+                  </div>
+                )}
+
+                <div className="features-list">
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-accent-light)' }} />
+                    <span>
+                      <strong>Autenticador 2FA / TOTP Ilimitado</strong>
+                    </span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-accent-light)' }} />
+                    <span>
+                      Até <strong>5 Dispositivos Conectados</strong>
+                    </span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-accent-light)' }} />
+                    <span>Monitoramento Automático Diário Dark Web</span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-accent-light)' }} />
+                    <span>1 GB de Anexos e Arquivos Protegidos</span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-accent-light)' }} />
+                    <span>Suporte Prioritário 24/7</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleOpenCheckout('PRO')}
+                disabled={isCurrentTier('PRO')}
+                className="rz-btn rz-btn-primary rz-btn-lg rz-btn-block"
+              >
+                <ShieldCheck size={16} />
+                <span>{isCurrentTier('PRO') ? 'Plano atual' : 'Assinar Plano Pro'}</span>
+              </button>
+            </article>
+
+            {/* CARD 3: ULTRA FAMILIAR */}
+            <article className="plan-card plan-card-ultra rz-panel-premium">
+              <span className="card-ribbon ribbon-ultra">Mais completo</span>
+
+              <div>
+                <div className="plan-top-row">
+                  <span className="plan-tier-name" style={{ color: 'var(--rz-violet)' }}>
+                    Ultra Familiar
+                  </span>
+                  {isCurrentTier('ULTRA') ? (
+                    <span className="rz-badge rz-badge-violet">Plano ativo</span>
+                  ) : (
+                    <span className="rz-badge rz-badge-violet">
+                      <Sparkles size={12} /> Blindagem Máxima
+                    </span>
+                  )}
+                </div>
+                <p className="plan-target-desc">
+                  Proteção absoluta para você e até 6 membros da sua família.
+                </p>
+
+                <div className="price-row">
+                  <span className="price-currency">R$</span>
+                  <span className="price-value" style={{ color: 'var(--rz-violet)' }}>
+                    {cycle === 'ANNUAL' ? pricing.ULTRA.annualMonthlyEquiv : pricing.ULTRA.monthly}
+                  </span>
+                  <span className="price-period">/ mês</span>
+                </div>
+                {cycle === 'ANNUAL' && (
+                  <div className="price-billing-detail" style={{ color: 'var(--rz-ice)' }}>
+                    Faturado anualmente por R$ {pricing.ULTRA.annualTotal} (Apenas R$ 2,08/membro)
+                  </div>
+                )}
+
+                <div className="features-list">
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-violet)' }} />
+                    <span>
+                      <strong>Até 6 Membros Familiares</strong> (Cofres isolados)
+                    </span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-violet)' }} />
+                    <span>
+                      <strong>Dispositivos Ilimitados</strong>
+                    </span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-violet)' }} />
+                    <span>PIN Duplo de Pânico &amp; Modo Camuflagem</span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-violet)' }} />
+                    <span>10 GB de Armazenamento Seguro</span>
+                  </div>
+                  <div className="feature-item">
+                    <CheckCircle2 className="feature-icon" style={{ color: 'var(--rz-violet)' }} />
+                    <span>Alertas em Tempo Real de Vazamentos</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleOpenCheckout('ULTRA')}
+                disabled={isCurrentTier('ULTRA')}
+                className="rz-btn rz-btn-premium rz-btn-lg rz-btn-block"
+              >
+                <Users size={16} />
+                <span>{isCurrentTier('ULTRA') ? 'Plano atual' : 'Assinar Plano Ultra'}</span>
+              </button>
+            </article>
           </div>
 
-          {/* Toggle de Ciclo de Cobrança */}
-          <div className="cycle-toggle-wrapper">
-            <button
-              type="button"
-              className={`cycle-toggle-btn ${cycle === 'MONTHLY' ? 'active' : ''}`}
-              onClick={() => setCycle('MONTHLY')}
-            >
-              Mensal
-            </button>
-            <button
-              type="button"
-              className={`cycle-toggle-btn ${cycle === 'ANNUAL' ? 'active' : ''}`}
-              onClick={() => setCycle('ANNUAL')}
-            >
-              Anual <span className="discount-pill">-41% OFF</span>
-            </button>
-          </div>
-
-          {/* CARD 1: FREE */}
-          <div className="plan-card plan-card-free">
-            <div className="plan-top-row">
-              <span className="plan-tier-name">Free</span>
-              {isCurrentTier('FREE') && (
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>
-                  Plano Atual
-                </span>
-              )}
-            </div>
-            <p className="plan-target-desc">Para uso pessoal básico no seu dispositivo principal.</p>
-
-            <div className="price-row">
-              <span className="price-currency">R$</span>
-              <span className="price-value">0</span>
-              <span className="price-period">/ para sempre</span>
+          {/* TABELA DE COMPARAÇÃO DE RECURSOS */}
+          <section className="rz-section">
+            <div className="rz-section-head">
+              <h2 className="rz-section-title">
+                <Layers size={16} />
+                Comparativo de Capacidades &amp; Infraestrutura
+              </h2>
             </div>
 
-            <div className="features-list">
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#10b981' }} />
-                <span><strong>Senhas Ilimitadas</strong> no cofre</span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#10b981' }} />
-                <span>Criptografia Argon2id + AES-256</span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#10b981' }} />
-                <span>1 Dispositivo ativo</span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#10b981' }} />
-                <span>Importação e Exportação CSV</span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={closeCircle} className="feature-icon" style={{ color: '#64748b' }} />
-                <span style={{ color: '#64748b' }}>Sem Gerador de Códigos 2FA/TOTP</span>
-              </div>
+            <div className="rz-compare-wrap">
+              <table className="rz-compare-table">
+                <thead>
+                  <tr>
+                    <th>Recurso / Camada de Defesa</th>
+                    <th>Free</th>
+                    <th style={{ color: 'var(--rz-ice)' }}>Pro</th>
+                    <th style={{ color: 'var(--rz-violet)' }}>Ultra Familiar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARISON_ROWS.map((row) => (
+                    <tr key={row.feature}>
+                      <td style={{ fontWeight: 600, color: 'var(--rz-text-primary)' }}>
+                        {row.feature}
+                      </td>
+                      <td>
+                        {typeof row.free === 'boolean' ? (
+                          row.free ? (
+                            <CheckCircle2 size={16} style={{ color: 'var(--rz-success)' }} />
+                          ) : (
+                            <XCircle size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                          )
+                        ) : (
+                          <span style={{ color: 'var(--rz-text-secondary)' }}>{row.free}</span>
+                        )}
+                      </td>
+                      <td>
+                        {typeof row.pro === 'boolean' ? (
+                          row.pro ? (
+                            <CheckCircle2 size={16} style={{ color: 'var(--rz-accent-light)' }} />
+                          ) : (
+                            <XCircle size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                          )
+                        ) : (
+                          <span style={{ color: 'var(--rz-ice)', fontWeight: 700 }}>{row.pro}</span>
+                        )}
+                      </td>
+                      <td>
+                        {typeof row.ultra === 'boolean' ? (
+                          row.ultra ? (
+                            <CheckCircle2 size={16} style={{ color: 'var(--rz-violet)' }} />
+                          ) : (
+                            <XCircle size={16} style={{ color: 'var(--rz-text-muted)' }} />
+                          )
+                        ) : (
+                          <span className="rz-badge rz-badge-violet">{row.ultra}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-
-            <IonButton
-              expand="block"
-              fill="outline"
-              disabled={isCurrentTier('FREE')}
-              style={{
-                '--border-color': 'rgba(255,255,255,0.15)',
-                '--border-radius': '14px',
-                color: '#94a3b8',
-                fontWeight: 700,
-              }}
-            >
-              {isCurrentTier('FREE') ? 'Plano Ativo' : 'Plano Gratuito'}
-            </IonButton>
-          </div>
-
-          {/* CARD 2: PRO */}
-          <div className="plan-card plan-card-pro">
-            <span className="card-ribbon ribbon-pro">Mais escolhido</span>
-
-            <div className="plan-top-row">
-              <span className="plan-tier-name" style={{ color: '#60a5fa' }}>Pro</span>
-              {isCurrentTier('PRO') && (
-                <span style={{ fontSize: '0.75rem', color: '#60a5fa', fontWeight: 800 }}>
-                  Plano ativo
-                </span>
-              )}
-            </div>
-            <p className="plan-target-desc">Para quem busca conveniência, 2FA integrado e múltiplos aparelhos.</p>
-
-            <div className="price-row">
-              <span className="price-currency">R$</span>
-              <span className="price-value" style={{ color: '#60a5fa' }}>
-                {cycle === 'ANNUAL' ? pricing.PRO.annualMonthlyEquiv : pricing.PRO.monthly}
-              </span>
-              <span className="price-period">/ mês</span>
-            </div>
-            {cycle === 'ANNUAL' && (
-              <div className="price-billing-detail">
-                Faturado anualmente por R$ {pricing.PRO.annualTotal}
-              </div>
-            )}
-
-            <div className="features-list">
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#60a5fa' }} />
-                <span><strong>Autenticador 2FA / TOTP Ilimitado</strong></span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#60a5fa' }} />
-                <span>Até <strong>5 Dispositivos Conectados</strong></span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#60a5fa' }} />
-                <span>Monitoramento Automático Diário Dark Web</span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#60a5fa' }} />
-                <span>1 GB de Anexos e Arquivos Protegidos</span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#60a5fa' }} />
-                <span>Suporte Prioritário 24/7</span>
-              </div>
-            </div>
-
-            <IonButton
-              expand="block"
-              onClick={() => handleOpenCheckout('PRO')}
-              disabled={isCurrentTier('PRO')}
-              style={{
-                '--background': 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
-                '--color': '#000000',
-                '--border-radius': '14px',
-                fontWeight: 900,
-                height: '48px',
-              }}
-            >
-              {isCurrentTier('PRO') ? 'Plano atual' : 'Assinar Plano Pro'}
-            </IonButton>
-          </div>
-
-          {/* CARD 3: ULTRA */}
-          <div className="plan-card plan-card-ultra">
-            <span className="card-ribbon ribbon-ultra">Mais completo</span>
-
-            <div className="plan-top-row">
-              <span className="plan-tier-name" style={{ color: '#c084fc' }}>Ultra Familiar</span>
-              {isCurrentTier('ULTRA') && (
-                <span style={{ fontSize: '0.75rem', color: '#c084fc', fontWeight: 800 }}>
-                  Plano ativo
-                </span>
-              )}
-            </div>
-            <p className="plan-target-desc">Proteção absoluta para você e até 6 membros da sua família.</p>
-
-            <div className="price-row">
-              <span className="price-currency">R$</span>
-              <span className="price-value" style={{ color: '#c084fc' }}>
-                {cycle === 'ANNUAL' ? pricing.ULTRA.annualMonthlyEquiv : pricing.ULTRA.monthly}
-              </span>
-              <span className="price-period">/ mês</span>
-            </div>
-            {cycle === 'ANNUAL' && (
-              <div className="price-billing-detail" style={{ color: '#c084fc' }}>
-                Faturado anualmente por R$ {pricing.ULTRA.annualTotal} (Apenas R$ 2,08/membro)
-              </div>
-            )}
-
-            <div className="features-list">
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#a855f7' }} />
-                <span><strong>Até 6 Membros Familiares</strong> (Cofres isolados)</span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#a855f7' }} />
-                <span><strong>Dispositivos Ilimitados</strong></span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#a855f7' }} />
-                <span>PIN Duplo de Pânico & Modo Camuflagem</span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#a855f7' }} />
-                <span>10 GB de Armazenamento Seguro</span>
-              </div>
-              <div className="feature-item">
-                <IonIcon icon={checkmarkCircle} className="feature-icon" style={{ color: '#a855f7' }} />
-                <span>Alertas em Tempo Real de Vazamentos</span>
-              </div>
-            </div>
-
-            <IonButton
-              expand="block"
-              onClick={() => handleOpenCheckout('ULTRA')}
-              disabled={isCurrentTier('ULTRA')}
-              style={{
-                '--background': 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
-                '--color': '#ffffff',
-                '--border-radius': '14px',
-                fontWeight: 900,
-                height: '48px',
-              }}
-            >
-              {isCurrentTier('ULTRA') ? 'Plano atual' : 'Assinar Plano Ultra'}
-            </IonButton>
-          </div>
+          </section>
 
           {/* Botão de Cancelamento de Renovação (Se tiver plano ativo) */}
           {subscription?.autoRenew && tier !== 'FREE' && (
-            <div style={{ textAlign: 'center', marginTop: '10px' }}>
-              <IonButton
-                fill="clear"
-                color="medium"
+            <div style={{ textAlign: 'center', marginTop: '16px' }}>
+              <button
+                type="button"
+                className="rz-btn rz-btn-ghost"
                 onClick={() => setShowCancelSubConfirm(true)}
-                style={{ fontSize: '0.8rem' }}
               >
                 Cancelar Renovação Automática
-              </IonButton>
+              </button>
             </div>
           )}
-
         </div>
 
         {/* MODAL DE CHECKOUT SIMULADO */}
         <IonModal
           isOpen={showCheckoutModal}
           onDidDismiss={() => setShowCheckoutModal(false)}
-          style={{
-            '--background': 'rgba(10, 15, 30, 0.95)',
-            '--border-radius': '24px',
-            '--width': '92%',
-            '--max-width': '460px',
-            '--height': 'fit-content',
-          }}
+          className="rz-dialog"
         >
-          <div style={{
-            padding: '24px',
-            background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(7, 10, 19, 1) 100%)',
-            border: selectedTier === 'ULTRA' ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(96, 165, 250, 0.4)',
-            borderRadius: '24px',
-            color: '#f8fafc',
-            position: 'relative',
-          }}>
-            {/* Fechar */}
-            <button
-              onClick={() => setShowCheckoutModal(false)}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: 'none',
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#94a3b8',
-                cursor: 'pointer',
-              }}
-            >
-              <IonIcon icon={closeOutline} style={{ fontSize: '20px' }} />
-            </button>
-
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <span style={{
-                fontSize: '0.75rem',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                padding: '4px 12px',
-                borderRadius: '12px',
-                background: selectedTier === 'ULTRA' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(96, 165, 250, 0.2)',
-                color: selectedTier === 'ULTRA' ? '#e9d5ff' : '#60a5fa',
-              }}>
-                Checkout Seguro
-              </span>
-              <h3 style={{ margin: '8px 0 4px', fontWeight: 900, fontSize: '1.3rem' }}>
-                Assinar Plano {selectedTier} ({cycle === 'ANNUAL' ? 'Anual' : 'Mensal'})
-              </h3>
-              <div style={{ color: '#10b981', fontWeight: 800, fontSize: '1.2rem', marginTop: '4px' }}>
-                Total: R$ {currentPrice}
+          <div className="rz-dialog-body">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+              <div>
+                <span className={`rz-badge ${selectedTier === 'ULTRA' ? 'rz-badge-violet' : 'rz-badge-info'}`}>
+                  Checkout Seguro
+                </span>
+                <h3 className="rz-dialog-title" style={{ marginTop: '8px' }}>
+                  Assinar Plano {selectedTier} ({cycle === 'ANNUAL' ? 'Anual' : 'Mensal'})
+                </h3>
+                <div
+                  className="rz-num"
+                  style={{ color: 'var(--rz-success)', fontWeight: 700, fontSize: '1.25rem' }}
+                >
+                  Total: R$ {currentPrice}
+                </div>
               </div>
+              <button
+                type="button"
+                className="rz-icon-btn is-bordered"
+                onClick={() => setShowCheckoutModal(false)}
+                aria-label="Fechar checkout"
+              >
+                <X size={18} />
+              </button>
             </div>
 
             {/* Seletor Método de Pagamento */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <div className="rz-checkout-methods">
               <button
                 type="button"
                 onClick={() => setPaymentMethod('PIX')}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  borderRadius: '12px',
-                  border: paymentMethod === 'PIX' ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.1)',
-                  background: paymentMethod === 'PIX' ? 'rgba(96, 165, 250, 0.15)' : 'rgba(255,255,255,0.04)',
-                  color: paymentMethod === 'PIX' ? '#60a5fa' : '#94a3b8',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                }}
+                className={`rz-method-btn ${
+                  paymentMethod === 'PIX'
+                    ? selectedTier === 'ULTRA'
+                      ? 'is-active-violet'
+                      : 'is-active'
+                    : ''
+                }`}
               >
-                <IonIcon icon={qrCodeOutline} />
-                PIX Instantâneo
+                <QrCode size={16} />
+                <span>PIX Instantâneo</span>
               </button>
               <button
                 type="button"
                 onClick={() => setPaymentMethod('CREDIT_CARD')}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  borderRadius: '12px',
-                  border: paymentMethod === 'CREDIT_CARD' ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.1)',
-                  background: paymentMethod === 'CREDIT_CARD' ? 'rgba(96, 165, 250, 0.15)' : 'rgba(255,255,255,0.04)',
-                  color: paymentMethod === 'CREDIT_CARD' ? '#60a5fa' : '#94a3b8',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                }}
+                className={`rz-method-btn ${
+                  paymentMethod === 'CREDIT_CARD'
+                    ? selectedTier === 'ULTRA'
+                      ? 'is-active-violet'
+                      : 'is-active'
+                    : ''
+                }`}
               >
-                <IonIcon icon={cardOutline} />
-                Cartão de Crédito
+                <CreditCard size={16} />
+                <span>Cartão de Crédito</span>
               </button>
             </div>
 
             {/* Conteúdo PIX */}
             {paymentMethod === 'PIX' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{
-                  padding: '12px',
-                  background: '#ffffff',
-                  borderRadius: '16px',
+              <div
+                style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  {/* QR Code SVG Simulado */}
-                  <svg width="140" height="140" viewBox="0 0 100 100" fill="#000000">
+                  gap: '12px',
+                  marginBottom: '18px',
+                }}
+              >
+                <div className="rz-qr-frame">
+                  <svg width="136" height="136" viewBox="0 0 100 100" fill="var(--rz-bg-base)">
                     <rect width="30" height="30" x="10" y="10" />
-                    <rect width="20" height="20" x="15" y="15" fill="#ffffff" />
+                    <rect width="20" height="20" x="15" y="15" fill="var(--rz-text-on-accent)" />
                     <rect width="10" height="10" x="20" y="20" />
                     <rect width="30" height="30" x="60" y="10" />
-                    <rect width="20" height="20" x="65" y="15" fill="#ffffff" />
+                    <rect width="20" height="20" x="65" y="15" fill="var(--rz-text-on-accent)" />
                     <rect width="10" height="10" x="70" y="20" />
                     <rect width="30" height="30" x="10" y="60" />
-                    <rect width="20" height="20" x="15" y="65" fill="#ffffff" />
+                    <rect width="20" height="20" x="15" y="65" fill="var(--rz-text-on-accent)" />
                     <rect width="10" height="10" x="20" y="70" />
                     <rect width="10" height="10" x="45" y="15" />
                     <rect width="10" height="10" x="45" y="35" />
@@ -510,99 +560,87 @@ export const PlansPage: React.FC = () => {
                   </svg>
                 </div>
 
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                <span className="rz-text-muted" style={{ fontSize: 'var(--rz-text-xs)', textAlign: 'center' }}>
                   Escaneie com o app do seu banco ou copie o código abaixo:
                 </span>
 
-                <div style={{
-                  width: '100%',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px',
-                  padding: '8px 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px',
-                }}>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    color: '#e2e8f0',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}>
+                <div className="rz-input-group" style={{ width: '100%' }}>
+                  <span
+                    className="rz-font-mono rz-truncate"
+                    style={{
+                      flex: 1,
+                      fontSize: 'var(--rz-text-xs)',
+                      color: 'var(--rz-text-primary)',
+                    }}
+                  >
                     {mockPixKey}
                   </span>
-                  <IonButton
-                    size="small"
-                    fill="clear"
+                  <button
+                    type="button"
+                    className="rz-icon-btn"
                     onClick={() => copyPixKey(mockPixKey)}
-                    style={{ '--color': '#60a5fa', margin: 0 }}
+                    aria-label="Copiar chave PIX"
                   >
-                    <IonIcon icon={copyOutline} slot="icon-only" />
-                  </IonButton>
+                    <Copy size={16} />
+                  </button>
                 </div>
               </div>
             ) : (
               /* Conteúdo Cartão de Crédito */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                <IonItem lines="none" style={{ '--background': 'rgba(20, 28, 45, 0.7)', '--border-radius': '12px' }}>
-                  <IonInput
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
+                <div className="rz-input-group">
+                  <CreditCard size={17} />
+                  <input
+                    className="rz-input is-mono"
                     placeholder="Número do Cartão"
                     value={cardNumber}
-                    onIonInput={(e) => setCardNumber(e.detail.value ?? '')}
-                    style={{ '--color': '#fff' }}
+                    onChange={(e) => setCardNumber(e.target.value)}
                   />
-                </IonItem>
+                </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <IonItem lines="none" style={{ flex: 1, '--background': 'rgba(20, 28, 45, 0.7)', '--border-radius': '12px' }}>
-                    <IonInput
+                  <div className="rz-input-group" style={{ flex: 1 }}>
+                    <input
+                      className="rz-input is-mono"
                       placeholder="MM/AA"
                       value={cardExp}
-                      onIonInput={(e) => setCardExp(e.detail.value ?? '')}
-                      style={{ '--color': '#fff' }}
+                      onChange={(e) => setCardExp(e.target.value)}
                     />
-                  </IonItem>
-                  <IonItem lines="none" style={{ flex: 1, '--background': 'rgba(20, 28, 45, 0.7)', '--border-radius': '12px' }}>
-                    <IonInput
+                  </div>
+                  <div className="rz-input-group" style={{ flex: 1 }}>
+                    <input
+                      className="rz-input is-mono"
                       placeholder="CVV"
                       type="password"
-                      maxlength={4}
+                      maxLength={4}
                       value={cardCvv}
-                      onIonInput={(e) => setCardCvv(e.detail.value ?? '')}
-                      style={{ '--color': '#fff' }}
+                      onChange={(e) => setCardCvv(e.target.value)}
                     />
-                  </IonItem>
+                  </div>
                 </div>
-                <IonItem lines="none" style={{ '--background': 'rgba(20, 28, 45, 0.7)', '--border-radius': '12px' }}>
-                  <IonInput
+                <div className="rz-input-group">
+                  <input
+                    className="rz-input"
                     placeholder="Nome no Cartão"
                     value={cardName}
-                    onIonInput={(e) => setCardName(e.detail.value ?? '')}
-                    style={{ '--color': '#fff' }}
+                    onChange={(e) => setCardName(e.target.value)}
                   />
-                </IonItem>
+                </div>
               </div>
             )}
 
             {/* Botão de Confirmação */}
-            <IonButton
-              expand="block"
+            <button
+              type="button"
               onClick={handleConfirmPayment}
               disabled={isProcessing}
-              style={{
-                '--background': selectedTier === 'ULTRA'
-                  ? 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)'
-                  : 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
-                '--color': selectedTier === 'ULTRA' ? '#ffffff' : '#000000',
-                '--border-radius': '14px',
-                fontWeight: 900,
-                height: '48px',
-              }}
+              className={`rz-btn rz-btn-lg rz-btn-block ${
+                selectedTier === 'ULTRA' ? 'rz-btn-premium' : 'rz-btn-primary'
+              }`}
             >
-              {isProcessing ? 'Processando Ativação...' : `Confirmar assinatura ${selectedTier}`}
-            </IonButton>
+              <span>
+                {isProcessing ? 'Processando Ativação...' : `Confirmar assinatura ${selectedTier}`}
+              </span>
+            </button>
           </div>
         </IonModal>
 
@@ -634,3 +672,5 @@ export const PlansPage: React.FC = () => {
     </IonPage>
   );
 };
+
+export default PlansPage;

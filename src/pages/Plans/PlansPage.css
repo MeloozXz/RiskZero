@@ -1,203 +1,312 @@
-.plans-container {
-  padding: 24px 20px 80px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 680px;
-  margin: 0 auto;
+/* ==========================================================================
+   RISKZERO — PLANOS & ASSINATURA ("ORBITAL")
+   ========================================================================== */
+
+.plans-page,
+.plans-content {
+  --background: var(--rz-bg-base) !important;
+  background-color: var(--rz-bg-base) !important;
 }
 
-.plans-header {
-  text-align: center;
-  margin-top: 4px;
-}
-
-.plans-badge {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: rgba(37, 99, 235, 0.14);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  margin-bottom: 10px;
-}
-
-.plans-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #fafafa;
-  margin: 0 0 6px 0;
-  letter-spacing: -0.02em;
-}
-
-.plans-subtitle {
-  font-size: 0.85rem;
-  color: #a1a1aa;
-  margin: 0;
-  line-height: 1.45;
-}
-
+/* ---------- Seletor de Ciclo (Mensal / Anual) ---------- */
 .cycle-toggle-wrapper {
-  display: flex;
-  background: #121215;
-  border: 1px solid #27272a;
-  border-radius: 8px;
+  display: inline-flex;
+  background: var(--rz-bg-deep);
+  border: 1px solid var(--rz-border);
+  border-radius: var(--rz-radius-sm);
   padding: 3px;
-  position: relative;
+  gap: 4px;
 }
 
 .cycle-toggle-btn {
-  flex: 1;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: none;
+  padding: 8px 16px;
+  min-height: 36px;
+  border-radius: var(--rz-radius-xs);
+  border: 1px solid transparent;
   background: transparent;
-  color: #a1a1aa;
-  font-weight: 600;
-  font-size: 0.825rem;
+  color: var(--rz-text-secondary);
+  font-family: var(--rz-font-sans);
+  font-weight: 700;
+  font-size: var(--rz-text-sm);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
+  transition: all var(--rz-dur-fast) var(--rz-ease);
+}
+
+.cycle-toggle-btn:hover {
+  color: var(--rz-text-primary);
 }
 
 .cycle-toggle-btn.active {
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--rz-bg-raised);
+  color: var(--rz-text-primary);
+  border-color: var(--rz-accent-line);
+  box-shadow: inset 0 1px 0 rgba(140, 200, 255, 0.12);
 }
 
 .discount-pill {
-  font-size: 0.68rem;
+  font-family: var(--rz-font-mono);
+  font-size: 0.6875rem;
   font-weight: 700;
-  background: #10b981;
-  color: #ffffff;
-  padding: 2px 6px;
-  border-radius: 4px;
+  background: var(--rz-success-soft);
+  color: var(--rz-success);
+  border: 1px solid var(--rz-success-line);
+  padding: 1px 6px;
+  border-radius: 999px;
   text-transform: uppercase;
 }
 
+/* ---------- Grade de 3 Colunas de Planos ---------- */
+.rz-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 36px;
+}
+
+@media (max-width: 1023px) {
+  .rz-plans-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+}
+
 .plan-card {
-  border-radius: 10px;
-  padding: 20px;
+  border-radius: var(--rz-radius-md);
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   position: relative;
-  background: #121215;
-  border: 1px solid #27272a;
+  background: var(--rz-bg-elevated);
+  border: 1px solid var(--rz-border);
+  box-shadow: var(--rz-highlight);
+  transition: border-color var(--rz-dur) var(--rz-ease), transform var(--rz-dur-fast) var(--rz-ease);
 }
 
 .plan-card-free {
-  background: #121215;
-  border: 1px solid #27272a;
+  background: var(--rz-bg-elevated);
+  border-color: var(--rz-border);
 }
 
 .plan-card-pro {
-  background: #121215;
-  border: 1px solid #3b82f6;
+  border-color: var(--rz-accent-line);
+  background:
+    linear-gradient(180deg, rgba(47, 123, 255, 0.1), transparent 150px),
+    var(--rz-bg-elevated);
 }
 
 .plan-card-ultra {
-  background: #121215;
-  border: 1px solid #6366f1;
+  border-color: var(--rz-violet-line);
+  background:
+    linear-gradient(180deg, rgba(123, 92, 240, 0.14), transparent 160px),
+    var(--rz-bg-elevated);
 }
 
 .card-ribbon {
   position: absolute;
-  top: -10px;
-  right: 16px;
-  font-size: 0.68rem;
+  top: -11px;
+  right: 18px;
+  font-family: var(--rz-font-display);
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 3px 10px;
-  border-radius: 6px;
+  border-radius: 999px;
 }
 
 .ribbon-pro {
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--rz-accent);
+  color: var(--rz-text-on-accent);
+  border: 1px solid var(--rz-ice);
 }
 
 .ribbon-ultra {
-  background: #4f46e5;
-  color: #ffffff;
+  background: var(--rz-violet);
+  color: var(--rz-text-on-accent);
+  border: 1px solid var(--rz-violet-line);
 }
 
 .plan-top-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 6px;
 }
 
 .plan-tier-name {
-  font-size: 1.15rem;
+  font-family: var(--rz-font-display);
+  font-size: 1.5rem;
   font-weight: 700;
-  color: #fafafa;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--rz-text-primary);
 }
 
 .plan-target-desc {
-  font-size: 0.8rem;
-  color: #a1a1aa;
-  margin: 0 0 14px 0;
+  font-size: var(--rz-text-sm);
+  color: var(--rz-text-secondary);
+  margin: 0 0 18px 0;
+  line-height: 1.5;
 }
 
 .price-row {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .price-currency {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #a1a1aa;
+  font-family: var(--rz-font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--rz-text-secondary);
 }
 
 .price-value {
-  font-size: 1.85rem;
+  font-size: 2.5rem;
   font-weight: 700;
-  color: #fafafa;
-  font-family: var(--rz-font-mono);
+  color: var(--rz-text-primary);
+  font-family: var(--rz-font-display);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .price-period {
-  font-size: 0.8rem;
-  color: #71717a;
+  font-size: var(--rz-text-xs);
+  color: var(--rz-text-muted);
 }
 
 .price-billing-detail {
-  font-size: 0.75rem;
-  color: #10b981;
+  font-size: var(--rz-text-xs);
+  color: var(--rz-success);
   font-weight: 600;
-  margin-top: -8px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .features-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 18px;
-  border-top: 1px solid #27272a;
-  padding-top: 14px;
+  gap: 10px;
+  margin: 16px 0 22px;
+  border-top: 1px solid var(--rz-border-subtle);
+  padding-top: 16px;
 }
 
 .feature-item {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.825rem;
-  color: #d4d4d8;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--rz-text-sm);
+  color: var(--rz-text-primary);
+  line-height: 1.45;
+}
+
+.feature-item.is-muted {
+  color: var(--rz-text-muted);
 }
 
 .feature-icon {
-  font-size: 16px;
+  width: 17px;
+  height: 17px;
   flex-shrink: 0;
+  margin-top: 2px;
 }
+
+/* ---------- Tabela Comparativa de Recursos ---------- */
+.rz-compare-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--rz-border);
+  border-radius: var(--rz-radius-md);
+  background: var(--rz-bg-elevated);
+  box-shadow: var(--rz-highlight);
+}
+
+.rz-compare-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.rz-compare-table th,
+.rz-compare-table td {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--rz-border-subtle);
+  font-size: var(--rz-text-sm);
+}
+
+.rz-compare-table thead th {
+  font-family: var(--rz-font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--rz-text-secondary);
+  background: var(--rz-bg-deep);
+  border-bottom: 1px solid var(--rz-border);
+}
+
+.rz-compare-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.rz-compare-table tbody tr:hover td {
+  background: var(--rz-bg-surface);
+}
+
+/* ---------- Modal de Checkout ---------- */
+.rz-checkout-methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.rz-method-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: var(--rz-radius-sm);
+  border: 1px solid var(--rz-border);
+  background: var(--rz-bg-deep);
+  color: var(--rz-text-secondary);
+  font-family: var(--rz-font-sans);
+  font-size: var(--rz-text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--rz-dur-fast) var(--rz-ease);
+}
+
+.rz-method-btn.is-active {
+  background: var(--rz-accent-soft);
+  border-color: var(--rz-accent-line);
+  color: var(--rz-ice);
+}
+
+.rz-method-btn.is-active-violet {
+  background: var(--rz-violet-soft);
+  border-color: var(--rz-violet-line);
+  color: var(--rz-text-primary);
+}
+
+.rz-qr-frame {
+  padding: 12px;
+  background: var(--rz-text-on-accent);
+  border-radius: var(--rz-radius-sm);
+  border: 2px solid var(--rz-border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+

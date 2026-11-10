@@ -1,148 +1,218 @@
+/* ==========================================================================
+   LOCK OVERLAY — IDENTIDADE "ORBITAL"
+   Tela de bloqueio de cofre sobre var(--rz-bg-base) com .rz-meridian-bg
+   ========================================================================== */
+
 .lock-overlay-container {
   position: fixed;
   inset: 0;
   z-index: 99999;
-  background: rgba(9, 9, 11, 0.96);
-  backdrop-filter: blur(8px);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(47, 123, 255, 0.16), transparent 55%),
+    var(--rz-bg-base);
+  backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: calc(16px + var(--rz-safe-top)) 16px calc(16px + var(--rz-safe-bottom));
+  overflow-y: auto;
+  animation: rz-fade var(--rz-dur) var(--rz-ease) both;
 }
 
 .lock-overlay-card {
   width: 100%;
-  max-width: 360px;
-  background: #121215;
-  border: 1px solid #27272a;
-  border-radius: 12px;
-  padding: 28px 24px 20px;
+  max-width: 400px;
+  background: var(--rz-bg-elevated);
+  border: 1px solid var(--rz-border);
+  border-radius: var(--rz-radius-md);
+  padding: 24px 24px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--rz-shadow-float), var(--rz-highlight);
+  position: relative;
+}
+
+.lock-overlay-card::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 72px;
+  height: 2px;
+  background: var(--rz-accent);
+  box-shadow: 0 0 12px rgba(47, 123, 255, 0.7);
+}
+
+.lock-brand-top {
+  margin-bottom: 8px;
+}
+
+.lock-guardian-stage {
+  margin: 4px 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .lock-overlay-header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
 }
 
-.lock-icon-badge {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: rgba(37, 99, 235, 0.14);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #3b82f6;
+.lock-status-pill {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.35rem;
-  margin-bottom: 12px;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--rz-accent-soft);
+  border: 1px solid var(--rz-accent-line);
+  color: var(--rz-ice);
+  font-family: var(--rz-font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 .lock-overlay-header h2 {
-  font-size: 1.1rem;
+  font-family: var(--rz-font-display);
+  font-size: 1.5rem;
   font-weight: 700;
-  color: #fafafa;
-  margin: 0 0 6px 0;
-  letter-spacing: -0.015em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--rz-text-primary);
+  margin: 2px 0 0;
+}
+
+.lock-user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--rz-bg-deep);
+  border: 1px solid var(--rz-border);
+  color: var(--rz-text-secondary);
+  font-family: var(--rz-font-mono);
+  font-size: var(--rz-text-xs);
+}
+
+.lock-user-badge svg {
+  color: var(--rz-accent-light);
+  flex-shrink: 0;
 }
 
 .lock-overlay-header p {
-  font-size: 0.8rem;
-  color: #a1a1aa;
-  margin: 0;
+  font-size: var(--rz-text-xs);
+  color: var(--rz-text-secondary);
+  margin: 2px 0 0;
   line-height: 1.45;
+  max-width: 34ch;
 }
 
+/* ---------- PIN Dots ---------- */
 .pin-indicator-container {
   display: flex;
   gap: 12px;
-  margin: 8px 0 20px;
+  margin: 4px 0 18px;
 }
 
 .pin-dot {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #18181b;
-  border: 1.5px solid #3f3f46;
-  transition: all 0.15s ease;
+  background: var(--rz-bg-deep);
+  border: 1.5px solid var(--rz-border-strong);
+  transition: all var(--rz-dur-fast) var(--rz-ease);
 }
 
 .pin-dot.filled {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: var(--rz-accent);
+  border-color: var(--rz-ice);
+  box-shadow: 0 0 10px rgba(47, 123, 255, 0.7);
 }
 
 .pin-dot.error {
-  background: #ef4444;
-  border-color: #ef4444;
+  background: var(--rz-danger);
+  border-color: var(--rz-danger);
+  box-shadow: 0 0 10px rgba(255, 84, 112, 0.6);
 }
 
+/* ---------- Alertas e Temporizador ---------- */
 .lock-error-banner {
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
-  font-size: 0.78rem;
-  text-align: center;
   margin-bottom: 14px;
 }
 
 .lockout-timer-container {
+  width: 100%;
   text-align: center;
-  margin-bottom: 16px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: var(--rz-danger-soft);
+  border: 1px solid var(--rz-danger-line);
+  border-radius: var(--rz-radius-sm);
 }
 
 .lockout-timer-container p {
-  font-size: 0.76rem;
-  color: #a1a1aa;
+  font-size: var(--rz-text-xs);
+  color: var(--rz-text-secondary);
   margin: 0 0 4px 0;
 }
 
 .lockout-timer-container h3 {
   font-family: var(--rz-font-mono);
-  font-size: 1.35rem;
+  font-size: 1.4rem;
   font-weight: 700;
-  color: #ef4444;
+  color: var(--rz-danger);
   margin: 0;
 }
 
-.lock-spinner {
-  margin-bottom: 12px;
-}
-
+/* ---------- Teclado Numérico ---------- */
 .numeric-keypad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   width: 100%;
-  max-width: 260px;
+  max-width: 280px;
 }
 
 .keypad-button {
   height: 52px;
-  border-radius: 8px;
-  background: #18181b;
-  border: 1px solid #27272a;
-  color: #fafafa;
-  font-size: 1.15rem;
-  font-weight: 600;
+  border-radius: var(--rz-radius-sm);
+  background: var(--rz-bg-surface);
+  border: 1px solid var(--rz-border);
+  color: var(--rz-text-primary);
+  font-size: 1.25rem;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.12s ease, border-color 0.12s ease;
+  user-select: none;
+  transition:
+    background-color var(--rz-dur-fast) var(--rz-ease),
+    border-color var(--rz-dur-fast) var(--rz-ease),
+    transform var(--rz-dur-fast) var(--rz-ease);
 }
 
 .keypad-button:hover:not(:disabled) {
-  background: #27272a;
-  border-color: #3f3f46;
+  background: var(--rz-bg-raised);
+  border-color: var(--rz-border-strong);
+}
+
+.keypad-button:active:not(:disabled) {
+  transform: scale(0.96);
+  background: var(--rz-bg-hover);
 }
 
 .keypad-button:disabled {
@@ -151,23 +221,73 @@
 }
 
 .keypad-button.functional-key {
-  background: #09090b;
-  color: #a1a1aa;
-  font-size: 1.2rem;
+  background: var(--rz-bg-deep);
+  color: var(--rz-ice);
 }
 
+.keypad-button.functional-key:hover:not(:disabled) {
+  background: var(--rz-bg-surface);
+  color: var(--rz-text-primary);
+}
+
+/* ---------- Formulário de Senha Mestra ---------- */
 .lock-password-form {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin: 8px 0 12px;
+  gap: 10px;
+  margin: 4px 0 8px;
 }
 
+.lock-password-input-group {
+  width: 100%;
+}
+
+.lock-pwd-toggle {
+  background: transparent;
+  border: none;
+  color: var(--rz-text-muted);
+  padding: 6px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: var(--rz-radius-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lock-pwd-toggle:hover {
+  color: var(--rz-text-primary);
+  background: var(--rz-bg-surface);
+}
+
+.lock-mode-switch-btn {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--rz-ice);
+  font-size: var(--rz-text-xs);
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: var(--rz-radius-xs);
+  cursor: pointer;
+}
+
+.lock-mode-switch-btn:hover {
+  color: var(--rz-accent-light);
+  text-decoration: underline;
+}
+
+/* ---------- Rodapé / Encerrar Sessão ---------- */
 .lock-overlay-footer {
-  margin-top: 20px;
+  margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid #27272a;
+  border-top: 1px solid var(--rz-border-subtle);
   width: 100%;
   display: flex;
   justify-content: center;
@@ -176,18 +296,34 @@
 .lock-logout-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: transparent;
-  border: none;
-  color: #a1a1aa;
-  font-size: 0.8rem;
-  font-weight: 500;
+  border: 1px solid transparent;
+  color: var(--rz-text-secondary);
+  font-size: var(--rz-text-xs);
+  font-weight: 700;
   cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 8px 14px;
+  border-radius: var(--rz-radius-sm);
+  transition: all var(--rz-dur-fast) var(--rz-ease);
 }
 
 .lock-logout-btn:hover {
-  color: #fafafa;
-  background: #18181b;
+  color: var(--rz-danger);
+  background: var(--rz-danger-soft);
+  border-color: var(--rz-danger-line);
+}
+
+@media (max-width: 767px) {
+  .lock-overlay-card {
+    padding: 20px 18px 18px;
+  }
+
+  .keypad-button {
+    height: 54px;
+  }
+
+  .lock-password-input-group {
+    min-height: 50px;
+  }
 }

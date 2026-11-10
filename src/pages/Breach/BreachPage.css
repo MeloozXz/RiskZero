@@ -1,7 +1,103 @@
-.breach-header {
-  margin-bottom: 20px;
+/* ==========================================================================
+   RISKZERO — AUDITORIA DE VAZAMENTOS ("ORBITAL")
+   ========================================================================== */
+
+.breach-posture-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  margin-bottom: 24px;
 }
 
-.breach-card {
-  border-radius: 20px !important;
+.breach-posture-left {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-width: 0;
+  flex: 1;
+}
+
+.breach-posture-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.breach-posture-title {
+  font-family: var(--rz-font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--rz-text-primary);
+  margin: 0;
+}
+
+.breach-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 1024px) {
+  .breach-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.breach-incident-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.breach-incident-item {
+  background: var(--rz-bg-deep);
+  border: 1px solid var(--rz-danger-line);
+  border-left: 3px solid var(--rz-danger);
+  border-radius: var(--rz-radius-sm);
+  padding: 14px 16px;
+}
+
+.breach-incident-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.breach-incident-name {
+  font-weight: 700;
+  font-size: var(--rz-text-md);
+  color: var(--rz-text-primary);
+  margin: 0;
+}
+
+.breach-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .breach-posture-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 18px;
+  }
+
+  .breach-posture-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
 }

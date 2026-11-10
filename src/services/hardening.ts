@@ -29,31 +29,31 @@ function ensureCurtainElement(): HTMLElement {
       position: fixed;
       inset: 0;
       z-index: 2147483647;
-      background: #09090b;
-      color: #fafafa;
+      background: radial-gradient(60% 50% at 50% 40%, rgba(47, 123, 255, 0.14), transparent 70%), #050b1a;
+      color: #eaf2ff;
       display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 24px;
       text-align: center;
-      font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
       user-select: none;
     `;
     curtain.innerHTML = `
-      <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #ef4444; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+      <div style="width: 56px; height: 56px; border-radius: 10px; background: rgba(255, 84, 112, 0.14); border: 1px solid rgba(255, 84, 112, 0.38); color: #ff5470; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
           <line x1="1" y1="1" x2="23" y2="23"></line>
         </svg>
       </div>
-      <h2 style="margin: 0 0 8px 0; font-size: 1.25rem; font-weight: 700; color: #fafafa;">
+      <h2 style="margin: 0 0 8px 0; font-family: 'Saira Condensed', sans-serif; font-size: 1.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #eaf2ff;">
         Cortina de Privacidade Ativa
       </h2>
-      <p style="margin: 0 0 20px 0; font-size: 0.875rem; color: #a1a1aa; max-width: 420px; line-height: 1.5;">
+      <p style="margin: 0 0 20px 0; font-size: 0.875rem; color: #9fb3d1; max-width: 420px; line-height: 1.55;">
         O conteúdo do cofre foi ocultado preventivamente porque a janela perdeu o foco ou uma tentativa de captura de tela (PrintScreen / Win+Shift+S) foi detectada.
       </p>
-      <button id="rz-privacy-curtain-resume" type="button" style="padding: 10px 20px; border-radius: 8px; background: #2563eb; border: 1px solid #3b82f6; color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+      <button id="rz-privacy-curtain-resume" type="button" style="padding: 10px 20px; border-radius: 6px; background: #2f7bff; border: 1px solid #4a8dff; color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
         Clique para retornar à sessão
       </button>
     `;
@@ -214,8 +214,8 @@ export const HardeningService = {
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
-            color: #fafafa;
-            background: #09090b;
+            color: #eaf2ff;
+            background: #050b1a;
             height: 100vh;
           }
         }

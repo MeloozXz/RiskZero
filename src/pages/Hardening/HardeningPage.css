@@ -1,185 +1,182 @@
 /* ==========================================================================
-   HARDENING PAGE - CORPORATE SAAS GRAPHITE / ZINC
+   RISKZERO — PROTEÇÃO DO APARELHO / HARDENING ("ORBITAL")
    ========================================================================== */
 
-.hardening-page,
-.hardening-content {
-  --background: #09090b !important;
-  background-color: #09090b !important;
-}
-
-.hardening-toolbar {
-  --background: #09090b !important;
-  --color: #fafafa;
-  border-bottom: 1px solid #27272a;
-}
-
-.hardening-title {
-  font-weight: 700 !important;
-  font-size: 1.15rem !important;
-  color: #fafafa !important;
-}
-
-.hardening-container {
-  max-width: 840px;
-  margin: 0 auto;
-  padding: 24px 20px 80px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.hardening-status-banner {
-  border-radius: 10px;
-  padding: 16px 18px;
-  background: #121215;
-  border: 1px solid #27272a;
-}
-
-.hardening-status-banner.native {
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.hardening-status-banner.web {
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-.status-banner-content {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.status-banner-title {
-  color: #fafafa;
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.status-banner-desc {
-  color: #a1a1aa;
-  font-size: 0.8rem;
-  margin-top: 2px;
-}
-
-.hardening-card {
-  background: #121215 !important;
-  border: 1px solid #27272a !important;
-  border-radius: 10px !important;
-  margin: 0 !important;
-  box-shadow: none !important;
-}
-
-.hardening-card-title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.hardening-card-title {
-  color: #fafafa !important;
-  font-size: 1rem !important;
-  font-weight: 600 !important;
-}
-
-.hardening-card-desc {
-  color: #a1a1aa;
-  font-size: 0.825rem;
-  margin-bottom: 16px;
-  line-height: 1.5;
-}
-
-.hardening-card-desc code {
-  color: #60a5fa;
-  background: #18181b;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: var(--rz-font-mono);
-  font-size: 0.78rem;
-  border: 1px solid #27272a;
-}
-
-.hardening-toggle-item {
-  --background: #09090b !important;
-  --color: #fafafa;
-  border: 1px solid #27272a;
-  border-radius: 8px;
-  --padding-start: 12px;
-  margin-bottom: 4px;
-}
-
-.hardening-toggle-item h3 {
-  color: #fafafa;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.hardening-toggle-item p {
-  color: #71717a;
-  font-size: 0.76rem;
-}
-
-.hardening-alert-success {
-  background: rgba(16, 185, 129, 0.1);
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin-top: 12px;
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  color: #34d399;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.clipboard-timer-banner {
-  background: rgba(245, 158, 11, 0.1);
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-bottom: 14px;
-  border: 1px solid rgba(245, 158, 11, 0.25);
+.hardening-hero {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.hardening-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex: 1;
+  min-width: 0;
+}
+
+.hardening-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.hardening-hero-title {
+  font-family: var(--rz-font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--rz-text-primary);
+  margin: 0;
+}
+
+.hardening-controls-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.hardening-control-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rz-border-subtle);
+}
+
+/* ---------- Checklist Expansível ---------- */
+.hardening-checklist-item {
+  border-bottom: 1px solid var(--rz-border-subtle);
+  background: transparent;
+  transition: background var(--rz-dur-fast) var(--rz-ease);
+}
+
+.hardening-checklist-item:last-child {
+  border-bottom: 0;
+}
+
+.hardening-checklist-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  width: 100%;
+}
+
+.hardening-check-toggle {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--rz-radius-xs);
+  border: 1.5px solid var(--rz-border-strong);
+  background: var(--rz-bg-deep);
+  color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all var(--rz-dur-fast) var(--rz-ease);
+}
+
+.hardening-check-toggle:hover {
+  border-color: var(--rz-accent-light);
+}
+
+.hardening-check-toggle.is-checked {
+  background: var(--rz-success);
+  border-color: var(--rz-success);
+  color: var(--rz-bg-base);
+}
+
+.hardening-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+
+.hardening-checklist-body {
+  padding: 0 16px 16px 54px;
+  animation: rz-enter var(--rz-dur) var(--rz-ease) both;
+}
+
+.hardening-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--rz-bg-deep);
+  border: 1px solid var(--rz-border);
+  border-radius: var(--rz-radius-sm);
+  padding: 14px 16px;
+}
+
+.hardening-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--rz-text-sm);
+  color: var(--rz-text-secondary);
+}
+
+.hardening-step-idx {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--rz-radius-xs);
+  background: var(--rz-accent-soft);
+  border: 1px solid var(--rz-accent-line);
+  color: var(--rz-ice);
+  font-family: var(--rz-font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ---------- Temporizador de Clipboard ---------- */
+.clipboard-timer-banner {
+  background: var(--rz-warning-soft);
+  border-radius: var(--rz-radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--rz-warning-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .clipboard-timer-text {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #fbbf24;
-  font-weight: 600;
-  font-size: 0.85rem;
+  color: var(--rz-warning);
+  font-weight: 700;
+  font-size: var(--rz-text-sm);
 }
 
-.clipboard-timer-indicator {
-  height: 4px;
-  background: #f59e0b;
-  border-radius: 2px;
-  transition: width 1s linear;
-}
-
-.clipboard-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.clipboard-btn-demo {
-  flex: 1;
-  margin: 0;
-  --background: #18181b !important;
-  --color: #fafafa !important;
-  --border-radius: 8px !important;
-  font-weight: 600 !important;
-  height: 42px;
-}
-
-.clipboard-btn-clear {
-  margin: 0;
-  --background: rgba(239, 68, 68, 0.12) !important;
-  --color: #f87171 !important;
-  --border-radius: 8px !important;
-  height: 42px;
-}
-
+/* ---------- Logs de Auditoria ---------- */
 .hardening-logs-wrapper {
   display: flex;
   flex-direction: column;
@@ -190,21 +187,41 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  background: #09090b;
-  border-radius: 8px;
-  border: 1px solid #27272a;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--rz-bg-deep);
+  border-radius: var(--rz-radius-sm);
+  border: 1px solid var(--rz-border);
 }
 
 .hardening-log-text {
-  color: #d4d4d8;
-  font-size: 0.8rem;
+  color: var(--rz-text-secondary);
+  font-size: var(--rz-text-sm);
   flex: 1;
+  min-width: 0;
 }
 
 .hardening-log-time {
-  color: #71717a;
-  font-size: 0.72rem;
-  margin-left: 10px;
+  color: var(--rz-text-muted);
+  font-size: var(--rz-text-xs);
   font-family: var(--rz-font-mono);
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .hardening-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 18px;
+  }
+
+  .hardening-hero-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .hardening-checklist-body {
+    padding: 0 14px 14px 14px;
+  }
 }

@@ -33,6 +33,7 @@ interface SecurityContextType {
 
   // Ações do PIN e Desbloqueio
   registerPIN: (pin: string) => Promise<void>;
+  disablePIN: () => Promise<void>;
   registerPanicPIN: (pin: string) => Promise<void>;
   disablePanicPIN: () => Promise<void>;
   unlockWithPIN: (pin: string) => Promise<{ success: boolean; error?: string }>;
@@ -167,9 +168,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     // Fallback para Web: escuta mudança de visibilidade da aba do navegador (Visibility API)
+    // Auto-Lock aciona ao mudar de aba SOMENTE se o usuário tiver configurado um PIN de acesso rápido
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        if (SessionService.isKeyLoaded()) {
+        if (SessionService.isKeyLoaded() && hasPIN) {
           // Pequena tolerância para evitar falsos positivos em transições de DOM internas do Ionic
           visibilityTimeout = setTimeout(() => {
             if (document.visibilityState === 'hidden') {
@@ -197,7 +199,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, hasPIN]);
 
   // ==========================================
   // TIMER DE INATIVIDADE (5 MINUTOS)
@@ -314,6 +316,14 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await StorageService.savePINHash(email, pinHash);
     setHasPIN(true);
     await StorageService.addAuditLog(email, 'CREDENTIAL_UPDATED', 'PIN local com derivação Argon2id configurado com sucesso.');
+  };
+
+  const disablePIN = async () => {
+    const email = SessionService.getActiveUserEmail();
+    if (!email) return;
+    await StorageService.removePINHash(email);
+    setHasPIN(false);
+    await StorageService.addAuditLog(email, 'CREDENTIAL_DELETED', 'PIN de acesso local desativado.');
   };
 
   const registerPanicPIN = async (pin: string) => {
@@ -646,6 +656,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         login2FA,
         logout,
         registerPIN,
+        disablePIN,
         registerPanicPIN,
         disablePanicPIN,
         unlockWithPIN,
