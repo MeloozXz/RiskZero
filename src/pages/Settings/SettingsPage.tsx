@@ -17,7 +17,7 @@ import { VaultService } from '../../services/vault';
 import { StorageService } from '../../services/storage';
 import { SessionService } from '../../services/session';
 import { ImporterService, ParsedImportItem, SupportedImportFormat } from '../../services/importer';
-import { ConfirmModal } from '../../components/UI/ConfirmModal';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { useSecurity } from '../../contexts/SecurityContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { ActiveSession } from '../../types';

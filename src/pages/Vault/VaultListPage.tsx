@@ -24,7 +24,7 @@ import { useHistory } from 'react-router-dom';
 import { useVault } from '../../contexts/VaultContext';
 import { useSecurity } from '../../contexts/SecurityContext';
 import { PasswordGenerator } from '../../components/Vault/PasswordGenerator';
-import { ConfirmModal } from '../../components/UI/ConfirmModal';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { ClipboardService } from '../../services/clipboard';
 import { StorageService } from '../../services/storage';
 import { SessionService } from '../../services/session';

@@ -16,7 +16,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useParams, useHistory } from 'react-router-dom';
-import { ConfirmModal } from '../../components/UI/ConfirmModal';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { useVault } from '../../contexts/VaultContext';
 import { useSecurity } from '../../contexts/SecurityContext';
 import { ClipboardService } from '../../services/clipboard';

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useSecurity } from '../contexts/SecurityContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
-import { ConfirmModal } from '../components/UI/ConfirmModal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { StorageService } from '../services/storage';
 import { SessionService } from '../services/session';
 import { AuditLog } from '../types';

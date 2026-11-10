@@ -29,7 +29,7 @@ import {
 } from 'ionicons/icons';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { PlanTier, BillingCycle } from '../../types';
-import { ConfirmModal } from '../../components/UI/ConfirmModal';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { ClipboardService } from '../../services/clipboard';
 import './PlansPage.css';
 
