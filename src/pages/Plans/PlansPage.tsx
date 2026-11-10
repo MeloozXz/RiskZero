@@ -29,6 +29,7 @@ import {
 } from 'ionicons/icons';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { PlanTier, BillingCycle } from '../../types';
+import { ConfirmModal } from '../../components/UI/ConfirmModal';
 import { ClipboardService } from '../../services/clipboard';
 import './PlansPage.css';
 
@@ -51,6 +52,7 @@ export const PlansPage: React.FC = () => {
   const [showToast, setShowToast] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string>('');
   const [toastColor, setToastColor] = useState<string>('dark');
+  const [showCancelSubConfirm, setShowCancelSubConfirm] = useState<boolean>(false);
 
   const handleOpenCheckout = (targetTier: PlanTier) => {
     setSelectedTier(targetTier);
@@ -112,23 +114,23 @@ export const PlansPage: React.FC = () => {
         ? pricing.PRO.annualTotal
         : pricing.PRO.monthly
       : cycle === 'ANNUAL'
-      ? pricing.ULTRA.annualTotal
-      : pricing.ULTRA.monthly;
+        ? pricing.ULTRA.annualTotal
+        : pricing.ULTRA.monthly;
 
   const mockPixKey = `00020126580014br.gov.bcb.pix0136riskzero-pay-${selectedTier.toLowerCase()}5204000053039865405${currentPrice.replace(',', '.')}5802BR5915RiskZero Ltda6009Sao Paulo62070503***6304`;
 
   return (
-    <IonPage style={{ background: 'transparent' }}>
+    <IonPage style={{ background: '#09090b' }}>
       <IonHeader className="ion-no-border">
-        <IonToolbar style={{ '--background': 'transparent', '--color': '#e8ecf2' }}>
+        <IonToolbar style={{ '--background': '#09090b', '--color': '#fafafa', borderBottom: '1px solid #27272a' }}>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/settings" style={{ color: '#fff' }} />
+            <IonBackButton defaultHref="/settings" style={{ color: '#fafafa' }} />
           </IonButtons>
-          <IonTitle style={{ fontWeight: '800' }}>Planos & Assinatura</IonTitle>
+          <IonTitle style={{ fontWeight: '700', fontSize: '1.1rem' }}>Planos & Assinatura</IonTitle>
         </IonToolbar>
       </IonHeader>
 
-      <IonContent style={{ '--background': 'transparent' }}>
+      <IonContent style={{ '--background': '#09090b' }}>
         <div className="plans-container">
 
           {/* Cabeçalho */}
@@ -172,7 +174,7 @@ export const PlansPage: React.FC = () => {
               )}
             </div>
             <p className="plan-target-desc">Para uso pessoal básico no seu dispositivo principal.</p>
-            
+
             <div className="price-row">
               <span className="price-currency">R$</span>
               <span className="price-value">0</span>
@@ -220,7 +222,7 @@ export const PlansPage: React.FC = () => {
           {/* CARD 2: PRO */}
           <div className="plan-card plan-card-pro">
             <span className="card-ribbon ribbon-pro">Mais escolhido</span>
-            
+
             <div className="plan-top-row">
               <span className="plan-tier-name" style={{ color: '#60a5fa' }}>Pro</span>
               {isCurrentTier('PRO') && (
@@ -230,7 +232,7 @@ export const PlansPage: React.FC = () => {
               )}
             </div>
             <p className="plan-target-desc">Para quem busca conveniência, 2FA integrado e múltiplos aparelhos.</p>
-            
+
             <div className="price-row">
               <span className="price-currency">R$</span>
               <span className="price-value" style={{ color: '#60a5fa' }}>
@@ -296,7 +298,7 @@ export const PlansPage: React.FC = () => {
               )}
             </div>
             <p className="plan-target-desc">Proteção absoluta para você e até 6 membros da sua família.</p>
-            
+
             <div className="price-row">
               <span className="price-currency">R$</span>
               <span className="price-value" style={{ color: '#c084fc' }}>
@@ -355,13 +357,7 @@ export const PlansPage: React.FC = () => {
               <IonButton
                 fill="clear"
                 color="medium"
-                onClick={async () => {
-                  if (window.confirm('Deseja cancelar a renovação automática da assinatura? Você continuará com os benefícios até o fim do período.')) {
-                    await cancelSubscription();
-                    setToastMsg('Renovação automática cancelada.');
-                    setShowToast(true);
-                  }
-                }}
+                onClick={() => setShowCancelSubConfirm(true)}
                 style={{ fontSize: '0.8rem' }}
               >
                 Cancelar Renovação Automática
@@ -513,7 +509,7 @@ export const PlansPage: React.FC = () => {
                     <rect width="10" height="10" x="85" y="85" />
                   </svg>
                 </div>
-                
+
                 <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
                   Escaneie com o app do seu banco ou copie o código abaixo:
                 </span>
@@ -617,6 +613,22 @@ export const PlansPage: React.FC = () => {
           color={toastColor}
           duration={3000}
           position="top"
+        />
+
+        <ConfirmModal
+          isOpen={showCancelSubConfirm}
+          title="Cancelar Renovação Automática?"
+          message="Você continuará com todos os benefícios do seu plano ativo até o término do ciclo atual de cobrança."
+          confirmText="Confirmar Cancelamento"
+          cancelText="Voltar"
+          variant="warning"
+          onConfirm={async () => {
+            setShowCancelSubConfirm(false);
+            await cancelSubscription();
+            setToastMsg('Renovação automática cancelada.');
+            setShowToast(true);
+          }}
+          onCancel={() => setShowCancelSubConfirm(false)}
         />
       </IonContent>
     </IonPage>

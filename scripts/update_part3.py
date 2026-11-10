@@ -5,7 +5,8 @@ from docx.shared import Pt, RGBColor, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx_helper import (
     get_target_doc_path, get_workspace_target_doc_path,
-    add_heading_1, add_heading_2, add_heading_3, add_body_p, add_bullet_p, add_table_data
+    add_heading_1, add_heading_2, add_heading_3, add_body_p, add_bullet_p, add_table_data,
+    add_figure_placeholder
 )
 
 def generate_mermaid_file():
@@ -312,6 +313,12 @@ def run_part3():
     add_bullet_p(doc, " Opera isoladamente na memória do dispositivo. Executa as operações criptográficas pesadas (AES-GCM de 256 bits, derivação PBKDF2/Argon2id, cálculo de tokens TOTP e rotação de DEK), gerencia o bloqueio de tela (FLAG_SECURE) e sanitiza a área de transferência.", bold_title="2. Camada de Segurança Criptográfica Local:")
     add_bullet_p(doc, " Constituída por Virtual Private Servers (VPS) Linux dedicadas (Ubuntu 22.04 LTS / 24.04 LTS) operando instâncias de alto desempenho do WireGuard na porta UDP 51820, complementadas por nós de borda da rede Anycast Cloudflare WARP e resolvedores DNS anti-vazamento (1.1.1.1 e Quad9).", bold_title="3. Camada de Rede Segura e Tunelamento WireGuard:")
     add_bullet_p(doc, " Formada pelo Firebase Authentication (gestão de identificadores de acesso e tokens de sessão) e Cloud Firestore (banco NoSQL distribuído). O Firestore atua estritamente como um cofre cego de sincronização: recebe e despacha apenas payloads cifrados ('ciphertext', 'iv', 'salt'), sendo tecnicamente incapaz de decifrar o acervo de credenciais.", bold_title="4. Camada de Sincronização em Nuvem (Cofre Cego):")
+    add_figure_placeholder(
+        doc,
+        "Figura 2",
+        "Diagrama da Arquitetura Zero-Knowledge e Fluxo de Dados do Sistema",
+        "[INSERIR FIGURA 2 - DIAGRAMA DE ARQUITETURA E FLUXO DE DADOS (VER DIAGRAMAS_MERMAID.MD)]"
+    )
 
     add_heading_2(doc, "5.2 Fluxo de Dados Ponta a Ponta (End-to-End Data Flow)")
     add_body_p(
@@ -367,6 +374,18 @@ def run_part3():
         "Firestore sob a raiz 'users/{userId}'. A chave 'userId' assegura o particionamento isolado dos dados de cada organização "
         "ou colaborador. As seções a seguir trazem o Dicionário de Dados exaustivo em tabelas padronizadas para cada uma das "
         "oito entidades do sistema."
+    )
+    add_figure_placeholder(
+        doc,
+        "Figura 3",
+        "Modelo Entidade-Relacionamento Conceitual (MER) do SeguranApp",
+        "[INSERIR FIGURA 3 - MODELO CONCEITUAL MER (VER DIAGRAMAS_MERMAID.MD)]"
+    )
+    add_figure_placeholder(
+        doc,
+        "Figura 4",
+        "Diagrama Entidade-Relacionamento Lógico (DER) do SeguranApp",
+        "[INSERIR FIGURA 4 - DIAGRAMA ENTIDADE-RELACIONAMENTO LÓGICO DER (VER DIAGRAMAS_MERMAID.MD)]"
     )
     
     add_heading_2(doc, "6.2 Dicionário de Dados Exaustivo do Sistema")
@@ -618,20 +637,10 @@ def run_part3():
         ),
     ]
 
-    for title, desc, placeholder in screens_info:
+    for idx, (title, desc, placeholder) in enumerate(screens_info, start=5):
         add_heading_3(doc, title)
         add_body_p(doc, desc)
-        
-        # Inserção do placeholder com destaque visual
-        p_ph = doc.add_paragraph()
-        p_ph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_ph.paragraph_format.space_before = Pt(8)
-        p_ph.paragraph_format.space_after = Pt(12)
-        r_ph = p_ph.add_run(placeholder)
-        r_ph.bold = True
-        r_ph.font.name = "Arial"
-        r_ph.font.size = Pt(10)
-        r_ph.font.color.rgb = RGBColor(0x25, 0x63, 0xEB) # Azul Royal Destacado
+        add_figure_placeholder(doc, f"Figura {idx}", title, placeholder)
 
     # Salvar o documento atualizado
     doc.save(target_path)

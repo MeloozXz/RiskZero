@@ -3,41 +3,28 @@ import { useHistory } from 'react-router-dom';
 import {
   IonContent,
   IonPage,
-  IonCard,
-  IonCardContent,
-  IonButton,
-  IonIcon,
-  IonText,
-  IonItem,
-  IonLabel,
-  IonInput,
-  IonList,
-  IonBadge,
   IonToast,
 } from '@ionic/react';
 import {
-  lockClosedOutline,
-  shieldCheckmarkOutline,
-  keyOutline,
-  logOutOutline,
-  documentTextOutline,
-  fingerPrintOutline,
-  checkmarkCircleOutline,
-  closeCircleOutline,
-  trendingUpOutline,
-  eyeOffOutline,
-  schoolOutline,
-  wifiOutline,
-  warningOutline,
-  settingsOutline,
-  downloadOutline,
-  copyOutline,
-  sparklesOutline,
-  globeOutline,
-  refreshOutline,
-} from 'ionicons/icons';
+  ShieldCheck,
+  Lock,
+  KeyRound,
+  Fingerprint,
+  AlertTriangle,
+  Activity,
+  Globe,
+  Wifi,
+  Sliders,
+  BookOpen,
+  Download,
+  RefreshCw,
+  Copy,
+  CheckCircle2,
+  ArrowUpRight
+} from 'lucide-react';
 import { useSecurity } from '../contexts/SecurityContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
+import { ConfirmModal } from '../components/UI/ConfirmModal';
 import { StorageService } from '../services/storage';
 import { SessionService } from '../services/session';
 import { AuditLog } from '../types';
@@ -47,7 +34,6 @@ import './Home.css';
 const Home: React.FC = () => {
   const history = useHistory();
   const {
-    logout,
     lockApp,
     hasPIN,
     registerPIN,
@@ -58,10 +44,10 @@ const Home: React.FC = () => {
     activeEmail,
     vaultHealth,
     runVaultHealthCheck,
+    isBiometricEnabled,
   } = useSecurity();
   const { isPro, isUltra } = useSubscription();
 
-  // Estados locais para configuração
   const [pinInput, setPinInput] = useState<string>('');
   const [pinError, setPinError] = useState<string | null>(null);
 
@@ -74,8 +60,8 @@ const Home: React.FC = () => {
   const [showToast, setShowToast] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string>('');
   const [isExportingCSV, setIsExportingCSV] = useState<boolean>(false);
+  const [showDisable2FAConfirm, setShowDisable2FAConfirm] = useState<boolean>(false);
 
-  // Carrega e atualiza logs de auditoria
   const loadLogs = async () => {
     const email = SessionService.getActiveUserEmail();
     if (!email) return;
@@ -93,25 +79,23 @@ const Home: React.FC = () => {
     return () => window.removeEventListener('focus', handleFocus);
   }, [runVaultHealthCheck]);
 
-  // Handler para salvar PIN local
   const handleSavePIN = async () => {
     setPinError(null);
     if (pinInput.length !== 6 || isNaN(Number(pinInput))) {
-      setPinError('O PIN deve conter exatamente 6 números.');
+      setPinError('O PIN deve conter exatamente 6 dígitos numéricos.');
       return;
     }
     try {
       await registerPIN(pinInput);
       setPinInput('');
       await loadLogs();
-      setToastMsg('Código PIN de 6 dígitos configurado.');
+      setToastMsg('PIN de desbloqueio rápido configurado.');
       setShowToast(true);
     } catch (e: unknown) {
-      setPinError(getErrorMessage(e) || 'Erro ao registrar PIN.');
+      setPinError(getErrorMessage(e) || 'Erro ao salvar PIN.');
     }
   };
 
-  // Handler para iniciar configuração de 2FA
   const handleStart2FA = () => {
     setMfaError(null);
     const secret = setupNew2FA();
@@ -119,21 +103,19 @@ const Home: React.FC = () => {
     setShow2FASetup(true);
   };
 
-  // Handler para copiar chave secreta Base32
   const handleCopySecret = async (secret: string) => {
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(secret);
       }
-      setToastMsg('Chave secreta Base32 copiada para a área de transferência.');
+      setToastMsg('Segredo Base32 copiado.');
       setShowToast(true);
     } catch {
-      setToastMsg('Chave secreta selecionada.');
+      setToastMsg('Segredo selecionado.');
       setShowToast(true);
     }
   };
 
-  // Handler para validar e ativar 2FA
   const handleConfirm2FA = async () => {
     setMfaError(null);
     const res = await enable2FA(totpTokenInput);
@@ -142,26 +124,27 @@ const Home: React.FC = () => {
       setCurrentLocalSecret(null);
       setShow2FASetup(false);
       await loadLogs();
-      setToastMsg('Autenticação em duas etapas (2FA - TOTP) ativada com sucesso.');
+      setToastMsg('Autenticação em duas etapas (2FA TOTP) ativada.');
       setShowToast(true);
     } else {
-      setMfaError(res.error || 'Código 2FA incorreto ou expirado.');
+      setMfaError(res.error || 'Código TOTP inválido.');
     }
   };
 
-  // Handler para desativar 2FA
-  const handleDisable2FA = async () => {
-    if (window.confirm('Tem certeza que deseja desativar o 2FA? Isso reduzirá a proteção da sua conta.')) {
-      await disable2FA();
-      setCurrentLocalSecret(null);
-      setShow2FASetup(false);
-      await loadLogs();
-      setToastMsg('Autenticação 2FA desativada.');
-      setShowToast(true);
-    }
+  const handleDisable2FA = () => {
+    setShowDisable2FAConfirm(true);
   };
 
-  // Handler para exportar Relatório de Auditoria em CSV (LGPD)
+  const handleConfirmDisable2FA = async () => {
+    setShowDisable2FAConfirm(false);
+    await disable2FA();
+    setCurrentLocalSecret(null);
+    setShow2FASetup(false);
+    await loadLogs();
+    setToastMsg('Autenticação 2FA desativada.');
+    setShowToast(true);
+  };
+
   const handleExportAuditCSV = async () => {
     const email = SessionService.getActiveUserEmail();
     if (!email) return;
@@ -177,651 +160,418 @@ const Home: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setToastMsg('Relatório de auditoria CSV (RFC 4180 / LGPD) exportado com sucesso.');
+      setToastMsg('Relatório de auditoria CSV (RFC 4180 / LGPD) exportado.');
       setShowToast(true);
     } catch {
-      setToastMsg('Erro ao gerar exportação de auditoria.');
+      setToastMsg('Erro ao exportar auditoria.');
       setShowToast(true);
     } finally {
       setIsExportingCSV(false);
     }
   };
 
-  // Telemetria do Score de Saúde do Cofre
   const healthScore = vaultHealth ? vaultHealth.score : 100;
-  const radius = 38;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (healthScore / 100) * circumference;
-  const scoreColor = healthScore >= 80 ? '#10b981' : healthScore >= 50 ? '#f59e0b' : '#ef4444';
-
-  const userInitial = activeEmail ? activeEmail.charAt(0).toUpperCase() : 'R';
+  const totalCreds = vaultHealth ? vaultHealth.total : 0;
+  const weakOrReused = vaultHealth ? vaultHealth.weak + vaultHealth.reused : 0;
+  const breachedCount = vaultHealth ? vaultHealth.breached : 0;
 
   return (
-    <IonPage>
-      <IonContent className="home-content ion-padding">
-        <div className="home-container animate-fade-in">
-
-          {/* ================================================================
-              1. Header Cockpit & Perfil de Telemetria
-              ================================================================ */}
-          <div className="home-header-cockpit">
-            <div className="user-profile-deck">
-              <div className="avatar-badge-wrapper">
-                <div className="avatar-badge">
-                  {userInitial}
-                </div>
-                <div className="avatar-status-dot" title="Sessão Criptografada Ativa" />
-              </div>
-              <div className="user-meta-info">
-                <div className="user-greeting-row">
-                  <h1 className="user-title">Central de Defesa</h1>
-                  <span className="status-beacon-pill">Zero-Knowledge</span>
-                </div>
-                <span className="user-email-tag">
-                  <IonIcon icon={shieldCheckmarkOutline} style={{ color: '#60a5fa' }} />
-                  {activeEmail || 'Usuário Autenticado'}
+    <IonPage className="home-page">
+      <IonContent fullscreen className="home-content">
+        <div className="rz-page-container">
+          {/* Header Executivo */}
+          <header className="rz-page-header">
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <h1 className="rz-page-title">Painel de Segurança</h1>
+                <span className="rz-badge rz-badge-blue">
+                  Plano {isUltra ? 'Ultra' : isPro ? 'Pro' : 'Essencial'}
                 </span>
               </div>
+              <p className="rz-page-subtitle">
+                Sessão criptografada ativa para <strong>{activeEmail || 'usuário local'}</strong> · Envelope AES-256-GCM + Argon2id
+              </p>
             </div>
 
-            <div className="header-action-deck">
-              <div
-                onClick={() => history.push('/plans')}
-                className={`plan-tier-badge ${isUltra ? 'ultra' : isPro ? 'pro' : 'free'}`}
-                title="Gerenciar Plano de Assinatura"
-              >
-                <IonIcon icon={sparklesOutline} />
-                <span>{isUltra ? 'ULTRA' : isPro ? 'PRO' : 'FREE'}</span>
-              </div>
-
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <button
                 type="button"
-                onClick={() => history.push('/settings')}
-                className="header-icon-btn"
-                title="Ajustes e Configurações"
-                aria-label="Ajustes e Configurações"
-              >
-                <IonIcon icon={settingsOutline} />
-              </button>
-
-              <button
-                type="button"
-                onClick={lockApp}
-                className="header-icon-btn lock-btn"
-                title="Bloquear Aplicativo Imediatamente"
-                aria-label="Bloquear Aplicativo Imediatamente"
-              >
-                <IonIcon icon={lockClosedOutline} />
-              </button>
-            </div>
-          </div>
-
-          {/* ================================================================
-              2. Hero Card de Telemetria Proativa (k-Anonymity & Cifragem)
-              ================================================================ */}
-          <div className="telemetry-hero-card">
-            <div className="telemetry-flex-row">
-              <div className="telemetry-main-col">
-                <div className="telemetry-gauge-box">
-                  <svg className="telemetry-gauge-svg" viewBox="0 0 90 90">
-                    <circle
-                      className="telemetry-gauge-bg"
-                      cx="45"
-                      cy="45"
-                      r={radius}
-                    />
-                    <circle
-                      className="telemetry-gauge-bar"
-                      cx="45"
-                      cy="45"
-                      r={radius}
-                      stroke={scoreColor}
-                      strokeDasharray={circumference}
-                      strokeDashoffset={strokeDashoffset}
-                    />
-                  </svg>
-                  <div className="telemetry-gauge-center">
-                    <span className="telemetry-gauge-score" style={{ color: scoreColor }}>
-                      {healthScore}%
-                    </span>
-                    <span className="telemetry-gauge-unit">Índice</span>
-                  </div>
-                </div>
-
-                <div className="telemetry-text-col">
-                  <h3 className="telemetry-title">Postura Cibernética Ativa</h3>
-                  <p className="telemetry-desc">
-                    Auditoria de integridade em memória RAM k-Anonymity HIBP. Seus dados nunca saem descriptografados do dispositivo.
-                  </p>
-                </div>
-              </div>
-
-              {/* Botão de atualização rápida */}
-              <IonButton
-                fill="clear"
-                size="small"
+                className="rz-btn rz-btn-secondary"
                 onClick={() => {
                   runVaultHealthCheck();
                   loadLogs();
-                  setToastMsg('Auditoria em tempo real concluída!');
+                  setToastMsg('Telemetria atualizada.');
                   setShowToast(true);
                 }}
-                style={{ color: '#60a5fa', fontWeight: 700 }}
               >
-                <IonIcon icon={refreshOutline} slot="start" />
-                Atualizar Status
-              </IonButton>
+                <RefreshCw size={14} />
+                <span>Atualizar</span>
+              </button>
+
+              <button
+                type="button"
+                className="rz-btn rz-btn-primary"
+                onClick={lockApp}
+              >
+                <Lock size={14} />
+                <span>Bloquear Cofre</span>
+              </button>
             </div>
+          </header>
 
-            {/* Pills de Detalhes de Telemetria */}
-            <div className="telemetry-specs-row">
-              <div className="telemetry-pill secure">
-                <IonIcon icon={checkmarkCircleOutline} />
-                <span>Envelope DEK/KEK (AES-256)</span>
+          {/* 1. KPI Grid */}
+          <section className="home-kpi-grid" aria-label="Indicadores de segurança">
+            <div className="home-kpi-card">
+              <div className="home-kpi-top">
+                <span>Índice de Postura</span>
+                <ShieldCheck size={16} className="text-blue-500" />
               </div>
-              <div className={`telemetry-pill ${totpEnabled ? 'secure' : 'warning'}`}>
-                <IonIcon icon={totpEnabled ? checkmarkCircleOutline : warningOutline} />
-                <span>2FA TOTP: {totpEnabled ? 'Ativado' : 'Não Ativado'}</span>
+              <div className="home-kpi-value" style={{ color: healthScore >= 80 ? '#10b981' : healthScore >= 50 ? '#f59e0b' : '#ef4444' }}>
+                {healthScore}%
               </div>
-              <div className={`telemetry-pill ${hasPIN ? 'secure' : 'warning'}`}>
-                <IonIcon icon={hasPIN ? checkmarkCircleOutline : warningOutline} />
-                <span>PIN Local: {hasPIN ? 'Ativo' : 'Pendente'}</span>
-              </div>
-
-              {vaultHealth && vaultHealth.breached > 0 && (
-                <div
-                  onClick={() => history.push('/breach')}
-                  className="telemetry-pill danger"
-                  style={{ cursor: 'pointer' }}
-                >
-                  <IonIcon icon={warningOutline} />
-                  <span>{vaultHealth.breached} {vaultHealth.breached === 1 ? 'vazada' : 'vazadas'}</span>
-                </div>
-              )}
-
-              {vaultHealth && vaultHealth.weak > 0 && (
-                <div
-                  onClick={() => history.push('/analysis')}
-                  className="telemetry-pill warning"
-                  style={{ cursor: 'pointer' }}
-                >
-                  <IonIcon icon={trendingUpOutline} />
-                  <span>{vaultHealth.weak} {vaultHealth.weak === 1 ? 'senha fraca' : 'senhas fracas'}</span>
-                </div>
-              )}
-
-              {vaultHealth && vaultHealth.reused > 0 && (
-                <div
-                  onClick={() => history.push('/analysis')}
-                  className="telemetry-pill warning"
-                  style={{ cursor: 'pointer' }}
-                >
-                  <IonIcon icon={refreshOutline} />
-                  <span>{vaultHealth.reused} {vaultHealth.reused === 1 ? 'reutilizada' : 'reutilizadas'}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ================================================================
-              3. Módulos de Criptografia & Tráfego de Rede
-              ================================================================ */}
-          <div className="section-headline">
-            <h2>Módulos de Criptografia & Tráfego</h2>
-          </div>
-
-          <div className="quick-links-grid">
-            <div onClick={() => history.push('/vault')} className="quick-link-card vault">
-              <div className="quick-card-header">
-                <div className="card-icon-bubble" style={{ background: 'rgba(96, 165, 250, 0.12)', color: '#60a5fa' }}>
-                  <IonIcon icon={lockClosedOutline} />
-                </div>
-                <span className="quick-card-badge">Zero-Knowledge</span>
-              </div>
-              <div className="quick-card-body">
-                <span className="quick-link-title">Cofre de Credenciais</span>
-                <span className="quick-link-desc">Senhas, cartões e notas protegidos por chave DEK em RAM</span>
+              <div className="home-kpi-foot">
+                Cifragem Zero-Knowledge ativa
               </div>
             </div>
 
-            <div onClick={() => history.push('/vpn')} className="quick-link-card vpn">
-              <div className="quick-card-header">
-                <div className="card-icon-bubble" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6' }}>
-                  <IonIcon icon={wifiOutline} />
-                </div>
-                <span className="quick-card-badge">WireGuard</span>
+            <div className="home-kpi-card" onClick={() => history.push('/vault')} style={{ cursor: 'pointer' }}>
+              <div className="home-kpi-top">
+                <span>Credenciais no Cofre</span>
+                <Lock size={16} className="text-zinc-400" />
               </div>
-              <div className="quick-card-body">
-                <span className="quick-link-title">VPN & Túnel Seguro</span>
-                <span className="quick-link-desc">Tráfego de rede blindado e auditoria de IP público</span>
+              <div className="home-kpi-value">{totalCreds}</div>
+              <div className="home-kpi-foot">
+                Gerenciar registros <ArrowUpRight size={12} style={{ display: 'inline' }} />
               </div>
             </div>
 
-            <div onClick={() => history.push('/breach')} className="quick-link-card breach">
-              <div className="quick-card-header">
-                <div className="card-icon-bubble" style={{ background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' }}>
-                  <IonIcon icon={warningOutline} />
-                </div>
-                <span className="quick-card-badge">k-Anonymity</span>
+            <div className="home-kpi-card" onClick={() => history.push('/analysis')} style={{ cursor: 'pointer' }}>
+              <div className="home-kpi-top">
+                <span>Senhas Fracas / Repetidas</span>
+                <Activity size={16} className="text-amber-500" />
               </div>
-              <div className="quick-card-body">
-                <span className="quick-link-title">Auditoria de Vazamentos</span>
-                <span className="quick-link-desc">Consulte se contas ou senhas foram expostas na web</span>
+              <div className="home-kpi-value" style={{ color: weakOrReused > 0 ? '#f59e0b' : '#fafafa' }}>
+                {weakOrReused}
               </div>
-            </div>
-
-            <div onClick={() => history.push('/link-detector')} className="quick-link-card detector">
-              <div className="quick-card-header">
-                <div className="card-icon-bubble" style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#10b981' }}>
-                  <IonIcon icon={globeOutline} />
-                </div>
-                <span className="quick-card-badge">Anti-Phishing</span>
-              </div>
-              <div className="quick-card-body">
-                <span className="quick-link-title">Detector de Links</span>
-                <span className="quick-link-desc">Análise heurística de URLs maliciosas e golpes digitais</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ================================================================
-              4. Módulos de Defesa no Dispositivo & Bem-Estar Digital
-              ================================================================ */}
-          <div className="section-headline">
-            <h2>Blindagem Local & Educação</h2>
-          </div>
-
-          <div className="quick-links-grid">
-            <div onClick={() => history.push('/hardening')} className="quick-link-card hardening">
-              <div className="quick-card-header">
-                <div className="card-icon-bubble" style={{ background: 'rgba(6, 182, 212, 0.12)', color: '#06b6d4' }}>
-                  <IonIcon icon={eyeOffOutline} />
-                </div>
-                <span className="quick-card-badge">Hardening</span>
-              </div>
-              <div className="quick-card-body">
-                <span className="quick-link-title">Proteção do Aparelho</span>
-                <span className="quick-link-desc">Anti-screenshot, camuflagem e limpeza de clipboard em 30s</span>
+              <div className="home-kpi-foot">
+                Diagnóstico de entropia <ArrowUpRight size={12} style={{ display: 'inline' }} />
               </div>
             </div>
 
-            <div onClick={() => history.push('/biometric-settings')} className="quick-link-card biometrics">
-              <div className="quick-card-header">
-                <div className="card-icon-bubble" style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc' }}>
-                  <IonIcon icon={fingerPrintOutline} />
-                </div>
-                <span className="quick-card-badge">WebAuthn</span>
+            <div className="home-kpi-card" onClick={() => history.push('/breach')} style={{ cursor: 'pointer' }}>
+              <div className="home-kpi-top">
+                <span>Exposições HIBP</span>
+                <AlertTriangle size={16} className="text-red-500" />
               </div>
-              <div className="quick-card-body">
-                <span className="quick-link-title">Biometria & Hardware</span>
-                <span className="quick-link-desc">Desbloqueio por digital e integração de segurança nativa</span>
+              <div className="home-kpi-value" style={{ color: breachedCount > 0 ? '#ef4444' : '#fafafa' }}>
+                {breachedCount}
               </div>
-            </div>
-
-            <div onClick={() => history.push('/analysis')} className="quick-link-card analysis">
-              <div className="quick-card-header">
-                <div className="card-icon-bubble" style={{ background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24' }}>
-                  <IonIcon icon={trendingUpOutline} />
-                </div>
-                <span className="quick-card-badge">Entropia</span>
-              </div>
-              <div className="quick-card-body">
-                <span className="quick-link-title">Saúde das Senhas</span>
-                <span className="quick-link-desc">Diagnóstico de complexidade, repetições e vulnerabilidades</span>
+              <div className="home-kpi-foot">
+                Auditoria k-Anonymity <ArrowUpRight size={12} style={{ display: 'inline' }} />
               </div>
             </div>
+          </section>
 
-            <div onClick={() => history.push('/education')} className="quick-link-card education">
-              <div className="quick-card-header">
-                <div className="card-icon-bubble" style={{ background: 'rgba(236, 72, 153, 0.12)', color: '#ec4899' }}>
-                  <IonIcon icon={schoolOutline} />
+          {/* 2. Módulos Operacionais */}
+          <section style={{ marginBottom: 24 }}>
+            <h2 className="home-section-heading">Módulos Operacionais</h2>
+            <div className="home-modules-grid">
+              <button type="button" className="home-module-item" onClick={() => history.push('/vault')}>
+                <div className="home-module-icon"><Lock size={18} /></div>
+                <div className="home-module-text">
+                  <strong>Cofre de Credenciais</strong>
+                  <span>Senhas, cartões, notas e códigos TOTP</span>
                 </div>
-                <span className="quick-card-badge">13 Guias</span>
-              </div>
-              <div className="quick-card-body">
-                <span className="quick-link-title">Módulo Educativo</span>
-                <span className="quick-link-desc">Treinamento corporativo, boas práticas e Quiz LGPD</span>
-              </div>
+              </button>
+
+              <button type="button" className="home-module-item" onClick={() => history.push('/biometric-settings')}>
+                <div className="home-module-icon"><Fingerprint size={18} /></div>
+                <div className="home-module-text">
+                  <strong>Biometria de Hardware</strong>
+                  <span>{isBiometricEnabled ? 'Sensor físico vinculado e ativo' : 'Configurar leitor biométrico nativo'}</span>
+                </div>
+              </button>
+
+              <button type="button" className="home-module-item" onClick={() => history.push('/breach')}>
+                <div className="home-module-icon"><AlertTriangle size={18} /></div>
+                <div className="home-module-text">
+                  <strong>Vazamentos (HIBP)</strong>
+                  <span>Verificação SHA-1 k-Anonymity</span>
+                </div>
+              </button>
+
+              <button type="button" className="home-module-item" onClick={() => history.push('/link-detector')}>
+                <div className="home-module-icon"><Globe size={18} /></div>
+                <div className="home-module-text">
+                  <strong>Detector Anti-Phishing</strong>
+                  <span>Inspeção heurística de URLs suspeitas</span>
+                </div>
+              </button>
+
+              <button type="button" className="home-module-item" onClick={() => history.push('/vpn')}>
+                <div className="home-module-icon"><Wifi size={18} /></div>
+                <div className="home-module-text">
+                  <strong>Rede & VPN</strong>
+                  <span>Auditoria de exposição de IP e túnel</span>
+                </div>
+              </button>
+
+              <button type="button" className="home-module-item" onClick={() => history.push('/hardening')}>
+                <div className="home-module-icon"><Sliders size={18} /></div>
+                <div className="home-module-text">
+                  <strong>Blindagem do Dispositivo</strong>
+                  <span>Auto-lock, clipboard e privacidade</span>
+                </div>
+              </button>
+
+              <button type="button" className="home-module-item" onClick={() => history.push('/analysis')}>
+                <div className="home-module-icon"><Activity size={18} /></div>
+                <div className="home-module-text">
+                  <strong>Saúde das Senhas</strong>
+                  <span>Análise de força e reutilização</span>
+                </div>
+              </button>
+
+              <button type="button" className="home-module-item" onClick={() => history.push('/education')}>
+                <div className="home-module-icon"><BookOpen size={18} /></div>
+                <div className="home-module-text">
+                  <strong>Base de Conhecimento</strong>
+                  <span>Guias práticos e conformidade LGPD</span>
+                </div>
+              </button>
             </div>
-          </div>
+          </section>
 
-          {/* ================================================================
-              5. CARD: Criptografia Zero-Knowledge & Postura Local
-              ================================================================ */}
-          <IonCard className="premium-card bg-glow-blue">
-            <IonCardContent className="premium-card-content">
-              <div className="card-header-icon">
-                <IonIcon icon={shieldCheckmarkOutline} className="icon-blue" />
-                <div>
-                  <h3>Arquitetura Zero-Knowledge</h3>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                    Nenhuma senha ou segredo em texto claro trafega pela rede
-                  </span>
+          {/* 3. Controles de Autenticação Rápida (PIN & 2FA) */}
+          <section className="home-controls-grid">
+            {/* PIN Local */}
+            <div className="rz-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <KeyRound size={18} className="text-blue-500" />
+                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#fafafa' }}>
+                    PIN de Reentrada Rápida
+                  </h3>
                 </div>
+                <span className={`rz-badge ${hasPIN ? 'rz-badge-success' : 'rz-badge-warning'}`}>
+                  {hasPIN ? 'Ativo' : 'Pendente'}
+                </span>
               </div>
 
-              <p className="card-description">
-                Suas credenciais são cifradas exclusivamente no hardware do seu dispositivo usando Envelope Encryption (DEK/KEK) com chaves derivadas por Argon2id e PBKDF2 (600.000 iterações).
+              <p style={{ fontSize: '0.8rem', color: '#a1a1aa', margin: '0 0 14px 0', lineHeight: 1.5 }}>
+                Permite desbloquear a tela de bloqueio temporário com 6 dígitos numéricos sem redigitar a Senha Mestra completa.
               </p>
 
-              <div className="security-badges">
-                <IonBadge color="success" className="sec-badge">
-                  <IonIcon icon={checkmarkCircleOutline} /> AES-256-GCM Autenticado
-                </IonBadge>
-                <IonBadge color="success" className="sec-badge">
-                  <IonIcon icon={checkmarkCircleOutline} /> Derivação Argon2id + PBKDF2
-                </IonBadge>
-                <IonBadge color={hasPIN ? 'success' : 'warning'} className="sec-badge">
-                  <IonIcon icon={hasPIN ? checkmarkCircleOutline : closeCircleOutline} />
-                  {hasPIN ? 'PIN Rápido Ativo' : 'Sem PIN Configurado'}
-                </IonBadge>
-                <IonBadge color={totpEnabled ? 'success' : 'warning'} className="sec-badge">
-                  <IonIcon icon={totpEnabled ? checkmarkCircleOutline : closeCircleOutline} />
-                  {totpEnabled ? '2FA TOTP Blindado' : '2FA Pendente'}
-                </IonBadge>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <IonButton
-                  expand="block"
-                  onClick={lockApp}
-                  className="btn-action-primary"
-                  style={{ flex: 1, minWidth: '220px' }}
-                >
-                  <IonIcon slot="start" icon={lockClosedOutline} />
-                  Bloquear Aplicativo Agora
-                </IonButton>
-
-                <IonButton
-                  expand="block"
-                  fill="outline"
-                  onClick={logout}
-                  className="btn-action-danger"
-                  style={{ minWidth: '140px' }}
-                >
-                  <IonIcon slot="start" icon={logOutOutline} />
-                  Sair
-                </IonButton>
-              </div>
-            </IonCardContent>
-          </IonCard>
-
-          {/* ================================================================
-              6. CARD: Acesso Rápido com PIN Local (Hot Re-entry)
-              ================================================================ */}
-          <IonCard className="premium-card">
-            <IonCardContent className="premium-card-content">
-              <div className="card-header-icon">
-                <IonIcon icon={fingerPrintOutline} className="icon-purple" />
-                <div>
-                  <h3>Acesso Rápido com PIN (Hot Re-entry)</h3>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                    Desbloqueie instantaneamente sem digitar a Senha Mestra longa
-                  </span>
-                </div>
-              </div>
-
-              <p className="card-description">
-                Cadastre um código de 6 números para desbloquear o cofre de forma segura durante o dia. A Senha Mestra permanece protegida na memória criptografada.
-              </p>
-
-              {hasPIN ? (
-                <div className="pin-active-indicator">
-                  <IonIcon icon={checkmarkCircleOutline} style={{ fontSize: '20px' }} />
-                  <div>
-                    <strong style={{ display: 'block' }}>Código PIN ativo neste dispositivo</strong>
-                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                      Você pode alterar o código atual digitando um novo PIN abaixo.
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="pin-inactive-indicator">
-                  <IonIcon icon={warningOutline} style={{ fontSize: '20px' }} />
-                  <div>
-                    <strong style={{ display: 'block' }}>Código PIN ainda não configurado</strong>
-                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                      Recomendado para agilizar o acesso no dia a dia.
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="inline-action-form">
-                <IonItem className="premium-input-item" lines="none">
-                  <IonInput
-                    type="password"
-                    inputmode="numeric"
-                    maxlength={6}
-                    placeholder="Novo PIN (6 números)"
-                    value={pinInput}
-                    onIonInput={(e) => setPinInput(e.detail.value!)}
-                  />
-                </IonItem>
-                <IonButton
-                  color="secondary"
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Novo PIN (6 dígitos)"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                  className="rz-input"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
                   onClick={handleSavePIN}
                   disabled={pinInput.length !== 6}
-                  style={{ height: '48px', '--border-radius': '14px', fontWeight: 800 }}
+                  className="rz-btn rz-btn-primary"
                 >
-                  {hasPIN ? 'Atualizar PIN' : 'Ativar PIN'}
-                </IonButton>
+                  {hasPIN ? 'Atualizar' : 'Definir PIN'}
+                </button>
               </div>
               {pinError && (
-                <IonText color="danger">
-                  <p className="input-error-msg">{pinError}</p>
-                </IonText>
+                <p style={{ color: '#f87171', fontSize: '0.75rem', margin: '8px 0 0 0' }}>{pinError}</p>
               )}
-            </IonCardContent>
-          </IonCard>
+            </div>
 
-          {/* ================================================================
-              7. CARD: Autenticação em Duas Etapas (2FA / TOTP)
-              ================================================================ */}
-          <IonCard className="premium-card">
-            <IonCardContent className="premium-card-content">
-              <div className="card-header-icon">
-                <IonIcon icon={keyOutline} className="icon-emerald" />
-                <div>
-                  <h3>Verificação em Duas Etapas (2FA - TOTP)</h3>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                    Proteção com Google Authenticator, Authy ou Microsoft Authenticator
-                  </span>
+            {/* 2FA TOTP */}
+            <div className="rz-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <ShieldCheck size={18} className="text-blue-500" />
+                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#fafafa' }}>
+                    Segundo Fator (2FA TOTP)
+                  </h3>
                 </div>
+                <span className={`rz-badge ${totpEnabled ? 'rz-badge-success' : 'rz-badge-neutral'}`}>
+                  {totpEnabled ? 'Ativado' : 'Opcional'}
+                </span>
               </div>
-
-              <p className="card-description">
-                Adicione uma barreira intransponível contra invasões exigindo um código temporário de 6 dígitos gerado em seu aplicativo autenticador.
-              </p>
 
               {totpEnabled ? (
                 <div>
-                  <div className="totp-status-active">
-                    <IonIcon icon={checkmarkCircleOutline} style={{ color: '#10b981', fontSize: '26px', flexShrink: 0 }} />
-                    <div>
-                      <strong style={{ color: '#10b981', display: 'block', fontSize: '0.95rem' }}>
-                        Proteção 2FA Ativada e Válida
-                      </strong>
-                      <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
-                        Códigos temporários TOTP de 30 segundos são exigidos no login.
-                      </span>
+                  <p style={{ fontSize: '0.8rem', color: '#a1a1aa', margin: '0 0 14px 0', lineHeight: 1.5 }}>
+                    Sua conta exige códigos TOTP de 6 dígitos gerados por aplicativo autenticador a cada novo login.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDisable2FA}
+                    className="rz-btn rz-btn-danger"
+                  >
+                    Desativar 2FA
+                  </button>
+                </div>
+              ) : !show2FASetup ? (
+                <div>
+                  <p style={{ fontSize: '0.8rem', color: '#a1a1aa', margin: '0 0 14px 0', lineHeight: 1.5 }}>
+                    Vincule o Google Authenticator, Authy ou Microsoft Authenticator para exigir verificação em duas etapas.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleStart2FA}
+                    className="rz-btn rz-btn-secondary"
+                  >
+                    Configurar Autenticador 2FA
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#09090b', padding: 10, borderRadius: 8, border: '1px solid #27272a' }}>
+                    {currentLocalSecret && (
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
+                          `otpauth://totp/RiskZero:${encodeURIComponent(activeEmail || 'usuario')}?secret=${currentLocalSecret}&issuer=RiskZero`
+                        )}`}
+                        alt="QR Code 2FA"
+                        style={{ width: 88, height: 88, borderRadius: 6, background: '#fff', padding: 4 }}
+                      />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="rz-label">SEGREDO BASE32</div>
+                      <code style={{ display: 'block', fontSize: '0.75rem', color: '#fafafa', wordBreak: 'break-all', marginBottom: 6 }}>
+                        {currentLocalSecret}
+                      </code>
+                      <button
+                        type="button"
+                        className="rz-btn rz-btn-secondary"
+                        style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                        onClick={() => currentLocalSecret && handleCopySecret(currentLocalSecret)}
+                      >
+                        <Copy size={12} />
+                        <span>Copiar chave</span>
+                      </button>
                     </div>
                   </div>
 
-                  <IonButton
-                    fill="outline"
-                    color="danger"
-                    expand="block"
-                    onClick={handleDisable2FA}
-                    className="btn-action-danger"
-                  >
-                    Desativar Proteção 2FA
-                  </IonButton>
-                </div>
-              ) : (
-                <div>
-                  {!show2FASetup ? (
-                    <IonButton
-                      expand="block"
-                      color="success"
-                      onClick={handleStart2FA}
-                      className="btn-action-primary"
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="Código de 6 dígitos"
+                      value={totpTokenInput}
+                      onChange={(e) => setTotpTokenInput(e.target.value.replace(/\D/g, ''))}
+                      className="rz-input"
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleConfirm2FA}
+                      disabled={totpTokenInput.length !== 6}
+                      className="rz-btn rz-btn-primary"
                     >
-                      Configurar Autenticador 2FA
-                    </IonButton>
-                  ) : (
-                    <div className="totp-setup-flow animate-fade-in">
-                      <p className="totp-setup-title">
-                        1. Escaneie o QR Code abaixo no seu app autenticador ou copie a chave secreta:
-                      </p>
-
-                      {currentLocalSecret && (
-                        <div className="totp-qr-container">
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                              `otpauth://totp/RiskZero:${encodeURIComponent(activeEmail || 'usuario')}?secret=${currentLocalSecret}&issuer=RiskZero`
-                            )}`}
-                            alt="QR Code para Autenticador 2FA"
-                            className="totp-qr-image"
-                          />
-                        </div>
-                      )}
-
-                      <div className="totp-secret-box">
-                        <span style={{ color: '#94a3b8', fontSize: '0.74rem', fontWeight: 800, display: 'block', marginBottom: '8px' }}>
-                          CHAVE SECRETA BASE32
-                        </span>
-                        <code>{currentLocalSecret}</code>
-                        <div style={{ marginTop: '10px' }}>
-                          <IonButton
-                            size="small"
-                            fill="clear"
-                            onClick={() => currentLocalSecret && handleCopySecret(currentLocalSecret)}
-                            style={{ color: '#60a5fa', fontWeight: 700 }}
-                          >
-                            <IonIcon icon={copyOutline} slot="start" />
-                            Copiar Chave Secreta
-                          </IonButton>
-                        </div>
-                      </div>
-
-                      <p className="totp-setup-title" style={{ marginTop: '18px' }}>
-                        2. Digite o código de 6 dígitos gerado no autenticador para confirmar:
-                      </p>
-
-                      <div className="inline-action-form">
-                        <IonItem className="premium-input-item" lines="none">
-                          <IonInput
-                            type="text"
-                            inputmode="numeric"
-                            maxlength={6}
-                            placeholder="000000"
-                            value={totpTokenInput}
-                            onIonInput={(e) => setTotpTokenInput((e.detail.value || '').trim())}
-                          />
-                        </IonItem>
-                        <IonButton
-                          color="success"
-                          onClick={handleConfirm2FA}
-                          disabled={totpTokenInput.length < 6}
-                          style={{ height: '48px', '--border-radius': '14px', fontWeight: 800 }}
-                        >
-                          Confirmar
-                        </IonButton>
-                      </div>
-
-                      {mfaError && (
-                        <IonText color="danger">
-                          <p className="input-error-msg">{mfaError}</p>
-                        </IonText>
-                      )}
-
-                      <IonButton
-                        fill="clear"
-                        color="medium"
-                        expand="block"
-                        onClick={() => setShow2FASetup(false)}
-                        style={{ marginTop: '12px' }}
-                      >
-                        Cancelar
-                      </IonButton>
-                    </div>
+                      Ativar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShow2FASetup(false)}
+                      className="rz-btn rz-btn-secondary"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  {mfaError && (
+                    <p style={{ color: '#f87171', fontSize: '0.75rem', margin: 0 }}>{mfaError}</p>
                   )}
                 </div>
               )}
-            </IonCardContent>
-          </IonCard>
+            </div>
+          </section>
 
-          {/* ================================================================
-              8. CARD: Trilha de Auditoria & Conformidade LGPD
-              ================================================================ */}
-          <IonCard className="premium-card">
-            <IonCardContent className="premium-card-content">
-              <div className="card-header-icon">
-                <IonIcon icon={documentTextOutline} className="icon-amber" />
-                <div>
-                  <h3>Trilha de Auditoria de Segurança</h3>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                    Conformidade com LGPD (Art. 7º) e ISO/IEC 27001
-                  </span>
-                </div>
+          {/* 4. Trilha de Auditoria LGPD */}
+          <section className="rz-card" style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600, color: '#fafafa' }}>
+                  Trilha de Auditoria Local (LGPD Art. 7º & ISO/IEC 27001)
+                </h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#a1a1aa' }}>
+                  Registro cronológico de eventos de autenticação, leitura e modificação do cofre.
+                </p>
               </div>
 
-              <p className="card-description">
-                Registro inviolável de acessos, alterações de credenciais e eventos de segurança gerados neste aparelho.
-              </p>
+              <button
+                type="button"
+                onClick={handleExportAuditCSV}
+                disabled={isExportingCSV || auditLogs.length === 0}
+                className="rz-btn rz-btn-secondary"
+              >
+                <Download size={14} />
+                <span>{isExportingCSV ? 'Exportando...' : 'Exportar CSV'}</span>
+              </button>
+            </div>
 
-              <div className="audit-logs-list-wrapper">
-                {auditLogs.length === 0 ? (
-                  <p className="no-logs-text">Nenhuma atividade registrada até o momento.</p>
-                ) : (
-                  <IonList className="audit-logs-list" lines="none">
-                    {auditLogs.slice(0, 15).map((log) => {
-                      const isSuccess = log.action.includes('SUCCESS') || log.action.includes('CREATED');
-                      const isWarning = log.action.includes('FAILED') || log.action.includes('BREACH');
-                      const dotClass = isSuccess ? 'emerald' : isWarning ? 'red' : 'cyan';
-
+            {auditLogs.length === 0 ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: '#71717a', fontSize: '0.825rem', background: '#09090b', borderRadius: 8, border: '1px solid #27272a' }}>
+                Nenhum evento de auditoria registrado até o momento.
+              </div>
+            ) : (
+              <div className="home-audit-table-wrap">
+                <table className="home-audit-table">
+                  <thead>
+                    <tr>
+                      <th>Evento</th>
+                      <th>Descrição</th>
+                      <th>Data / Hora</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.slice(0, 12).map((log) => {
+                      const isOk = log.action.includes('SUCCESS') || log.action.includes('CREATED');
+                      const isErr = log.action.includes('FAILED') || log.action.includes('BREACH');
                       return (
-                        <IonItem key={log.id} className="audit-log-item">
-                          <div className={`log-dot ${dotClass}`} />
-                          <IonLabel>
-                            <h4>{log.details}</h4>
-                            <p>
-                              {new Date(log.timestamp).toLocaleTimeString()} - {log.action}
-                            </p>
-                          </IonLabel>
-                        </IonItem>
+                        <tr key={log.id}>
+                          <td>
+                            <span className={`rz-badge ${isOk ? 'rz-badge-success' : isErr ? 'rz-badge-danger' : 'rz-badge-neutral'}`}>
+                              {isOk && <CheckCircle2 size={11} />}
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="audit-details-cell">{log.details}</td>
+                          <td className="audit-time-cell">
+                            {new Date(log.timestamp).toLocaleString('pt-BR')}
+                          </td>
+                        </tr>
                       );
                     })}
-                  </IonList>
-                )}
+                  </tbody>
+                </table>
               </div>
-
-              <div className="audit-footer-actions">
-                <IonButton
-                  fill="clear"
-                  size="small"
-                  onClick={handleExportAuditCSV}
-                  disabled={isExportingCSV || auditLogs.length === 0}
-                  style={{ color: '#60a5fa', fontWeight: 700 }}
-                >
-                  <IonIcon icon={downloadOutline} slot="start" />
-                  {isExportingCSV ? 'Exportando...' : 'Exportar Relatório CSV (LGPD)'}
-                </IonButton>
-              </div>
-            </IonCardContent>
-          </IonCard>
-
+            )}
+          </section>
         </div>
 
-        {/* Toast de Feedback Global */}
         <IonToast
           isOpen={showToast}
           onDidDismiss={() => setShowToast(false)}
           message={toastMsg}
-          duration={2500}
+          duration={2200}
           color="dark"
           position="bottom"
+        />
+
+        <ConfirmModal
+          isOpen={showDisable2FAConfirm}
+          title="Desativar Segundo Fator (2FA)?"
+          message="Ao desativar a autenticação de dois fatores, sua conta passará a exigir apenas a Senha Mestra para acesso, reduzindo a camada de defesa."
+          confirmText="Desativar 2FA"
+          cancelText="Manter 2FA"
+          variant="warning"
+          onConfirm={handleConfirmDisable2FA}
+          onCancel={() => setShowDisable2FAConfirm(false)}
         />
       </IonContent>
     </IonPage>

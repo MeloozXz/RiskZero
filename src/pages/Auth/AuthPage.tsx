@@ -1,20 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  IonPage, 
-  IonContent, 
+import {
+  IonPage,
+  IonContent,
   IonSpinner
 } from '@ionic/react';
-import { 
-  ShieldCheck, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  KeyRound, 
-  Fingerprint, 
-  AlertTriangle, 
-  CheckCircle2, 
-  XCircle, 
-  Sparkles,
+import {
+  ShieldCheck,
+  Lock,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Fingerprint,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
   Info
 } from 'lucide-react';
 import { useSecurity } from '../../contexts/SecurityContext';
@@ -25,30 +24,30 @@ import { getErrorMessage } from '../../lib/utils';
 import './AuthPage.css';
 
 export const AuthPage: React.FC = () => {
-  const { 
-    register, 
-    login, 
-    login2FA, 
-    isBiometricsEnrolled, 
+  const {
+    register,
+    login,
+    login2FA,
+    isBiometricsEnrolled,
     loginWithBiometrics,
     rememberSession,
     setRememberSession
   } = useSecurity();
-  
-  // Modos: 'LOADING' | 'REGISTER' | 'LOGIN' | 'TOTP_VERIFY'
+
   const [mode, setMode] = useState<'LOADING' | 'REGISTER' | 'LOGIN' | 'TOTP_VERIFY'>('LOADING');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [totpToken, setTotpToken] = useState<string>('');
-  
+  const [acceptedTerms, setAcceptedTerms] = useState<boolean>(true);
+
+  const [hardwareAvailable, setHardwareAvailable] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [lockoutSecs, setLockoutSecs] = useState<number>(0);
 
-  // Requisitos da senha mestra para validação em tempo real
   const [pwdReqs, setPwdReqs] = useState({
     length: false,
     upper: false,
@@ -57,25 +56,28 @@ export const AuthPage: React.FC = () => {
     special: false
   });
 
-  // Checa se existe qualquer conta no dispositivo para definir modo inicial
   useEffect(() => {
-    async function checkUserExistence() {
+    async function initAuthScreen() {
       try {
-        const hasAccounts = await StorageService.hasAnyAccount();
+        const [hasAccounts, hwStatus] = await Promise.all([
+          StorageService.hasAnyAccount(),
+          BiometricsService.checkHardwareStatus()
+        ]);
+        setHardwareAvailable(hwStatus.isNativeAvailable);
         setMode(hasAccounts ? 'LOGIN' : 'REGISTER');
+
         const enrolled = BiometricsService.getEnrolledEmails();
         if (enrolled.length > 0) {
           setEmail(enrolled[0]);
         }
       } catch (err) {
-        console.error('Erro ao verificar contas locais:', err);
+        console.error('Erro ao inicializar tela de autenticação:', err);
         setMode('REGISTER');
       }
     }
-    checkUserExistence();
+    initAuthScreen();
   }, []);
 
-  // Monitora estado de bloqueio por força bruta
   useEffect(() => {
     let interval: NodeJS.Timeout | number | null = null;
 
@@ -83,7 +85,7 @@ export const AuthPage: React.FC = () => {
       const lockout = await SessionService.checkLockout();
       if (lockout.isLocked) {
         setLockoutSecs(lockout.remainingSeconds);
-        setErrorMsg(lockout.message || 'Defesa contra Força Bruta ativa.');
+        setErrorMsg(lockout.message || 'Proteção contra tentativas excessivas ativa.');
       } else {
         if (lockoutSecs > 0) {
           setLockoutSecs(0);
@@ -102,7 +104,6 @@ export const AuthPage: React.FC = () => {
     };
   }, [mode, lockoutSecs]);
 
-  // Atualiza validação da senha em tempo real
   const handlePasswordChange = (val: string) => {
     setPassword(val);
     setPwdReqs({
@@ -118,7 +119,6 @@ export const AuthPage: React.FC = () => {
     return pwdReqs.length && pwdReqs.upper && pwdReqs.lower && pwdReqs.number && pwdReqs.special;
   };
 
-  // Cálculo da pontuação de força da senha (0 a 4)
   const calculateStrengthScore = () => {
     let score = 0;
     if (pwdReqs.length) score++;
@@ -129,10 +129,9 @@ export const AuthPage: React.FC = () => {
   };
 
   const strengthScore = calculateStrengthScore();
-  const strengthLabels = ['Muito Fraca', 'Razoável', 'Boa', 'Excelente'];
+  const strengthLabels = ['Fraca', 'Razoável', 'Forte', 'Excelente'];
   const strengthColors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'];
 
-  // Alterna entre abas Login e Cadastro
   const switchTab = (targetMode: 'LOGIN' | 'REGISTER') => {
     if (mode === targetMode) return;
     setMode(targetMode);
@@ -143,19 +142,18 @@ export const AuthPage: React.FC = () => {
     setPwdReqs({ length: false, upper: false, lower: false, number: false, special: false });
   };
 
-  // Ação de Login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
 
     if (!email.trim()) {
-      setErrorMsg('Digite o seu e-mail ou usuário.');
+      setErrorMsg('Informe o seu e-mail.');
       return;
     }
 
     if (!password) {
-      setErrorMsg('Digite a sua Senha Mestra.');
+      setErrorMsg('Informe a sua Senha Mestra.');
       return;
     }
 
@@ -167,10 +165,10 @@ export const AuthPage: React.FC = () => {
         if ('requires2FA' in res && res.requires2FA) {
           setMode('TOTP_VERIFY');
         } else {
-          setSuccessMsg('Autenticação bem-sucedida! Desbloqueando...');
+          setSuccessMsg('Autenticação concluída. Desbloqueando cofre...');
         }
       } else {
-        setErrorMsg(res.error || 'Senha mestra incorreta.');
+        setErrorMsg(res.error || 'Credenciais inválidas.');
       }
     } catch (err: unknown) {
       setLoading(false);
@@ -178,46 +176,55 @@ export const AuthPage: React.FC = () => {
     }
   };
 
-  // Ação de Cadastro
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
 
     if (!email.trim()) {
-      setErrorMsg('Por favor, informe um e-mail válido.');
+      setErrorMsg('Informe um endereço de e-mail válido.');
       return;
     }
 
     if (!isPasswordValid()) {
-      setErrorMsg('A senha mestra não cumpre todos os requisitos de segurança.');
+      setErrorMsg('A Senha Mestra deve atender a todos os critérios de segurança.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMsg('As senhas digitadas não coincidem.');
+      setErrorMsg('A confirmação da Senha Mestra não confere.');
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setErrorMsg('Você precisa concordar com os termos de criptografia Zero-Knowledge e LGPD.');
       return;
     }
 
     setLoading(true);
     try {
+      await StorageService.saveSecurityTermsAccepted(email.trim(), 'v1.0');
       const res = await register(email, password);
       setLoading(false);
       if (res.success) {
-        setSuccessMsg('Cofre criado com sucesso! Inicializando ambiente seguro...');
+        setSuccessMsg('Cofre criado com sucesso. Inicializando sessão...');
       } else {
-        setErrorMsg(res.error || 'Erro ao registrar usuário.');
+        setErrorMsg(res.error || 'Erro ao criar conta.');
       }
     } catch (err: unknown) {
       setLoading(false);
-      setErrorMsg(getErrorMessage(err) || 'Erro inesperado ao registrar.');
+      setErrorMsg(getErrorMessage(err) || 'Erro inesperado ao criar conta.');
     }
   };
 
-  // Login com Biometria
   const handleBiometricLogin = async () => {
     setErrorMsg(null);
     setSuccessMsg(null);
+
+    if (!hardwareAvailable) {
+      setErrorMsg('Nenhum leitor biométrico físico (Windows Hello / Touch ID / Impressão Digital) detectado neste dispositivo.');
+      return;
+    }
 
     let targetEmail = email.trim();
     if (!targetEmail) {
@@ -226,18 +233,13 @@ export const AuthPage: React.FC = () => {
         targetEmail = enrolled[0];
         setEmail(targetEmail);
       } else {
-        setErrorMsg('Nenhuma biometria cadastrada neste dispositivo. Faça login com sua Senha Mestra primeiro e ative a biometria em Configurações > Biometria.');
+        setErrorMsg('Nenhuma biometria vinculada neste aparelho. Entre com sua Senha Mestra e ative em Biometria.');
         return;
       }
     }
 
     if (!BiometricsService.isEnrolled(targetEmail)) {
-      const allEnrolled = BiometricsService.getEnrolledEmails();
-      if (allEnrolled.length > 0) {
-        setErrorMsg(`A biometria está ativada para "${allEnrolled.join(', ')}", mas não para "${targetEmail}".`);
-      } else {
-        setErrorMsg(`A biometria ainda não foi cadastrada para "${targetEmail}". Faça login com sua Senha Mestra e ative nas Configurações.`);
-      }
+      setErrorMsg(`Biometria não configurada para "${targetEmail}" neste dispositivo.`);
       return;
     }
 
@@ -249,21 +251,25 @@ export const AuthPage: React.FC = () => {
         if ('requires2FA' in res && res.requires2FA) {
           setMode('TOTP_VERIFY');
         } else {
-          setSuccessMsg('Autenticação biométrica bem-sucedida! Desbloqueando...');
+          setSuccessMsg('Identidade biométrica confirmada.');
         }
       } else {
-        setErrorMsg(res.error || 'A validação biométrica falhou.');
+        setErrorMsg(res.error || 'Verificação biométrica não concluída.');
       }
     } catch (err: unknown) {
       setLoading(false);
-      setErrorMsg(getErrorMessage(err) || 'Erro ao autenticar com a biometria.');
+      setErrorMsg(getErrorMessage(err) || 'Falha ao acionar leitor biométrico.');
     }
   };
 
-  // Recuperação de acesso via Biometria
   const handleBiometricRecovery = async () => {
     setErrorMsg(null);
     setSuccessMsg(null);
+
+    if (!hardwareAvailable) {
+      setErrorMsg('Recuperação biométrica requer leitor físico habilitado no dispositivo.');
+      return;
+    }
 
     let targetEmail = email.trim();
     if (!targetEmail) {
@@ -272,19 +278,18 @@ export const AuthPage: React.FC = () => {
         targetEmail = enrolled[0];
         setEmail(targetEmail);
       } else {
-        setErrorMsg('Informe o e-mail cadastrado para recuperar via biometria.');
+        setErrorMsg('Informe o e-mail da conta com biometria vinculada.');
         return;
       }
     }
 
-    try {
-      const enrolled = isBiometricsEnrolled(targetEmail);
-      if (!enrolled) {
-        setErrorMsg('A biometria não está cadastrada para esta conta neste aparelho.');
-        return;
-      }
+    if (!isBiometricsEnrolled(targetEmail)) {
+      setErrorMsg('Esta conta não possui biometria física registrada neste dispositivo.');
+      return;
+    }
 
-      setLoading(true);
+    setLoading(true);
+    try {
       const res = await BiometricsService.authenticate(targetEmail);
       setLoading(false);
 
@@ -294,27 +299,26 @@ export const AuthPage: React.FC = () => {
           if ('requires2FA' in loginRes && loginRes.requires2FA) {
             setMode('TOTP_VERIFY');
           } else {
-            setSuccessMsg('Acesso recuperado com sucesso via Biometria!');
+            setSuccessMsg('Acesso restaurado via hardware biométrico.');
           }
         } else {
-          setErrorMsg(loginRes.error || 'Falha ao autenticar com a biometria.');
+          setErrorMsg(loginRes.error || 'Falha ao desbloquear cofre.');
         }
       } else {
-        setErrorMsg(res.error || 'Autenticação biométrica não autorizada.');
+        setErrorMsg(res.error || 'Leitura biométrica cancelada.');
       }
     } catch (err: unknown) {
       setLoading(false);
-      setErrorMsg(getErrorMessage(err) || 'Erro na recuperação biométrica.');
+      setErrorMsg(getErrorMessage(err) || 'Erro na validação biométrica.');
     }
   };
 
-  // Verificação de 2FA TOTP
   const handleVerify2FA = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    
+
     if (totpToken.length !== 6 || isNaN(Number(totpToken))) {
-      setErrorMsg('O código 2FA deve conter exatamente 6 dígitos numéricos.');
+      setErrorMsg('O código TOTP deve conter 6 dígitos numéricos.');
       return;
     }
 
@@ -325,30 +329,30 @@ export const AuthPage: React.FC = () => {
         const res = await login2FA(totpToken);
         setLoading(false);
         if (res.success) {
-          setSuccessMsg('Código verificado com sucesso! Acesso liberado.');
+          setSuccessMsg('Código 2FA verificado.');
         } else {
-          setErrorMsg('Código 2FA incorreto ou expirado. Verifique o relógio do aparelho.');
+          setErrorMsg('Código inválido ou expirado.');
         }
       } else {
         setLoading(false);
-        setErrorMsg('Sessão expirada. Por favor, reinicie o login.');
+        setErrorMsg('Sessão expirada. Refaça o login.');
       }
     } catch (err: unknown) {
       setLoading(false);
-      setErrorMsg(getErrorMessage(err) || 'Falha ao validar autenticação de dois fatores.');
+      setErrorMsg(getErrorMessage(err) || 'Erro ao validar código 2FA.');
     }
   };
+
+  const enrolledEmails = BiometricsService.getEnrolledEmails();
+  const canUseBiometricUnlock = hardwareAvailable && enrolledEmails.length > 0;
 
   if (mode === 'LOADING') {
     return (
       <IonPage>
         <IonContent className="auth-lightweight-page">
-          <div className="auth-loading-state" role="status" aria-label="Carregando cofre seguro">
-            <div className="auth-shield-loader">
-              <ShieldCheck className="w-10 h-10 text-cyan-400 animate-pulse" />
-            </div>
-            <IonSpinner name="crescent" style={{ color: '#60a5fa', width: '32px', height: '32px' }} />
-            <span className="text-slate-400 text-sm font-medium">Iniciando Ambiente Criptográfico...</span>
+          <div className="auth-loading-state" role="status" aria-label="Carregando ambiente">
+            <IonSpinner name="crescent" style={{ color: '#3b82f6', width: '28px', height: '28px' }} />
+            <span className="auth-loading-text">Inicializando cofre...</span>
           </div>
         </IonContent>
       </IonPage>
@@ -358,38 +362,20 @@ export const AuthPage: React.FC = () => {
   return (
     <IonPage>
       <IonContent className="auth-lightweight-page">
-        {/* Fundo Puro em CSS: Grid sutil e gradientes estáticos ultra-leves (Zero WebGL/Canvas) */}
-        <div className="cyber-ambient-bg" aria-hidden="true">
-          <div className="ambient-glow-top" />
-          <div className="ambient-glow-bottom" />
-          <div className="cyber-grid-overlay" />
-        </div>
-
         <div className="auth-screen-container">
           <main className="auth-saas-card" aria-labelledby="auth-brand-heading">
-            
-            {/* Header da Marca com Emblema de Segurança */}
             <header className="auth-brand-header">
-              <div className="shield-emblem-wrapper" aria-hidden="true">
-                <div className="shield-orbital-ring" />
-                <div className="shield-emblem-icon">
-                  <ShieldCheck className="w-8 h-8 text-cyan-400" strokeWidth={2.2} />
-                </div>
+              <div className="auth-logo-mark" aria-hidden="true">
+                <ShieldCheck className="w-5 h-5" />
               </div>
-
-              <h1 id="auth-brand-heading" className="brand-title">
-                Risk<span className="brand-title-accent">Zero</span>
-              </h1>
-              
-              <p className="brand-tagline">Defesa Cibernética &amp; Cofre Digital</p>
-              
-              <div className="brand-zk-pill">
-                <Lock className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Criptografia de Conhecimento Zero</span>
+              <div className="auth-brand-meta">
+                <h1 id="auth-brand-heading" className="brand-title">
+                  RiskZero
+                </h1>
+                <p className="brand-tagline">Cofre Corporativo Zero-Knowledge</p>
               </div>
             </header>
 
-            {/* Alternador de Abas (Entrar / Criar Conta) */}
             {mode !== 'TOTP_VERIFY' && (
               <nav className="auth-segmented-tabs" role="tablist" aria-label="Modo de autenticação">
                 <button
@@ -399,7 +385,7 @@ export const AuthPage: React.FC = () => {
                   className={`tab-toggle-btn ${mode === 'LOGIN' ? 'active' : ''}`}
                   onClick={() => switchTab('LOGIN')}
                 >
-                  Entrar
+                  Acessar cofre
                 </button>
                 <button
                   type="button"
@@ -413,37 +399,34 @@ export const AuthPage: React.FC = () => {
               </nav>
             )}
 
-            {/* Mensagens de Alerta (Acessíveis) */}
             {errorMsg && (
               <div className="auth-feedback-alert error" role="alert">
-                <AlertTriangle className="w-5 h-5 shrink-0 text-rose-400" />
+                <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
             {successMsg && (
               <div className="auth-feedback-alert success" role="status">
-                <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{successMsg}</span>
               </div>
             )}
 
-            {/* ==================================================== */}
-            {/* FORMULÁRIO 1: LOGIN                                 */}
-            {/* ==================================================== */}
+            {/* LOGIN */}
             {mode === 'LOGIN' && (
               <form onSubmit={handleLogin} className="auth-form-body" noValidate>
                 <div className="form-field-group">
                   <label htmlFor="login-email" className="field-label">
-                    E-mail ou Usuário
+                    E-mail
                   </label>
                   <div className="field-input-wrapper">
                     <input
                       id="login-email"
-                      type="text"
+                      type="email"
                       inputMode="email"
                       autoComplete="username"
-                      placeholder="Ex: seuemail@exemplo.com"
+                      placeholder="nome@empresa.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={loading || lockoutSecs > 0}
@@ -454,24 +437,26 @@ export const AuthPage: React.FC = () => {
                 </div>
 
                 <div className="form-field-group">
-                  <div className="flex items-center justify-between">
+                  <div className="field-label-row">
                     <label htmlFor="login-password" className="field-label">
                       Senha Mestra
                     </label>
-                    <button
-                      type="button"
-                      onClick={handleBiometricRecovery}
-                      className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium focus:outline-none"
-                    >
-                      Recuperar via biometria
-                    </button>
+                    {canUseBiometricUnlock && (
+                      <button
+                        type="button"
+                        onClick={handleBiometricRecovery}
+                        className="auth-inline-link"
+                      >
+                        Usar biometria física
+                      </button>
+                    )}
                   </div>
                   <div className="field-input-wrapper">
                     <input
                       id="login-password"
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
-                      placeholder="Digite sua senha mestra"
+                      placeholder="Digite sua Senha Mestra"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={loading || lockoutSecs > 0}
@@ -480,102 +465,92 @@ export const AuthPage: React.FC = () => {
                     />
                     <button
                       type="button"
-                      aria-label={showPassword ? 'Ocultar senha' : 'Ver senha'}
+                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                       onClick={() => setShowPassword(!showPassword)}
                       className="field-adornment-btn"
                     >
                       {showPassword ? (
-                        <EyeOff className="w-4 h-4 text-slate-400" />
+                        <EyeOff className="w-4 h-4" />
                       ) : (
-                        <Eye className="w-4 h-4 text-slate-400" />
+                        <Eye className="w-4 h-4" />
                       )}
                     </button>
                   </div>
                 </div>
 
-                {/* Opção configurável: Manter conectado ao atualizar a página (F5) */}
-                <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-slate-900/60 border border-white/5 my-2">
-                  <div className="flex items-center gap-2.5">
-                    <input
-                      id="remember-session-check"
-                      type="checkbox"
-                      checked={rememberSession}
-                      onChange={(e) => setRememberSession(e.target.checked)}
-                      className="w-4 h-4 rounded text-cyan-500 bg-slate-950 border-slate-700 focus:ring-cyan-500 cursor-pointer"
-                    />
-                    <label htmlFor="remember-session-check" className="text-xs text-slate-300 font-medium cursor-pointer select-none">
-                      Manter conectado ao atualizar (F5)
-                    </label>
-                  </div>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
-                    rememberSession 
-                      ? 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400' 
-                      : 'bg-slate-900 border-white/10 text-slate-400'
-                  }`}>
-                    {rememberSession ? 'Lembrar Ativo' : 'Desativado'}
+                <label htmlFor="remember-session-check" className="auth-checkbox-row">
+                  <input
+                    id="remember-session-check"
+                    type="checkbox"
+                    checked={rememberSession}
+                    onChange={(e) => setRememberSession(e.target.checked)}
+                    className="auth-checkbox-input"
+                  />
+                  <span className="auth-checkbox-label">
+                    Manter sessão criptografada ativa ao recarregar a página
                   </span>
-                </div>
+                </label>
 
                 {lockoutSecs > 0 ? (
                   <div className="lockout-warning-card" role="alert">
-                    <AlertTriangle className="w-5 h-5 shrink-0 text-rose-400" />
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
                     <div>
-                      <h3 className="text-sm font-semibold text-rose-300">Defesa por Força Bruta Ativa</h3>
-                      <p className="text-xs text-rose-200/80 mt-0.5">
-                        Tentativas excedidas. Aguarde <strong>{lockoutSecs}s</strong> antes de tentar novamente.
+                      <h3 className="lockout-title">Bloqueio temporário ativo</h3>
+                      <p className="lockout-desc">
+                        Muitas tentativas incorretas. Aguarde <strong>{lockoutSecs}s</strong>.
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <>
+                  <div className="auth-actions-stack">
                     <button
                       type="submit"
                       disabled={loading}
-                      className="primary-action-btn mt-2"
+                      className="primary-action-btn"
                     >
                       {loading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <IonSpinner name="crescent" style={{ width: '20px', height: '20px' }} />
-                          <span>Desbloqueando cofre...</span>
+                        <span className="btn-content-inline">
+                          <IonSpinner name="crescent" style={{ width: '16px', height: '16px' }} />
+                          <span>Autenticando...</span>
                         </span>
                       ) : (
-                        <span className="flex items-center justify-center gap-2">
+                        <span className="btn-content-inline">
                           <Lock className="w-4 h-4" />
-                          <span>Desbloquear Cofre</span>
+                          <span>Desbloquear cofre</span>
                         </span>
                       )}
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={handleBiometricLogin}
-                      disabled={loading}
-                      className="secondary-biometric-btn mt-3"
-                    >
-                      <Fingerprint className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span>Desbloquear com Biometria</span>
-                    </button>
-                  </>
+                    {canUseBiometricUnlock && (
+                      <button
+                        type="button"
+                        onClick={handleBiometricLogin}
+                        disabled={loading}
+                        className="secondary-biometric-btn"
+                      >
+                        <Fingerprint className="w-4 h-4 shrink-0" />
+                        <span>Entrar com Biometria do Dispositivo</span>
+                      </button>
+                    )}
+                  </div>
                 )}
               </form>
             )}
 
-            {/* ==================================================== */}
-            {/* FORMULÁRIO 2: CADASTRO                              */}
-            {/* ==================================================== */}
+            {/* CADASTRO */}
             {mode === 'REGISTER' && (
               <form onSubmit={handleRegister} className="auth-form-body" noValidate>
                 <div className="form-field-group">
                   <label htmlFor="reg-email" className="field-label">
-                    E-mail ou Identificador
+                    E-mail corporativo ou pessoal
                   </label>
                   <div className="field-input-wrapper">
                     <input
                       id="reg-email"
-                      type="text"
+                      type="email"
                       inputMode="email"
                       autoComplete="username"
-                      placeholder="Ex: aluno@seguranca.com"
+                      placeholder="nome@empresa.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={loading}
@@ -587,7 +562,7 @@ export const AuthPage: React.FC = () => {
 
                 <div className="form-field-group">
                   <label htmlFor="reg-password" className="field-label">
-                    Criar Senha Mestra
+                    Definir Senha Mestra
                   </label>
                   <div className="field-input-wrapper">
                     <input
@@ -603,28 +578,29 @@ export const AuthPage: React.FC = () => {
                     />
                     <button
                       type="button"
-                      aria-label={showPassword ? 'Ocultar senha' : 'Ver senha'}
+                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                       onClick={() => setShowPassword(!showPassword)}
                       className="field-adornment-btn"
                     >
                       {showPassword ? (
-                        <EyeOff className="w-4 h-4 text-slate-400" />
+                        <EyeOff className="w-4 h-4" />
                       ) : (
-                        <Eye className="w-4 h-4 text-slate-400" />
+                        <Eye className="w-4 h-4" />
                       )}
                     </button>
                   </div>
                 </div>
 
-                {/* Medidor e Requisitos em Tempo Real */}
                 <div className="password-health-container" aria-live="polite">
                   <div className="strength-meter-header">
-                    <span className="text-xs text-slate-400 font-medium">Força da Senha</span>
-                    <span 
-                      className="text-xs font-semibold"
-                      style={{ color: password.length === 0 ? '#64748b' : strengthColors[Math.max(0, strengthScore - 1)] }}
+                    <span>Entropia da Senha Mestra</span>
+                    <span
+                      style={{
+                        color: password.length === 0 ? '#71717a' : strengthColors[Math.max(0, strengthScore - 1)],
+                        fontWeight: 600
+                      }}
                     >
-                      {password.length === 0 ? 'Não informada' : strengthLabels[Math.max(0, strengthScore - 1)]}
+                      {password.length === 0 ? 'Aguardando' : strengthLabels[Math.max(0, strengthScore - 1)]}
                     </span>
                   </div>
 
@@ -637,7 +613,7 @@ export const AuthPage: React.FC = () => {
                           backgroundColor:
                             step < strengthScore && password.length > 0
                               ? strengthColors[Math.max(0, strengthScore - 1)]
-                              : 'rgba(255, 255, 255, 0.08)'
+                              : '#27272a'
                         }}
                       />
                     ))}
@@ -645,48 +621,24 @@ export const AuthPage: React.FC = () => {
 
                   <div className="requirements-checklist">
                     <div className={`check-rule ${pwdReqs.length ? 'met' : ''}`}>
-                      {pwdReqs.length ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      ) : (
-                        <XCircle className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                      )}
-                      <span>Pelo menos 12 caracteres</span>
+                      {pwdReqs.length ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
+                      <span>12+ caracteres</span>
                     </div>
-
                     <div className={`check-rule ${pwdReqs.upper ? 'met' : ''}`}>
-                      {pwdReqs.upper ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      ) : (
-                        <XCircle className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                      )}
-                      <span>Letra maiúscula (A-Z)</span>
+                      {pwdReqs.upper ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
+                      <span>Maiúscula (A-Z)</span>
                     </div>
-
                     <div className={`check-rule ${pwdReqs.lower ? 'met' : ''}`}>
-                      {pwdReqs.lower ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      ) : (
-                        <XCircle className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                      )}
-                      <span>Letra minúscula (a-z)</span>
+                      {pwdReqs.lower ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
+                      <span>Minúscula (a-z)</span>
                     </div>
-
                     <div className={`check-rule ${pwdReqs.number ? 'met' : ''}`}>
-                      {pwdReqs.number ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      ) : (
-                        <XCircle className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                      )}
+                      {pwdReqs.number ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
                       <span>Número (0-9)</span>
                     </div>
-
                     <div className={`check-rule ${pwdReqs.special ? 'met' : ''}`}>
-                      {pwdReqs.special ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      ) : (
-                        <XCircle className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                      )}
-                      <span>Caractere especial (!@#$...)</span>
+                      {pwdReqs.special ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
+                      <span>Símbolo (!@#$...)</span>
                     </div>
                   </div>
                 </div>
@@ -700,7 +652,7 @@ export const AuthPage: React.FC = () => {
                       id="reg-confirm"
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="new-password"
-                      placeholder="Repita a senha mestra criada"
+                      placeholder="Repita a Senha Mestra"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       disabled={loading}
@@ -710,53 +662,61 @@ export const AuthPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Aviso Institucional de Soberania de Dados (Zero-Knowledge) */}
                 <div className="security-notice-box">
-                  <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                  <p className="text-xs text-slate-300/90 leading-relaxed">
-                    <strong>Aviso de Segurança:</strong> Sua Senha Mestra é a chave de decodificação exclusiva do cofre e nunca sai do aparelho. Por segurança, ela é <strong>irrecuperável</strong> caso perdida.
+                  <Info className="w-4 h-4 shrink-0 mt-0.5 text-zinc-400" />
+                  <p>
+                    <strong>Arquitetura Zero-Knowledge:</strong> Sua Senha Mestra deriva as chaves AES-256-GCM localmente e jamais é enviada ao servidor. Caso perdida, não poderá ser recuperada.
                   </p>
                 </div>
 
+                <label htmlFor="accept-terms-check" className="auth-checkbox-row">
+                  <input
+                    id="accept-terms-check"
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="auth-checkbox-input"
+                  />
+                  <span className="auth-checkbox-label">
+                    Compreendo a arquitetura Zero-Knowledge e concordo com os termos de privacidade (LGPD).
+                  </span>
+                </label>
+
                 <button
                   type="submit"
-                  disabled={!isPasswordValid() || loading}
-                  className="primary-action-btn mt-2"
+                  disabled={!isPasswordValid() || !acceptedTerms || loading}
+                  className="primary-action-btn"
                 >
                   {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <IonSpinner name="crescent" style={{ width: '20px', height: '20px' }} />
-                      <span>Gerando chaves criptográficas...</span>
+                    <span className="btn-content-inline">
+                      <IonSpinner name="crescent" style={{ width: '16px', height: '16px' }} />
+                      <span>Derivando chaves Argon2id...</span>
                     </span>
                   ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <Sparkles className="w-4 h-4" />
-                      <span>Criar Meu Cofre Seguro</span>
-                    </span>
+                    <span>Criar cofre criptografado</span>
                   )}
                 </button>
               </form>
             )}
 
-            {/* ==================================================== */}
-            {/* FORMULÁRIO 3: 2FA TOTP VERIFICATION                 */}
-            {/* ==================================================== */}
+            {/* 2FA TOTP */}
             {mode === 'TOTP_VERIFY' && (
               <form onSubmit={handleVerify2FA} className="auth-form-body" noValidate>
-                <div className="totp-badge-icon-box">
-                  <KeyRound className="w-8 h-8 text-cyan-400" />
-                </div>
-
-                <div className="text-center mb-4">
-                  <h2 className="text-lg font-bold text-white">Verificação em Duas Etapas (2FA)</h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Digite o código de 6 dígitos gerado no seu aplicativo autenticador.
-                  </p>
+                <div className="totp-header-block">
+                  <div className="totp-badge-icon-box">
+                    <KeyRound className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="totp-title">Verificação em Duas Etapas</h2>
+                    <p className="totp-subtitle">
+                      Insira o código TOTP de 6 dígitos gerado pelo seu aplicativo autenticador.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="form-field-group">
-                  <label htmlFor="totp-input" className="field-label text-center block">
-                    Código de Segurança
+                  <label htmlFor="totp-input" className="field-label">
+                    Código de 6 dígitos
                   </label>
                   <div className="field-input-wrapper">
                     <input
@@ -770,45 +730,34 @@ export const AuthPage: React.FC = () => {
                       onChange={(e) => setTotpToken(e.target.value.replace(/\D/g, ''))}
                       disabled={loading}
                       required
-                      className="clean-text-input text-center text-xl font-bold tracking-[6px]"
+                      className="clean-text-input totp-code-input"
                     />
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || totpToken.length !== 6}
-                  className="primary-action-btn mt-2"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <IonSpinner name="crescent" style={{ width: '20px', height: '20px' }} />
-                      <span>Validando token...</span>
-                    </span>
-                  ) : (
-                    <span>Confirmar Código</span>
-                  )}
-                </button>
+                <div className="auth-actions-stack">
+                  <button
+                    type="submit"
+                    disabled={loading || totpToken.length !== 6}
+                    className="primary-action-btn"
+                  >
+                    {loading ? 'Validando...' : 'Confirmar código'}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('LOGIN');
-                    setTotpToken('');
-                    setErrorMsg(null);
-                  }}
-                  className="w-full text-center text-xs text-slate-400 hover:text-white transition-colors py-2.5 mt-2"
-                >
-                  Voltar para tela de login
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('LOGIN');
+                      setTotpToken('');
+                      setErrorMsg(null);
+                    }}
+                    className="secondary-biometric-btn"
+                  >
+                    Voltar para o login
+                  </button>
+                </div>
               </form>
             )}
-
-            {/* Rodapé institucional com versão e conformidade */}
-            <footer className="auth-card-footer">
-              <span>Segurança Defensiva e Proteção de Dados • LGPD Compliant</span>
-            </footer>
-
           </main>
         </div>
       </IonContent>
@@ -817,3 +766,4 @@ export const AuthPage: React.FC = () => {
 };
 
 export default AuthPage;
+

@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  IonButton, 
-  IonIcon, 
-  IonText,
+import {
+  IonIcon,
   IonSpinner
 } from '@ionic/react';
 import { lockClosedOutline, fingerPrintOutline, backspaceOutline, logOutOutline } from 'ionicons/icons';
@@ -12,27 +10,26 @@ import { getErrorMessage } from '../../lib/utils';
 import './LockOverlay.css';
 
 export const LockOverlay: React.FC = () => {
-  const { 
-    unlockWithPIN, 
-    unlockWithBiometrics, 
+  const {
+    unlockWithPIN,
+    unlockWithBiometrics,
     login,
-    logout, 
-    isLocked, 
-    hasPIN, 
-    isBiometricEnabled, 
-    activeEmail, 
-    isBiometricsEnrolled 
+    logout,
+    isLocked,
+    hasPIN,
+    hasPanicPIN,
+    isBiometricEnabled,
+    activeEmail
   } = useSecurity();
+
   const [pin, setPin] = useState<string>('');
   const [masterPasswordInput, setMasterPasswordInput] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lockoutSecs, setLockoutSecs] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const biometricActive = isBiometricEnabled || (activeEmail ? isBiometricsEnrolled(activeEmail) : false);
-  const hasQuickUnlock = hasPIN || biometricActive;
+  const hasQuickUnlock = hasPIN || hasPanicPIN || isBiometricEnabled;
 
-  // Verifica proteção contra tentativas repetidas ao montar
   useEffect(() => {
     let interval: NodeJS.Timeout | number | null = null;
 
@@ -68,14 +65,13 @@ export const LockOverlay: React.FC = () => {
       const res = await login(activeEmail, masterPasswordInput);
       setLoading(false);
       if (!res.success) {
-        setErrorMsg(res.error || 'Senha mestra incorreta.');
+        setErrorMsg(res.error || 'Senha Mestra incorreta.');
       }
     } catch (e: unknown) {
       setLoading(false);
-      setErrorMsg(getErrorMessage(e) || 'Erro ao validar senha mestra.');
+      setErrorMsg(getErrorMessage(e) || 'Erro ao validar Senha Mestra.');
     }
   };
-
 
   const handleKeyPress = (num: string) => {
     if (lockoutSecs > 0 || loading) return;
@@ -99,7 +95,6 @@ export const LockOverlay: React.FC = () => {
 
   const submitPIN = async (pinCode: string) => {
     setLoading(true);
-    // Pequeno delay para feedback visual suave
     setTimeout(async () => {
       const res = await unlockWithPIN(pinCode);
       setLoading(false);
@@ -107,14 +102,14 @@ export const LockOverlay: React.FC = () => {
         setErrorMsg(res.error || 'PIN incorreto. Tente novamente.');
         setPin('');
       }
-    }, 400);
+    }, 300);
   };
 
   const handleBiometrics = async () => {
     if (lockoutSecs > 0 || loading) return;
     setErrorMsg(null);
-    if (!biometricActive) {
-      setErrorMsg('Biometria não cadastrada. Digite seu PIN ou configure nas Configurações.');
+    if (!isBiometricEnabled) {
+      setErrorMsg('Biometria física não configurada neste dispositivo.');
       return;
     }
     setLoading(true);
@@ -122,137 +117,139 @@ export const LockOverlay: React.FC = () => {
       const success = await unlockWithBiometrics();
       setLoading(false);
       if (!success) {
-        setErrorMsg('Não foi possível verificar sua identidade biométrica.');
+        setErrorMsg('Leitura biométrica não confirmada.');
       }
     } catch {
       setLoading(false);
-      setErrorMsg('Falha ao validar biometria.');
+      setErrorMsg('Falha na comunicação com o leitor biométrico.');
     }
   };
 
   return (
-    <div className="lock-overlay-container">
-      <div className="lock-overlay-header">
-        <IonIcon icon={lockClosedOutline} className="lock-icon-main pulse" />
-        <h2>Seu cofre está protegido</h2>
-        <p>
-          {hasQuickUnlock 
-            ? 'Digite seu PIN de 6 dígitos ou use a biometria para continuar.' 
-            : 'Insira sua Senha Mestra para desbloquear o cofre.'}
-        </p>
-      </div>
-
-      {hasQuickUnlock ? (
-        <>
-          <div className="pin-indicator-container">
-            {[...Array(6)].map((_, i) => (
-              <div 
-                key={i} 
-                className={`pin-dot ${i < pin.length ? 'filled' : ''} ${errorMsg ? 'error' : ''}`}
-              />
-            ))}
+    <div className="lock-overlay-container" role="dialog" aria-modal="true" aria-label="Cofre bloqueado">
+      <div className="lock-overlay-card">
+        <div className="lock-overlay-header">
+          <div className="lock-icon-badge">
+            <IonIcon icon={lockClosedOutline} />
           </div>
+          <h2>Sessão Bloqueada</h2>
+          <p>
+            {hasQuickUnlock
+              ? 'Insira seu PIN de 6 dígitos ou autentique via hardware biométrico.'
+              : 'Confirme sua Senha Mestra para retomar a sessão.'}
+          </p>
+        </div>
 
-          {errorMsg && (
-            <div className="lock-error-container">
-              <IonText color="danger"><p className="shake">{errorMsg}</p></IonText>
+        {hasQuickUnlock ? (
+          <>
+            <div className="pin-indicator-container">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`pin-dot ${i < pin.length ? 'filled' : ''} ${errorMsg ? 'error' : ''}`}
+                />
+              ))}
             </div>
-          )}
 
-          {lockoutSecs > 0 && (
-            <div className="lockout-timer-container">
-              <p>Muitas tentativas. Aguarde um momento.</p>
-              <h3>{Math.floor(lockoutSecs / 60)}:{(lockoutSecs % 60).toString().padStart(2, '0')}</h3>
-            </div>
-          )}
+            {errorMsg && (
+              <div className="lock-error-banner">
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
-          {loading && (
-            <div className="lock-spinner">
-              <IonSpinner name="crescent" color="primary" />
-            </div>
-          )}
+            {lockoutSecs > 0 && (
+              <div className="lockout-timer-container">
+                <p>Bloqueio temporário por segurança</p>
+                <h3>
+                  {Math.floor(lockoutSecs / 60)}:{(lockoutSecs % 60).toString().padStart(2, '0')}
+                </h3>
+              </div>
+            )}
 
-          <div className="numeric-keypad">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
-              <button 
-                key={num} 
+            {loading && (
+              <div className="lock-spinner">
+                <IonSpinner name="crescent" style={{ color: '#3b82f6', width: '22px', height: '22px' }} />
+              </div>
+            )}
+
+            <div className="numeric-keypad">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  className="keypad-button"
+                  disabled={lockoutSecs > 0 || loading}
+                  onClick={() => handleKeyPress(num)}
+                >
+                  {num}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                className="keypad-button functional-key"
+                disabled={lockoutSecs > 0 || loading || !isBiometricEnabled}
+                onClick={handleBiometrics}
+                title={isBiometricEnabled ? 'Usar leitor biométrico físico' : 'Biometria física indisponível'}
+              >
+                <IonIcon icon={fingerPrintOutline} />
+              </button>
+
+              <button
+                type="button"
                 className="keypad-button"
                 disabled={lockoutSecs > 0 || loading}
-                onClick={() => handleKeyPress(num)}
+                onClick={() => handleKeyPress('0')}
               >
-                {num}
+                0
               </button>
-            ))}
 
-            <button 
-              className="keypad-button functional-key"
-              disabled={lockoutSecs > 0 || loading}
-              onClick={handleBiometrics}
+              <button
+                type="button"
+                className="keypad-button functional-key"
+                disabled={lockoutSecs > 0 || loading}
+                onClick={handleBackspace}
+                aria-label="Apagar dígito"
+              >
+                <IonIcon icon={backspaceOutline} />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="lock-password-form">
+            <input
+              type="password"
+              placeholder="Digite sua Senha Mestra"
+              value={masterPasswordInput}
+              onChange={(e) => setMasterPasswordInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleMasterPasswordUnlock()}
+              disabled={loading}
+              className="rz-input"
+            />
+            {errorMsg && (
+              <div className="lock-error-banner">
+                <span>{errorMsg}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleMasterPasswordUnlock}
+              disabled={loading || !masterPasswordInput.trim()}
+              className="rz-btn rz-btn-primary"
+              style={{ width: '100%' }}
             >
-              <IonIcon icon={fingerPrintOutline} />
-            </button>
-
-            <button 
-              className="keypad-button"
-              disabled={lockoutSecs > 0 || loading}
-              onClick={() => handleKeyPress('0')}
-            >
-              0
-            </button>
-
-            <button 
-              className="keypad-button functional-key"
-              disabled={lockoutSecs > 0 || loading}
-              onClick={handleBackspace}
-            >
-              <IonIcon icon={backspaceOutline} />
+              {loading ? <IonSpinner name="crescent" style={{ width: '16px', height: '16px' }} /> : 'Desbloquear Cofre'}
             </button>
           </div>
-        </>
-      ) : (
-        <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '16px', margin: '20px 0' }}>
-          <input
-            type="password"
-            placeholder="Sua Senha Mestra"
-            value={masterPasswordInput}
-            onChange={(e) => setMasterPasswordInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleMasterPasswordUnlock()}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '14px',
-              borderRadius: '12px',
-              border: '1px solid rgba(96, 165, 250, 0.3)',
-              background: 'rgba(15, 23, 42, 0.8)',
-              color: '#ffffff',
-              fontSize: '1rem',
-              outline: 'none',
-              textAlign: 'center'
-            }}
-          />
-          {errorMsg && (
-            <div className="lock-error-container">
-              <IonText color="danger"><p className="shake">{errorMsg}</p></IonText>
-            </div>
-          )}
-          <IonButton 
-            expand="block" 
-            onClick={handleMasterPasswordUnlock} 
-            disabled={loading || !masterPasswordInput.trim()}
-            style={{ '--background': 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)', fontWeight: 700 }}
-          >
-            {loading ? <IonSpinner name="crescent" /> : 'Desbloquear Cofre'}
-          </IonButton>
-        </div>
-      )}
+        )}
 
-      <div className="lock-overlay-footer">
-        <IonButton fill="clear" color="medium" onClick={logout}>
-          <IonIcon slot="start" icon={logOutOutline} />
-          Sair da Conta
-        </IonButton>
+        <div className="lock-overlay-footer">
+          <button type="button" className="lock-logout-btn" onClick={logout}>
+            <IonIcon icon={logOutOutline} />
+            <span>Encerrar sessão</span>
+          </button>
+        </div>
       </div>
     </div>
   );
 };
-

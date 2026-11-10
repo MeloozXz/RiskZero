@@ -1,185 +1,193 @@
 .lock-overlay-container {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9999;
-  background: linear-gradient(135deg, #090d16 0%, #111827 100%);
+  inset: 0;
+  z-index: 99999;
+  background: rgba(9, 9, 11, 0.96);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.lock-overlay-card {
+  width: 100%;
+  max-width: 360px;
+  background: #121215;
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  padding: 28px 24px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 40px 24px;
-  color: #f3f4f6;
-  font-family: 'Outfit', 'Inter', sans-serif;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 
 .lock-overlay-header {
   text-align: center;
-  margin-top: 20px;
+  margin-bottom: 20px;
 }
 
-.lock-icon-main {
-  font-size: 54px;
+.lock-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(37, 99, 235, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.3);
   color: #3b82f6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
   margin-bottom: 12px;
-  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.4));
 }
 
 .lock-overlay-header h2 {
-  font-size: 24px;
+  font-size: 1.1rem;
   font-weight: 700;
-  margin: 0 0 8px 0;
-  letter-spacing: 0.5px;
+  color: #fafafa;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.015em;
 }
 
 .lock-overlay-header p {
-  font-size: 14px;
-  color: #9ca3af;
+  font-size: 0.8rem;
+  color: #a1a1aa;
   margin: 0;
-  max-width: 280px;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
-/* Indicador de PIN (bolinhas) */
 .pin-indicator-container {
   display: flex;
-  gap: 16px;
-  margin: 30px 0;
+  gap: 12px;
+  margin: 8px 0 20px;
 }
 
 .pin-dot {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  border: 2px solid #4b5563;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #18181b;
+  border: 1.5px solid #3f3f46;
+  transition: all 0.15s ease;
 }
 
 .pin-dot.filled {
-  background-color: #3b82f6;
+  background: #3b82f6;
   border-color: #3b82f6;
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
-  transform: scale(1.15);
 }
 
 .pin-dot.error {
+  background: #ef4444;
   border-color: #ef4444;
-  background-color: #ef4444;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
 }
 
-.lock-error-container {
-  min-height: 24px;
-  margin-bottom: 10px;
+.lock-error-banner {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  font-size: 0.78rem;
   text-align: center;
-}
-
-.lock-error-container p {
-  font-size: 14px;
-  margin: 0;
-  font-weight: 500;
+  margin-bottom: 14px;
 }
 
 .lockout-timer-container {
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 
 .lockout-timer-container p {
-  font-size: 13px;
+  font-size: 0.76rem;
+  color: #a1a1aa;
+  margin: 0 0 4px 0;
+}
+
+.lockout-timer-container h3 {
+  font-family: var(--rz-font-mono);
+  font-size: 1.35rem;
+  font-weight: 700;
   color: #ef4444;
   margin: 0;
 }
 
-.lockout-timer-container h3 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #ef4444;
-  margin: 5px 0 0 0;
-  letter-spacing: 1px;
-}
-
 .lock-spinner {
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
-/* Teclado Numérico Customizado */
 .numeric-keypad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px 24px;
+  gap: 10px;
   width: 100%;
-  max-width: 320px;
-  margin-bottom: 20px;
+  max-width: 260px;
 }
 
 .keypad-button {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #f3f4f6;
-  font-size: 28px;
-  font-weight: 500;
-  height: 68px;
-  width: 68px;
-  border-radius: 50%;
-  margin: 0 auto;
+  height: 52px;
+  border-radius: 8px;
+  background: #18181b;
+  border: 1px solid #27272a;
+  color: #fafafa;
+  font-size: 1.15rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  outline: none;
-  transition: all 0.1s ease;
-  backdrop-filter: blur(10px);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
-.keypad-button:active {
-  background: rgba(59, 130, 246, 0.25);
-  border-color: #3b82f6;
-  transform: scale(0.92);
+.keypad-button:hover:not(:disabled) {
+  background: #27272a;
+  border-color: #3f3f46;
 }
 
 .keypad-button:disabled {
-  opacity: 0.3;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
 .keypad-button.functional-key {
-  background: transparent;
-  border: none;
-  font-size: 24px;
-  color: #9ca3af;
+  background: #09090b;
+  color: #a1a1aa;
+  font-size: 1.2rem;
 }
 
-.keypad-button.functional-key:active {
-  color: #3b82f6;
-  transform: scale(0.92);
+.lock-password-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 12px;
 }
 
 .lock-overlay-footer {
-  margin-top: 10px;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid #27272a;
   width: 100%;
   display: flex;
   justify-content: center;
 }
 
-/* Animações Modernas */
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-6px); }
-  40%, 80% { transform: translateX(6px); }
+.lock-logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
 }
 
-.shake {
-  animation: shake 0.4s ease-in-out;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.85; }
-}
-
-.pulse {
-  animation: pulse 2.5s infinite ease-in-out;
+.lock-logout-btn:hover {
+  color: #fafafa;
+  background: #18181b;
 }

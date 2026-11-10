@@ -189,6 +189,30 @@ export const StorageService = {
   },
 
   /**
+   * Salva o PIN Secundário de Pânico & Camuflagem (Duress PIN) indexado por e-mail
+   */
+  async savePanicPINHash(email: string, pinHash: string): Promise<void> {
+    const key = `zk_panic_pin_hash_${email.toLowerCase().trim()}`;
+    await setSecureItem(key, pinHash);
+  },
+
+  /**
+   * Obtém o PIN Secundário de Pânico & Camuflagem (Duress PIN) indexado por e-mail
+   */
+  async getPanicPINHash(email: string): Promise<string | null> {
+    const key = `zk_panic_pin_hash_${email.toLowerCase().trim()}`;
+    return await getSecureItem(key);
+  },
+
+  /**
+   * Remove o PIN Secundário de Pânico & Camuflagem (Duress PIN)
+   */
+  async removePanicPINHash(email: string): Promise<void> {
+    const key = `zk_panic_pin_hash_${email.toLowerCase().trim()}`;
+    await removeSecureItem(key);
+  },
+
+  /**
    * Registra um evento de auditoria de segurança no Firestore
    */
   async addAuditLog(email: string, action: AuditLog['action'], details: string): Promise<void> {

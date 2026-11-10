@@ -221,3 +221,49 @@ def add_table_data(doc, headers, rows_data, col_widths=None):
                 
     # Retorna a tabela sem adicionar parágrafos em branco que geram páginas vazias
     return table
+
+def add_figure_placeholder(doc, fig_label, title, placeholder_text, source="Elaborado pelos autores (2026)."):
+    # Legenda superior (Padrão ABNT NBR 14724)
+    p_cap = doc.add_paragraph()
+    p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_cap.paragraph_format.space_before = Pt(10)
+    p_cap.paragraph_format.space_after = Pt(4)
+    p_cap.paragraph_format.keep_with_next = True
+    r_lbl = p_cap.add_run(f"{fig_label} — ")
+    r_lbl.bold = True
+    r_lbl.font.name = "Arial"
+    r_lbl.font.size = Pt(10)
+    r_lbl.font.color.rgb = RGBColor(0x0F, 0x17, 0x2A)
+    r_tit = p_cap.add_run(title)
+    r_tit.font.name = "Arial"
+    r_tit.font.size = Pt(10)
+    r_tit.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
+
+    # Marcador visual da imagem / diagrama
+    p_ph = doc.add_paragraph()
+    p_ph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_ph.paragraph_format.space_before = Pt(4)
+    p_ph.paragraph_format.space_after = Pt(4)
+    p_ph.paragraph_format.keep_with_next = True
+    r_ph = p_ph.add_run(placeholder_text)
+    r_ph.bold = True
+    r_ph.font.name = "Arial"
+    r_ph.font.size = Pt(10)
+    r_ph.font.color.rgb = RGBColor(0x25, 0x63, 0xEB)
+
+    # Fonte inferior (Padrão ABNT NBR 14724)
+    p_src = doc.add_paragraph()
+    p_src.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_src.paragraph_format.space_before = Pt(2)
+    p_src.paragraph_format.space_after = Pt(12)
+    r_src_lbl = p_src.add_run("Fonte: ")
+    r_src_lbl.bold = True
+    r_src_lbl.font.name = "Arial"
+    r_src_lbl.font.size = Pt(10)
+    r_src_lbl.font.color.rgb = RGBColor(0x33, 0x41, 0x55)
+    r_src_txt = p_src.add_run(source)
+    r_src_txt.font.name = "Arial"
+    r_src_txt.font.size = Pt(10)
+    r_src_txt.font.color.rgb = RGBColor(0x33, 0x41, 0x55)
+    return p_cap
+

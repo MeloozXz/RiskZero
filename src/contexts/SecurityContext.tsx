@@ -15,6 +15,8 @@ interface SecurityContextType {
   isLoggedIn: boolean;       // Indica se a chave mestra está carregada na RAM
   isLocked: boolean;         // Indica se a tela de PIN/Biometria está ativa (Auto-Lock)
   hasPIN: boolean;           // Indica se o usuário cadastrou um PIN local de 6 dígitos
+  hasPanicPIN: boolean;      // Indica se o usuário configurou um PIN secundário de pânico/camuflagem
+  isCamouflageMode: boolean; // Indica se o cofre está operando em Modo Camuflagem (Cofre de Fachada)
   isBiometricEnabled: boolean; // Indica se a biometria está cadastrada para o usuário ativo
   totpEnabled: boolean;      // Indica se o 2FA está ativo
   totpSecret: string | null; // Segredo do 2FA atual em configuração
@@ -22,19 +24,21 @@ interface SecurityContextType {
   isInitializing: boolean;   // Indica se a sessão está sendo inicializada/restaurada
   rememberSession: boolean;   // Se deve manter conectado ao recarregar a página (F5)
   setRememberSession: (enabled: boolean) => Promise<void>;
-  
+
   // Ações de Autenticação e Sessão
   register: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   login2FA: (token: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  
+
   // Ações do PIN e Desbloqueio
   registerPIN: (pin: string) => Promise<void>;
+  registerPanicPIN: (pin: string) => Promise<void>;
+  disablePanicPIN: () => Promise<void>;
   unlockWithPIN: (pin: string) => Promise<{ success: boolean; error?: string }>;
   unlockWithBiometrics: () => Promise<boolean>;
   lockApp: () => void;
-  
+
   // Ações de 2FA
   setupNew2FA: () => string; // Gera segredo local e retorna
   enable2FA: (token: string) => Promise<{ success: boolean; error?: string }>;
@@ -58,6 +62,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isLocked, setIsLocked] = useState<boolean>(false);
   const [hasPIN, setHasPIN] = useState<boolean>(false);
+  const [hasPanicPIN, setHasPanicPIN] = useState<boolean>(false);
+  const [isCamouflageMode, setIsCamouflageMode] = useState<boolean>(false);
   const [isBiometricEnabled, setIsBiometricEnabled] = useState<boolean>(false);
   const [totpEnabled, setTotpEnabled] = useState<boolean>(false);
   const [totpSecret, setTotpSecret] = useState<string | null>(null);
@@ -111,9 +117,11 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (profile) {
             setTotpEnabled(profile.totpEnabled);
           }
-          
+
           const pinHash = await StorageService.getPINHash(email);
+          const panicPinHash = await StorageService.getPanicPINHash(email);
           setHasPIN(!!pinHash);
+          setHasPanicPIN(!!panicPinHash);
           setIsBiometricEnabled(BiometricsService.isEnrolled(email));
         }
       } catch (err) {
@@ -241,19 +249,22 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const res = await SessionService.authenticateMaster(emailKey, password);
     if (res.success) {
       const profile = await StorageService.getUserProfile(emailKey);
-      
+
       // Se tiver 2FA ativado, não loga de imediato na UI (será necessário validar TOTP)
       if (profile && profile.totpEnabled) {
         // Mantemos isLoggedIn como falso até o TOTP ser validado!
         return { success: true, requires2FA: true };
       }
-      
+
       setIsLoggedIn(true);
       setIsLocked(false);
+      setIsCamouflageMode(false);
       setActiveEmail(emailKey);
-      
+
       const pinHash = await StorageService.getPINHash(emailKey);
+      const panicPinHash = await StorageService.getPanicPINHash(emailKey);
       setHasPIN(!!pinHash);
+      setHasPanicPIN(!!panicPinHash);
       if (profile) {
         setTotpEnabled(profile.totpEnabled);
       }
@@ -275,8 +286,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await StorageService.clearPersistedSession();
     setIsLoggedIn(false);
     setIsLocked(false);
+    setIsCamouflageMode(false);
     setActiveEmail(null);
     setHasPIN(false);
+    setHasPanicPIN(false);
     setTotpEnabled(false);
   };
 
@@ -294,9 +307,42 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const profile = await StorageService.getUserProfile(email);
     const salt = profile?.salt || 'zk_pin_salt_default';
     const pinHash = await derivePinHash(pin, salt);
+    const panicHash = await StorageService.getPanicPINHash(email);
+    if (panicHash && panicHash === pinHash) {
+      throw new Error('O PIN principal não pode ser idêntico ao PIN de Pânico.');
+    }
     await StorageService.savePINHash(email, pinHash);
     setHasPIN(true);
     await StorageService.addAuditLog(email, 'CREDENTIAL_UPDATED', 'PIN local com derivação Argon2id configurado com sucesso.');
+  };
+
+  const registerPanicPIN = async (pin: string) => {
+    const email = SessionService.getActiveUserEmail();
+    if (!email) {
+      throw new Error('Sessão ativa não encontrada.');
+    }
+    if (pin.length !== 6 || isNaN(Number(pin))) {
+      throw new Error('O PIN de Pânico deve conter exatamente 6 dígitos numéricos.');
+    }
+    const profile = await StorageService.getUserProfile(email);
+    const salt = profile?.salt || 'zk_pin_salt_default';
+    const panicPinHash = await derivePinHash(pin, salt);
+    const normalPinHash = await StorageService.getPINHash(email);
+    if (normalPinHash && normalPinHash === panicPinHash) {
+      throw new Error('O PIN de Pânico deve ser diferente do seu PIN principal de desbloqueio.');
+    }
+    await StorageService.savePanicPINHash(email, panicPinHash);
+    setHasPanicPIN(true);
+    await StorageService.addAuditLog(email, 'CREDENTIAL_UPDATED', 'PIN secundário de Pânico & Camuflagem configurado.');
+  };
+
+  const disablePanicPIN = async () => {
+    const email = SessionService.getActiveUserEmail();
+    if (!email) return;
+    await StorageService.removePanicPINHash(email);
+    setHasPanicPIN(false);
+    setIsCamouflageMode(false);
+    await StorageService.addAuditLog(email, 'CREDENTIAL_DELETED', 'PIN secundário de Pânico & Camuflagem desativado.');
   };
 
   const unlockWithPIN = async (pin: string) => {
@@ -311,8 +357,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     const savedPINHash = await StorageService.getPINHash(email);
-    if (!savedPINHash) {
-      return { success: false, error: 'Nenhum PIN cadastrado para esta conta neste celular.' };
+    const savedPanicPINHash = await StorageService.getPanicPINHash(email);
+    if (!savedPINHash && !savedPanicPINHash) {
+      return { success: false, error: 'Nenhum PIN cadastrado para esta conta neste dispositivo.' };
     }
 
     const profile = await StorageService.getUserProfile(email);
@@ -320,12 +367,22 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const inputPINHash = await derivePinHash(pin, salt);
     const legacyHash = await hashSHA256(pin);
 
-    if (inputPINHash === savedPINHash || legacyHash === savedPINHash) {
+    // 1. Verifica se é o PIN de Pânico & Camuflagem (Duress PIN)
+    if (savedPanicPINHash && inputPINHash === savedPanicPINHash) {
+      await SessionService.resetFailedAttempts();
+      setIsCamouflageMode(true);
+      setIsLocked(false);
+      await StorageService.addAuditLog(email, '2FA_VERIFIED', 'Desbloqueio em Modo Camuflagem (Cofre de Fachada) acionado via PIN de Pânico.');
+      return { success: true };
+    }
+
+    // 2. Verifica se é o PIN Principal de Desbloqueio
+    if (savedPINHash && (inputPINHash === savedPINHash || legacyHash === savedPINHash)) {
       if (legacyHash === savedPINHash) {
-        // Migração transparente para o novo padrão seguro com salt PBKDF2
         await StorageService.savePINHash(email, inputPINHash);
       }
       await SessionService.resetFailedAttempts();
+      setIsCamouflageMode(false);
       setIsLocked(false);
       await StorageService.addAuditLog(email, '2FA_VERIFIED', 'Desbloqueio efetuado com sucesso via PIN.');
       return { success: true };
@@ -333,14 +390,14 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const attempts = await SessionService.incrementFailedAttempts();
       const remaining = 3 - attempts;
       if (remaining <= 0) {
-        return { 
-          success: false, 
-          error: 'Número de tentativas de PIN excedido. Aplicativo bloqueado por 5 minutos.' 
+        return {
+          success: false,
+          error: 'Número de tentativas de PIN excedido. Aplicativo bloqueado por 5 minutos.'
         };
       } else {
-        return { 
-          success: false, 
-          error: `PIN inválido. Resta(m) ${remaining} tentativa(s) antes do bloqueio.` 
+        return {
+          success: false,
+          error: `PIN inválido. Resta(m) ${remaining} tentativa(s) antes do bloqueio.`
         };
       }
     }
@@ -361,6 +418,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (res.masterPassword && !SessionService.isKeyLoaded()) {
         await SessionService.authenticateMaster(email, res.masterPassword);
       }
+      setIsCamouflageMode(false);
       setIsLocked(false);
       await StorageService.addAuditLog(email, '2FA_VERIFIED', 'Desbloqueio efetuado via Biometria.');
       return true;
@@ -459,10 +517,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     delete profile.totpSecret; // Remove o segredo em texto claro legado
 
     await StorageService.saveUserProfile(email, profile);
-    
+
     setTotpEnabled(true);
     setTotpSecret(null);
-    
+
     await StorageService.addAuditLog(email, 'CREDENTIAL_UPDATED', 'Autenticação em dois fatores (2FA) ativada.');
 
     return { success: true };
@@ -574,6 +632,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isLoggedIn,
         isLocked,
         hasPIN,
+        hasPanicPIN,
+        isCamouflageMode,
         isBiometricEnabled,
         totpEnabled,
         totpSecret,
@@ -586,6 +646,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         login2FA,
         logout,
         registerPIN,
+        registerPanicPIN,
+        disablePanicPIN,
         unlockWithPIN,
         unlockWithBiometrics,
         lockApp,

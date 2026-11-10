@@ -372,7 +372,58 @@ def create_clean_document():
     r_keys.font.size = Pt(11)
 
     # =========================================================================
-    # ELEMENTO 7: SUMÁRIO DINÂMICO E ESTRUTURADO (PÁGINA 7)
+    # ELEMENTO 7: LISTA DE ILUSTRAÇÕES / ÍNDICE DE FIGURAS (PÁGINA 7)
+    # =========================================================================
+    doc.add_page_break()
+    
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(10)
+    p.paragraph_format.space_after = Pt(20)
+    r = p.add_run("LISTA DE ILUSTRAÇÕES")
+    r.bold = True
+    r.font.name = "Arial"
+    r.font.size = Pt(12)
+    
+    figuras_itens = [
+        ("Figura 1 — Gráfico de Gantt do Cronograma de Desenvolvimento Ágil (Sprints 1 a 6)", "21"),
+        ("Figura 2 — Diagrama da Arquitetura Zero-Knowledge e Fluxo de Dados do Sistema", "27"),
+        ("Figura 3 — Modelo Entidade-Relacionamento Conceitual (MER) do SeguranApp", "31"),
+        ("Figura 4 — Diagrama Entidade-Relacionamento Lógico (DER) do SeguranApp", "31"),
+        ("Figura 5 — Tela 1: Splash Screen e Onboarding Criptográfico 3D", "35"),
+        ("Figura 6 — Tela 2: Autenticação Mestra, Biometria e 2FA/TOTP", "35"),
+        ("Figura 7 — Tela 3: Dashboard Principal (Home) com Risk Score e Status de Proteção", "36"),
+        ("Figura 8 — Tela 4: Cofre de Senhas e Credenciais Criptografadas", "36"),
+        ("Figura 9 — Tela 5: Conexão VPN WireGuard em Tempo Real e Mascaramento de IP", "36"),
+        ("Figura 10 — Tela 6: Detector de Links Maliciosos e Análise Heurística Anti-Phishing", "36"),
+        ("Figura 11 — Tela 7: Auditoria de Vazamentos de Dados via k-Anonymity (HIBP)", "37"),
+        ("Figura 12 — Tela 8: Módulo de Hardening do Dispositivo e Exportação de Logs LGPD", "37"),
+        ("Figura 13 — Tela 9: Central de Aprendizado em Segurança e Quiz de Conscientização", "37"),
+        ("Figura 14 — Tela 10: Extensão para Navegadores Chrome (Manifest V3) e Autofill Seguro", "37"),
+    ]
+    
+    for fig_item, fig_pag in figuras_itens:
+        p_fig = doc.add_paragraph()
+        p_fig.paragraph_format.line_spacing = 1.25
+        p_fig.paragraph_format.space_before = Pt(2)
+        p_fig.paragraph_format.space_after = Pt(3)
+        r_fitem = p_fig.add_run(fig_item)
+        r_fitem.font.name = "Arial"
+        r_fitem.font.size = Pt(10)
+        
+        pontos_count = max(5, 82 - len(fig_item))
+        r_fdots = p_fig.add_run(" " + "." * pontos_count + " ")
+        r_fdots.font.name = "Arial"
+        r_fdots.font.size = Pt(9)
+        r_fdots.font.color.rgb = RGBColor(0x94, 0xA3, 0xB8)
+        
+        r_fpag = p_fig.add_run(fig_pag)
+        r_fpag.bold = True
+        r_fpag.font.name = "Arial"
+        r_fpag.font.size = Pt(10)
+
+    # =========================================================================
+    # ELEMENTO 8: SUMÁRIO DINÂMICO E ESTRUTURADO (PÁGINA 8)
     # =========================================================================
     doc.add_page_break()
     
@@ -386,50 +437,50 @@ def create_clean_document():
     r.font.size = Pt(12)
     
     sumario_itens = [
-        ("1. INTRODUÇÃO", "8"),
-        ("  1.1 A Intersecção entre Cibersegurança e Bem-Estar Digital", "8"),
-        ("  1.2 Justificativa e Impactos Organizacionais", "9"),
-        ("  1.3 Problema de Pesquisa", "9"),
-        ("  1.4 Objetivos da Pesquisa (Geral e Específicos)", "10"),
-        ("  1.5 Estrutura da Monografia", "10"),
-        ("2. FUNDAMENTAÇÃO TEÓRICA", "11"),
-        ("  2.1 Os Pilares da Segurança da Informação (Tripé CID e Extensões)", "11"),
-        ("  2.2 Engenharia Social, Vetores de Ataque e a Falha Humana", "12"),
-        ("  2.3 Marco Regulatório: Lei Geral de Proteção de Dados (LGPD)", "13"),
-        ("  2.4 Normas Internacionais: Família ABNT NBR ISO/IEC 27000", "14"),
-        ("  2.5 Bem-Estar Digital, Ergonomia Cognitiva e Sobrecarga Tecnológica", "14"),
-        ("  2.6 Arquitetura Criptográfica Contemporânea e Redes Seguras", "15"),
-        ("3. METODOLOGIA E GESTÃO ÁGIL DO PROJETO", "17"),
-        ("  3.1 Abordagem e Enquadramento Metodológico", "17"),
-        ("  3.2 Framework Ágil Adotado: Integração Scrum e Kanban", "17"),
-        ("  3.3 Estrutura, Papéis e Divisão de Responsabilidades da Equipe", "17"),
-        ("  3.4 Gestão de Tarefas e Governança de Código no GitHub", "18"),
-        ("  3.5 Product Backlog Completo (User Stories)", "18"),
-        ("  3.6 Cronograma Inicial de Sprints e Entregas", "20"),
-        ("4. DOCUMENTO DE REQUISITOS DO SISTEMA", "21"),
-        ("  4.1 Diretrizes e Padrões de Engenharia de Requisitos", "21"),
-        ("  4.2 Especificação Exaustiva de Requisitos Funcionais (RF01 a RF25)", "21"),
-        ("  4.3 Especificação Exaustiva de Requisitos Não Funcionais (RNF01 a RNF15)", "24"),
-        ("5. ARQUITETURA DO SISTEMA E STACK TECNOLÓGICA", "26"),
-        ("  5.1 Padrão Arquitetural Adotado: Cliente-Servidor Zero-Knowledge", "26"),
-        ("  5.2 Fluxo de Dados Ponta a Ponta (End-to-End Data Flow)", "27"),
-        ("  5.3 Justificativa Técnica Minuciosa da Stack Tecnológica", "28"),
-        ("6. MODELAGEM DE BANCO DE DADOS", "30"),
-        ("  6.1 Abordagem e Estrutura Conceitual (MER) e Lógica (DER)", "30"),
-        ("  6.2 Dicionário de Dados Exaustivo do Sistema (8 Entidades)", "30"),
-        ("7. PROTOTIPAÇÃO E DESIGN DE INTERFACE (UI/UX E BEM-ESTAR)", "34"),
-        ("  7.1 Princípios de UI/UX Voltados à Redução de Erros e Estresse", "34"),
-        ("  7.2 Protótipo Navegável Figma e Especificação Tela a Tela (Placeholders)", "34"),
-        ("8. ROTINAS E RELATÓRIO DE TESTES DE SOFTWARE", "37"),
-        ("  8.1 Estratégia de Testes em Camadas e Matriz de Casos de Teste (CT01 a CT15)", "37"),
-        ("  8.2 Relatório de Incidentes Encontrados e Ações Corretivas", "39"),
-        ("9. PLANO DE NEGÓCIOS DO PROJETO (ESTUDO DE VIABILIDADE)", "41"),
-        ("  9.1 Estudo de Viabilidade Mercadológica B2B e B2C", "41"),
-        ("  9.2 Modelo de Precificação SaaS e Estratégia de Monetização", "41"),
-        ("  9.3 Estimativa de Custos de Infraestrutura e Ponto de Equilíbrio (Break-Even)", "42"),
-        ("  9.4 Curva de Vida do Produto e Roadmap de Upgrades Futuros", "43"),
-        ("10. CONCLUSÃO E CONSIDERAÇÕES FINAIS", "44"),
-        ("REFERÊNCIAS", "46"),
+        ("1. INTRODUÇÃO", "9"),
+        ("  1.1 A Intersecção entre Cibersegurança e Bem-Estar Digital", "9"),
+        ("  1.2 Justificativa e Impactos Organizacionais", "10"),
+        ("  1.3 Problema de Pesquisa", "10"),
+        ("  1.4 Objetivos da Pesquisa (Geral e Específicos)", "11"),
+        ("  1.5 Estrutura da Monografia", "11"),
+        ("2. FUNDAMENTAÇÃO TEÓRICA", "12"),
+        ("  2.1 Os Pilares da Segurança da Informação (Tripé CID e Extensões)", "12"),
+        ("  2.2 Engenharia Social, Vetores de Ataque e a Falha Humana", "13"),
+        ("  2.3 Marco Regulatório: Lei Geral de Proteção de Dados (LGPD)", "14"),
+        ("  2.4 Normas Internacionais: Família ABNT NBR ISO/IEC 27000", "15"),
+        ("  2.5 Bem-Estar Digital, Ergonomia Cognitiva e Sobrecarga Tecnológica", "15"),
+        ("  2.6 Arquitetura Criptográfica Contemporânea e Redes Seguras", "16"),
+        ("3. METODOLOGIA E GESTÃO ÁGIL DO PROJETO", "18"),
+        ("  3.1 Abordagem e Enquadramento Metodológico", "18"),
+        ("  3.2 Framework Ágil Adotado: Integração Scrum e Kanban", "18"),
+        ("  3.3 Estrutura, Papéis e Divisão de Responsabilidades da Equipe", "18"),
+        ("  3.4 Gestão de Tarefas e Governança de Código no GitHub", "19"),
+        ("  3.5 Product Backlog Completo (User Stories)", "19"),
+        ("  3.6 Cronograma Inicial de Sprints e Entregas", "21"),
+        ("4. DOCUMENTO DE REQUISITOS DO SISTEMA", "22"),
+        ("  4.1 Diretrizes e Padrões de Engenharia de Requisitos", "22"),
+        ("  4.2 Especificação Exaustiva de Requisitos Funcionais (RF01 a RF25)", "22"),
+        ("  4.3 Especificação Exaustiva de Requisitos Não Funcionais (RNF01 a RNF15)", "25"),
+        ("5. ARQUITETURA DO SISTEMA E STACK TECNOLÓGICA", "27"),
+        ("  5.1 Padrão Arquitetural Adotado: Cliente-Servidor Zero-Knowledge", "27"),
+        ("  5.2 Fluxo de Dados Ponta a Ponta (End-to-End Data Flow)", "28"),
+        ("  5.3 Justificativa Técnica Minuciosa da Stack Tecnológica", "29"),
+        ("6. MODELAGEM DE BANCO DE DADOS", "31"),
+        ("  6.1 Abordagem e Estrutura Conceitual (MER) e Lógica (DER)", "31"),
+        ("  6.2 Dicionário de Dados Exaustivo do Sistema (8 Entidades)", "31"),
+        ("7. PROTOTIPAÇÃO E DESIGN DE INTERFACE (UI/UX E BEM-ESTAR)", "35"),
+        ("  7.1 Princípios de UI/UX Voltados à Redução de Erros e Estresse", "35"),
+        ("  7.2 Protótipo Navegável Figma e Especificação Tela a Tela (Placeholders)", "35"),
+        ("8. ROTINAS E RELATÓRIO DE TESTES DE SOFTWARE", "38"),
+        ("  8.1 Estratégia de Testes em Camadas e Matriz de Casos de Teste (CT01 a CT15)", "38"),
+        ("  8.2 Relatório de Incidentes Encontrados e Ações Corretivas", "40"),
+        ("9. PLANO DE NEGÓCIOS DO PROJETO (ESTUDO DE VIABILIDADE)", "42"),
+        ("  9.1 Estudo de Viabilidade Mercadológica B2B e B2C", "42"),
+        ("  9.2 Modelo de Precificação SaaS e Estratégia de Monetização", "42"),
+        ("  9.3 Estimativa de Custos de Infraestrutura e Ponto de Equilíbrio (Break-Even)", "43"),
+        ("  9.4 Curva de Vida do Produto e Roadmap de Upgrades Futuros", "44"),
+        ("10. CONCLUSÃO E CONSIDERAÇÕES FINAIS", "45"),
+        ("REFERÊNCIAS", "47"),
     ]
     
     for item, pag in sumario_itens:

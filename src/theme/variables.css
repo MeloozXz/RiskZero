@@ -1,209 +1,801 @@
-/* ============================================
-   TEMA GLOBAL - Cofre de Segurança Ionic
-   Design System Premium (Obsidian, Cyan & Indigo)
-   ============================================ */
+/* ==========================================================================
+   RISKZERO — ENTERPRISE SECURITY & CREDENTIAL MANAGEMENT
+   Design System: Sober Graphite / Zinc SaaS (1Password / Linear / Vercel Style)
+   ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 :root {
-  /* Cores Primárias Cyber Ionic (Tailwind Slate / Blue System) */
-  --ion-color-primary: #3b82f6;
-  --ion-color-primary-rgb: 59, 130, 246;
-  --ion-color-primary-contrast: #ffffff;
-  --ion-color-primary-shade: #2563eb;
-  --ion-color-primary-tint: #60a5fa;
+  /* Zinc / Graphite Palette */
+  --rz-bg-base: #09090b;
+  --rz-bg-elevated: #121215;
+  --rz-bg-surface: #18181b;
+  --rz-bg-hover: #222226;
+  --rz-border: #27272a;
+  --rz-border-subtle: rgba(255, 255, 255, 0.07);
+  --rz-border-focus: #3b82f6;
 
-  --ion-color-secondary: #6366f1;
-  --ion-color-secondary-rgb: 99, 102, 241;
-  --ion-color-secondary-contrast: #ffffff;
-  --ion-color-secondary-shade: #4f46e5;
-  --ion-color-secondary-tint: #818cf8;
+  --rz-text-primary: #fafafa;
+  --rz-text-secondary: #a1a1aa;
+  --rz-text-muted: #71717a;
+
+  --rz-accent: #2563eb;
+  --rz-accent-hover: #1d4ed8;
+  --rz-accent-light: #3b82f6;
+
+  --rz-success: #10b981;
+  --rz-warning: #f59e0b;
+  --rz-danger: #ef4444;
+
+  /* Ionic Variables Overrides */
+  --ion-color-primary: #2563eb;
+  --ion-color-primary-rgb: 37, 99, 235;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-shade: #1d4ed8;
+  --ion-color-primary-tint: #3b82f6;
+
+  --ion-color-secondary: #3f3f46;
+  --ion-color-secondary-rgb: 63, 63, 70;
+  --ion-color-secondary-contrast: #fafafa;
+  --ion-color-secondary-shade: #27272a;
+  --ion-color-secondary-tint: #52525b;
 
   --ion-color-success: #10b981;
-  --ion-color-success-rgb: 16, 185, 129;
-  --ion-color-success-contrast: #ffffff;
-  --ion-color-success-shade: #059669;
-  --ion-color-success-tint: #34d399;
-
   --ion-color-warning: #f59e0b;
-  --ion-color-warning-rgb: 245, 158, 11;
-  --ion-color-warning-contrast: #ffffff;
-  --ion-color-warning-shade: #d97706;
-  --ion-color-warning-tint: #fbbf24;
-
   --ion-color-danger: #ef4444;
-  --ion-color-danger-rgb: 239, 68, 68;
-  --ion-color-danger-contrast: #ffffff;
-  --ion-color-danger-shade: #dc2626;
-  --ion-color-danger-tint: #f87171;
+  --ion-color-medium: #a1a1aa;
+  --ion-color-light: #f4f4f5;
 
-  --ion-color-medium: #94a3b8;
-  --ion-color-medium-rgb: 148, 163, 184;
-  --ion-color-medium-contrast: #020617;
-  --ion-color-medium-shade: #64748b;
-  --ion-color-medium-tint: #cbd5e1;
+  --ion-background-color: #09090b;
+  --ion-background-color-rgb: 9, 9, 11;
+  --ion-text-color: #fafafa;
+  --ion-text-color-rgb: 250, 250, 250;
 
-  --ion-color-light: #f1f5f9;
-  --ion-color-light-rgb: 241, 245, 249;
-  --ion-color-light-contrast: #020617;
-  --ion-color-light-shade: #e2e8f0;
-  --ion-color-light-tint: #f8fafc;
-
-  /* Fundo do App (Slate-950) */
-  --ion-background-color: #020617;
-  --ion-background-color-rgb: 2, 6, 23;
-
-  /* Textos padrão (Slate-100) */
-  --ion-text-color: #f8fafc;
-  --ion-text-color-rgb: 248, 250, 252;
-
-  /* Cards e Itens (Slate-900 / Slate-800) */
-  --ion-card-background: #0f172a;
+  --ion-card-background: #121215;
   --ion-item-background: transparent;
+  --ion-toolbar-background: #09090b;
+  --ion-toolbar-color: #fafafa;
+  --ion-tab-bar-background: #0c0c0f;
+  --ion-tab-bar-color: #71717a;
+  --ion-tab-bar-color-selected: #fafafa;
 
-  /* Componentes de Navegação */
-  --ion-toolbar-background: #020617;
-  --ion-toolbar-color: #f8fafc;
-  --ion-tab-bar-background: #090d16;
-  --ion-tab-bar-color: #64748b;
-  --ion-tab-bar-color-selected: #3b82f6;
-
-  /* Fonte */
   --ion-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Base Styles & Mobile Reset */
 * {
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
 }
 
+html,
 body {
   font-family: var(--ion-font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #020617;
-  color: #f8fafc;
+  background-color: var(--rz-bg-base);
+  color: var(--rz-text-primary);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-ion-content {
-  --background: #020617;
-  color: #f8fafc;
+/* Prevent Ionic page overlap / transparent bleed bugs */
+ion-app,
+ion-page,
+.ion-page,
+.rz-page {
+  background-color: var(--rz-bg-base) !important;
+  color: var(--rz-text-primary);
+}
+
+ion-content,
+.rz-content {
+  --background: #09090b !important;
+  background-color: #09090b !important;
+  color: var(--rz-text-primary);
+}
+
+ion-header {
+  background: #09090b;
+  border-bottom: 1px solid var(--rz-border);
+}
+
+ion-header::after {
+  display: none !important;
 }
 
 ion-toolbar {
-  --background: #020617;
-  --color: #f8fafc;
+  --background: #09090b !important;
+  --color: #fafafa !important;
+  --border-color: #27272a !important;
+  --min-height: 56px;
 }
 
 ion-title {
-  color: #f8fafc;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  color: #fafafa;
+  font-weight: 600;
+  font-size: 0.98rem;
+  letter-spacing: -0.015em;
 }
 
 ion-card {
-  --background: #0f172a;
-  color: #f8fafc;
-  border-radius: 16px;
-  border: 1px solid #1e293b;
+  --background: #121215 !important;
+  background: #121215 !important;
+  color: #fafafa;
+  border-radius: 10px !important;
+  border: 1px solid #27272a !important;
+  box-shadow: none !important;
+  margin: 0 0 16px 0;
 }
 
 ion-card-title {
-  color: #f8fafc !important;
-  font-weight: 700;
-}
-
-ion-card-header {
-  color: #f8fafc;
+  color: #fafafa !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  letter-spacing: -0.01em;
 }
 
 ion-card-content {
-  color: #cbd5e1;
-}
-
-ion-label {
-  color: #f8fafc !important;
-}
-
-ion-label p {
-  color: #94a3b8 !important;
+  color: #a1a1aa;
+  font-size: 0.875rem;
 }
 
 ion-item {
-  --color: #f8fafc;
+  --color: #fafafa;
+  --background: transparent;
+  --border-color: #27272a;
 }
 
-ion-input, ion-textarea, ion-searchbar {
-  --color: #f8fafc !important;
-  --placeholder-color: #64748b !important;
+ion-label {
+  color: #fafafa !important;
 }
 
-/* =========================================================
-   Espaçamento Elegante de Ícones / Símbolos e Textos (UX)
-   ========================================================= */
-
-/* Ícones em botões */
-ion-button [slot="start"],
-ion-button ion-icon[slot="start"] {
-  margin-inline-end: 10px !important;
-  margin-right: 10px !important;
+ion-label p {
+  color: #a1a1aa !important;
 }
 
-ion-button [slot="end"],
-ion-button ion-icon[slot="end"] {
-  margin-inline-start: 10px !important;
-  margin-left: 10px !important;
+ion-input,
+ion-textarea,
+ion-searchbar {
+  --color: #fafafa !important;
+  --placeholder-color: #71717a !important;
 }
 
-/* Ícones em itens de formulários e listas */
-ion-item [slot="start"],
-ion-item ion-icon[slot="start"] {
-  margin-inline-end: 14px !important;
-  margin-right: 14px !important;
+ion-button {
+  --border-radius: 8px !important;
+  --box-shadow: none !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: -0.01em !important;
 }
 
-ion-item [slot="end"],
-ion-item ion-icon[slot="end"] {
-  margin-inline-start: 12px !important;
-  margin-left: 12px !important;
+/* ==========================================================================
+   ENTERPRISE APP SHELL (Desktop Sidebar + Content Workspace)
+   ========================================================================== */
+
+.rz-shell {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background: #09090b;
+  overflow: hidden;
 }
 
-/* Espaço interno para inputs e textareas nos itens */
-ion-item ion-input,
-ion-item ion-textarea {
-  --padding-start: 8px !important;
-  letter-spacing: 0.01em;
+.rz-sidebar {
+  width: 248px;
+  min-width: 248px;
+  height: 100vh;
+  background: #0c0c0f;
+  border-right: 1px solid #27272a;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 40;
+  user-select: none;
 }
 
-/* Barra inferior (Tabs) */
-ion-tab-button ion-icon {
-  margin-bottom: 4px !important;
-  font-size: 22px !important;
+.rz-sidebar-top {
+  padding: 16px 12px;
+  overflow-y: auto;
+  flex: 1;
 }
 
-ion-tab-button ion-label {
-  margin-top: 2px !important;
-  letter-spacing: 0.02em !important;
+.rz-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 16px 10px;
+  border-bottom: 1px solid #1f1f23;
+  margin-bottom: 14px;
 }
 
-/* Badges e tags com ícones */
-ion-badge, .sec-badge, .cyber-badge, .telemetry-pill, .status-beacon-pill {
-  gap: 8px !important;
+.rz-brand-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-ion-badge ion-icon,
-.sec-badge ion-icon,
-.cyber-badge ion-icon,
-.telemetry-pill ion-icon {
-  margin-right: 6px !important;
+.rz-brand-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: #18181b;
+  border: 1px solid #27272a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fafafa;
 }
 
-/* Smooth Scrollbar */
+.rz-brand-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fafafa;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.rz-brand-sub {
+  font-size: 0.68rem;
+  color: #71717a;
+  font-weight: 500;
+  display: block;
+}
+
+.rz-nav-group {
+  margin-bottom: 18px;
+}
+
+.rz-nav-group-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #71717a;
+  padding: 0 10px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.rz-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rz-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #a1a1aa;
+  font-size: 0.84rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.rz-nav-item:hover {
+  background: #18181b;
+  color: #fafafa;
+}
+
+.rz-nav-item.active {
+  background: #18181b;
+  border-color: #27272a;
+  color: #fafafa;
+  font-weight: 600;
+}
+
+.rz-nav-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.rz-nav-item-icon {
+  width: 16px;
+  height: 16px;
+  color: #71717a;
+  flex-shrink: 0;
+}
+
+.rz-nav-item.active .rz-nav-item-icon {
+  color: #3b82f6;
+}
+
+.rz-sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid #1f1f23;
+  background: #0a0a0d;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rz-user-Row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px;
+}
+
+.rz-user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: #18181b;
+  border: 1px solid #27272a;
+  color: #fafafa;
+  font-weight: 600;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rz-user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.rz-user-email {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #e4e4e7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.rz-user-plan {
+  font-size: 0.68rem;
+  color: #71717a;
+  display: block;
+}
+
+.rz-sidebar-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.rz-sidebar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #27272a;
+  background: #121215;
+  color: #a1a1aa;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rz-sidebar-btn:hover {
+  background: #18181b;
+  color: #fafafa;
+  border-color: #3f3f46;
+}
+
+.rz-sidebar-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.rz-main-viewport {
+  flex: 1;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: #09090b;
+}
+
+/* Mobile Bottom Bar (< 768px) */
+.rz-mobile-nav {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .rz-sidebar {
+    display: none;
+  }
+
+  .rz-main-viewport {
+    height: calc(100vh - 60px);
+  }
+
+  .rz-mobile-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: #0c0c0f;
+    border-top: 1px solid #27272a;
+    z-index: 50;
+    padding: 0 4px;
+  }
+
+  .rz-mobile-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    color: #71717a;
+    font-size: 0.68rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .rz-mobile-nav-btn.active {
+    color: #fafafa;
+    font-weight: 600;
+  }
+}
+
+/* ==========================================================================
+   REUSABLE UI PRIMITIVES (rz-*)
+   ========================================================================== */
+
+.rz-container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 28px 48px;
+}
+
+.rz-container-narrow {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+}
+
+@media (max-width: 767px) {
+
+  .rz-container,
+  .rz-container-narrow {
+    padding: 18px 16px 36px;
+  }
+}
+
+.rz-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #27272a;
+}
+
+.rz-page-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #fafafa;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.rz-page-subtitle {
+  font-size: 0.85rem;
+  color: #a1a1aa;
+  margin: 4px 0 0;
+}
+
+.rz-card {
+  background: #121215;
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.rz-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.rz-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rz-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fafafa;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.rz-text-muted {
+  font-size: 0.84rem;
+  color: #a1a1aa;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.rz-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.rz-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.rz-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 960px) {
+  .rz-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .rz-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+
+  .rz-grid-4,
+  .rz-grid-3,
+  .rz-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rz-stat-box {
+  background: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.rz-stat-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.rz-stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fafafa;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.rz-stat-value-sm {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+/* Buttons */
+.rz-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 7px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.rz-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rz-btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #3b82f6;
+}
+
+.rz-btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.rz-btn-secondary {
+  background: #18181b;
+  color: #fafafa;
+  border-color: #27272a;
+}
+
+.rz-btn-secondary:hover:not(:disabled) {
+  background: #27272a;
+  border-color: #3f3f46;
+}
+
+.rz-btn-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.rz-btn-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Inputs */
+.rz-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #a1a1aa;
+  margin-bottom: 6px;
+}
+
+.rz-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 7px;
+  padding: 0 12px;
+  height: 38px;
+  transition: border-color 0.15s ease;
+}
+
+.rz-input-group:focus-within {
+  border-color: #3b82f6;
+}
+
+.rz-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fafafa;
+  font-size: 0.85rem;
+  outline: none;
+  width: 100%;
+}
+
+.rz-input::placeholder {
+  color: #52525b;
+}
+
+/* Badges */
+.rz-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.rz-badge-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.rz-badge-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.rz-badge-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.rz-badge-neutral {
+  background: #18181b;
+  color: #a1a1aa;
+  border-color: #27272a;
+}
+
+.rz-badge-blue {
+  background: rgba(37, 99, 235, 0.12);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+/* Alerts */
+.rz-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.rz-alert-warning {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fcd34d;
+}
+
+.rz-alert-danger {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.rz-alert-success {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+}
+
+/* Legacy utility classes mapped to clean SaaS theme for remaining pages */
+.glass-card {
+  background: #121215 !important;
+  border: 1px solid #27272a !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+.glass-input {
+  --background: #09090b !important;
+  border: 1px solid #27272a !important;
+  border-radius: 8px !important;
+}
+
+.cyber-btn {
+  --border-radius: 8px !important;
+  font-weight: 500 !important;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -211,107 +803,10 @@ ion-badge ion-icon,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(96, 165, 250, 0.25);
+  background: #27272a;
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(96, 165, 250, 0.45);
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 15px rgba(96, 165, 250, 0.2), 0 0 30px rgba(99, 102, 241, 0.1); }
-  50% { box-shadow: 0 0 25px rgba(96, 165, 250, 0.5), 0 0 50px rgba(99, 102, 241, 0.25); }
-}
-
-@keyframes radarWave {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.15); opacity: 0.3; }
-  100% { transform: scale(1.3); opacity: 0; }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.pulse-glow {
-  animation: pulseGlow 2.5s infinite ease-in-out;
-}
-
-/* Design System Utilities (Glassmorphism & Micro-Interactions) */
-.glass-card {
-  background: rgba(15, 23, 42, 0.65) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px !important;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), 0 0 20px rgba(96, 165, 250, 0.05) !important;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-.glass-card-hover:hover, .glass-card-hover:active {
-  transform: translateY(-2px);
-  border-color: rgba(96, 165, 250, 0.3) !important;
-  box-shadow: 0 14px 35px -8px rgba(96, 165, 250, 0.2) !important;
-}
-
-.glass-input {
-  --background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.09) !important;
-  border-radius: 14px !important;
-  transition: all 0.2s ease-in-out !important;
-}
-
-.glass-input:focus-within {
-  border-color: rgba(96, 165, 250, 0.5) !important;
-  box-shadow: 0 0 18px rgba(96, 165, 250, 0.25) !important;
-}
-
-.cyber-btn {
-  --border-radius: 14px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.02em !important;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-.cyber-btn:hover {
-  transform: scale(1.02);
-  filter: brightness(1.15);
-}
-
-.cyber-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px !important;
-  border-radius: 999px !important;
-  font-size: 0.72rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.03em !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(8px);
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, #ffffff 0%, #38bdf8 50%, #818cf8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.gradient-text-cyan {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.gradient-text-emerald {
-  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: #3f3f46;
 }

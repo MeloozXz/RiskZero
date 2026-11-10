@@ -1,9 +1,9 @@
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
-import { 
-  encryptData, 
-  decryptData, 
-  deriveKey, 
+import {
+  encryptData,
+  decryptData,
+  deriveKey,
   generateSalt,
   arrayBufferToBase64,
   base64ToArrayBuffer
@@ -15,16 +15,16 @@ const BIOMETRIC_CONFIG_PREFIX = 'zk_bio_config_';
 export type BiometricType = 'FACE_ID' | 'TOUCH_ID' | 'FINGERPRINT' | 'CYBER_SENSOR' | 'BIOMETRICS' | 'NONE';
 
 export interface BiometricHardwareStatus {
-  isAvailable: boolean;          // Indica se a biometria (nativa ou cyber emulada) está disponível
-  isNativeAvailable: boolean;    // Indica se hardware nativo WebAuthn/Windows Hello/TouchID existe
+  isAvailable: boolean;          // Indica se biometria real de hardware está disponível
+  isNativeAvailable: boolean;    // Indica se hardware nativo WebAuthn/Windows Hello/TouchID/Android existe
   biometricType: BiometricType;  // Tipo de biometria detectada
-  isEnrolled: boolean;           // Se já existe biometria configurada neste aparelho
+  isEnrolled: boolean;           // Se já existe biometria real configurada neste aparelho
   platformName: string;          // Descrição humana do sensor
   isSecureContext: boolean;      // Indica se o contexto é seguro (HTTPS ou localhost)
   error?: string;
 }
 
-export type BiometricErrorCode = 
+export type BiometricErrorCode =
   | 'USER_CANCELLED'
   | 'BIOMETRIC_FAILED'
   | 'NOT_AVAILABLE'
@@ -49,7 +49,7 @@ export interface BiometricConfig {
   isNative: boolean;
 }
 
-// Handler para o prompt visual do Sensor Cyber Obsidian (quando o SO não possui hardware nativo)
+// Handler exclusivo para suíte de testes automatizados (Vitest)
 export type BiometricPromptHandler = (params: {
   email: string;
   mode: 'REGISTER' | 'AUTH';
@@ -67,12 +67,14 @@ const enrolledCache = new Map<string, boolean>();
 
 export const BiometricsService = {
   /**
-   * Inicializa o cache síncrono a partir do storage
+   * Inicializa o cache síncrono a partir do storage, descartando cadastros simulados legados
    */
   async init(): Promise<void> {
     try {
-      // 1. Lê chaves do localStorage
+      enrolledCache.clear();
+
       if (typeof localStorage !== 'undefined') {
+        const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && key.startsWith(BIOMETRIC_CONFIG_PREFIX)) {
@@ -80,9 +82,12 @@ export const BiometricsService = {
             const raw = localStorage.getItem(key);
             if (raw) {
               try {
-                const parsed = JSON.parse(raw);
-                if (parsed.enabled && parsed.credentialId) {
+                const parsed = JSON.parse(raw) as BiometricConfig;
+                // Em produção (sem handler de teste), aceita apenas biometria nativa real de hardware
+                if (parsed.enabled && parsed.credentialId && (parsed.isNative || activePromptHandler !== null)) {
                   enrolledCache.set(emailKey, true);
+                } else if (!parsed.isNative && activePromptHandler === null) {
+                  keysToRemove.push(emailKey);
                 }
               } catch {
                 // ignora item corrompido
@@ -90,9 +95,12 @@ export const BiometricsService = {
             }
           }
         }
+        for (const emailKey of keysToRemove) {
+          localStorage.removeItem(`${BIOMETRIC_CONFIG_PREFIX}${emailKey}`);
+          localStorage.removeItem(`${BIOMETRIC_KEY_PREFIX}${emailKey}`);
+        }
       }
 
-      // 2. Garante sincronismo com o Preferences do Capacitor
       const capKeys = await Preferences.keys();
       for (const key of capKeys.keys) {
         if (key.startsWith(BIOMETRIC_CONFIG_PREFIX)) {
@@ -100,12 +108,15 @@ export const BiometricsService = {
           const val = (await Preferences.get({ key })).value;
           if (val) {
             try {
-              const parsed = JSON.parse(val);
-              if (parsed.enabled && parsed.credentialId) {
+              const parsed = JSON.parse(val) as BiometricConfig;
+              if (parsed.enabled && parsed.credentialId && (parsed.isNative || activePromptHandler !== null)) {
                 enrolledCache.set(emailKey, true);
                 if (typeof localStorage !== 'undefined' && !localStorage.getItem(key)) {
                   localStorage.setItem(key, val);
                 }
+              } else if (!parsed.isNative && activePromptHandler === null) {
+                await Preferences.remove({ key: `${BIOMETRIC_CONFIG_PREFIX}${emailKey}` });
+                await Preferences.remove({ key: `${BIOMETRIC_KEY_PREFIX}${emailKey}` });
               }
             } catch {
               // ignora
@@ -119,32 +130,21 @@ export const BiometricsService = {
   },
 
   /**
-   * Verifica detalhadamente a disponibilidade de hardware biométrico no SO ou navegador.
+   * Verifica detalhadamente a disponibilidade de hardware biométrico real no SO ou navegador.
    */
   async checkHardwareStatus(email?: string): Promise<BiometricHardwareStatus> {
     try {
       const isSecure = typeof window !== 'undefined' && (window.isSecureContext ?? false);
       let isNativeAvailable = false;
-      let biometricType: BiometricType = 'BIOMETRICS';
-      let platformName = 'Sensor Biométrico Nativo';
+      let biometricType: BiometricType = 'NONE';
+      let platformName = 'Nenhum sensor biométrico físico detectado';
 
       const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '').toLowerCase();
       const isMacOrIOS = ua.includes('iphone') || ua.includes('ipad') || ua.includes('macintosh');
       const isAndroid = ua.includes('android');
       const isWindows = ua.includes('windows');
 
-      if (isMacOrIOS) {
-        biometricType = ua.includes('iphone') || ua.includes('ipad') ? 'FACE_ID' : 'TOUCH_ID';
-        platformName = biometricType === 'FACE_ID' ? 'Face ID / Touch ID (Apple)' : 'Touch ID (Apple)';
-      } else if (isAndroid) {
-        biometricType = 'FINGERPRINT';
-        platformName = 'Impressão Digital (Android)';
-      } else if (isWindows) {
-        biometricType = 'FINGERPRINT';
-        platformName = 'Windows Hello (Digital / Face / PIN)';
-      }
-
-      // Consulta se o autenticador nativo de plataforma está disponível no navegador
+      // Consulta se o autenticador biométrico de hardware da plataforma está realmente disponível
       if (isSecure && typeof window !== 'undefined' && window.PublicKeyCredential) {
         if (typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
           try {
@@ -159,15 +159,30 @@ export const BiometricsService = {
         isNativeAvailable = true;
       }
 
-      if (!isNativeAvailable) {
+      if (isNativeAvailable) {
+        if (isMacOrIOS) {
+          biometricType = ua.includes('iphone') || ua.includes('ipad') ? 'FACE_ID' : 'TOUCH_ID';
+          platformName = biometricType === 'FACE_ID' ? 'Apple Face ID / Touch ID' : 'Apple Touch ID';
+        } else if (isAndroid) {
+          biometricType = 'FINGERPRINT';
+          platformName = 'Leitor de Impressão Digital (Android Keystore)';
+        } else if (isWindows) {
+          biometricType = 'FINGERPRINT';
+          platformName = 'Windows Hello (Leitor Biométrico / TPM)';
+        } else {
+          biometricType = 'BIOMETRICS';
+          platformName = 'Autenticador Biométrico de Plataforma (WebAuthn)';
+        }
+      } else if (activePromptHandler !== null) {
+        // Apenas quando um handler de teste (Vitest) está registrado
         biometricType = 'CYBER_SENSOR';
-        platformName = 'Sensor Cyber Obsidian (Zero-Knowledge)';
+        platformName = 'Ambiente de Teste Biométrico';
       }
 
       const enrolled = email ? this.isEnrolled(email) : this.getEnrolledEmails().length > 0;
 
       return {
-        isAvailable: true, // Sempre disponível (Nativo OU Cyber Sensor de alta segurança)
+        isAvailable: isNativeAvailable || activePromptHandler !== null,
         isNativeAvailable,
         biometricType,
         isEnrolled: enrolled,
@@ -176,11 +191,11 @@ export const BiometricsService = {
       };
     } catch (err: any) {
       return {
-        isAvailable: true,
+        isAvailable: activePromptHandler !== null,
         isNativeAvailable: false,
-        biometricType: 'CYBER_SENSOR',
+        biometricType: 'NONE',
         isEnrolled: false,
-        platformName: 'Sensor Cyber Obsidian (Zero-Knowledge)',
+        platformName: 'Sensor biométrico indisponível',
         isSecureContext: typeof window !== 'undefined' && (window.isSecureContext ?? false),
         error: err?.message
       };
@@ -188,7 +203,7 @@ export const BiometricsService = {
   },
 
   /**
-   * Alias de conveniência para verificar disponibilidade simples
+   * Verifica se há suporte a biometria real de hardware
    */
   async isAvailable(): Promise<boolean> {
     const status = await this.checkHardwareStatus();
@@ -196,19 +211,18 @@ export const BiometricsService = {
   },
 
   /**
-   * Dispara prompt do Cyber Sensor (quando nativo não está disponível)
+   * Utilizado exclusivamente para testes automatizados quando um handler explícito é injetado
    */
   async promptCyberSensor(email: string, mode: 'REGISTER' | 'AUTH', biometricType: BiometricType): Promise<boolean> {
     if (activePromptHandler) {
       return await activePromptHandler({ email, mode, biometricType });
     }
-    // Fallback de segurança (M-5): Se o prompt visual/handler não estiver registrado/montado, rejeita o acesso
-    console.warn('[BiometricsService] Prompt biométrico Cyber Sensor não registrado. Acesso negado por segurança.');
     return false;
   },
 
   /**
-   * Cadastra a biometria para a conta informada vinculada à sua Senha Mestra.
+   * Cadastra a biometria real de hardware vinculada à Senha Mestra.
+   * Nunca aceita cliques de mouse simulados em produção.
    */
   async registerBiometrics(email: string, masterPassword: string): Promise<BiometricAuthResult> {
     try {
@@ -217,7 +231,7 @@ export const BiometricsService = {
       let credentialIdB64 = '';
       let isNative = false;
 
-      // 1. TENTA REGISTRO NATIVO WEBAUTHN (se o hardware nativo estiver presente e em ambiente seguro)
+      // 1. EXIGE REGISTRO NATIVO WEBAUTHN COM VERIFICAÇÃO DE USUÁRIO OBRIGATÓRIA (userVerification: 'required')
       if (hwStatus.isNativeAvailable && typeof window !== 'undefined' && window.PublicKeyCredential && window.isSecureContext) {
         try {
           const challenge = new Uint8Array(32);
@@ -227,18 +241,16 @@ export const BiometricsService = {
           window.crypto.getRandomValues(userId);
 
           const rpEntity: PublicKeyCredentialRpEntity = {
-            name: "Cofre Seguro Cyber Obsidian"
+            name: "RiskZero Enterprise Vault"
           };
           if (
-            window.location.hostname && 
-            window.location.hostname !== 'localhost' && 
+            window.location.hostname &&
+            window.location.hostname !== 'localhost' &&
             !/^\d+\.\d+\.\d+\.\d+$/.test(window.location.hostname)
           ) {
             rpEntity.id = window.location.hostname;
           }
 
-          // Cria credencial biométrica com suporte universal aos algoritmos:
-          // -7 (ES256), -257 (RS256 - essencial para Windows Hello TPM), -8 (Ed25519) e -37 (PS256)
           const credential = await navigator.credentials.create({
             publicKey: {
               challenge,
@@ -249,14 +261,15 @@ export const BiometricsService = {
                 displayName: emailKey
               },
               pubKeyCredParams: [
-                { alg: -7, type: "public-key" },
-                { alg: -257, type: "public-key" },
-                { alg: -8, type: "public-key" },
-                { alg: -37, type: "public-key" }
+                { alg: -7, type: "public-key" },   // ES256
+                { alg: -257, type: "public-key" }, // RS256 (Windows Hello TPM)
+                { alg: -8, type: "public-key" },   // Ed25519
+                { alg: -37, type: "public-key" }   // PS256
               ],
               authenticatorSelection: {
                 authenticatorAttachment: "platform",
-                userVerification: "preferred"
+                userVerification: "required",
+                residentKey: "preferred"
               },
               timeout: 60000
             }
@@ -268,35 +281,47 @@ export const BiometricsService = {
           }
         } catch (nativeErr: any) {
           const msg = nativeErr?.message || '';
-          console.warn('[BiometricsService] WebAuthn nativo falhou ou recusado:', msg);
-          
-          if (msg.includes('NotAllowedError') && (msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('abort'))) {
+          const name = nativeErr?.name || '';
+          console.warn('[BiometricsService] WebAuthn nativo recusado ou sem leitor físico:', name, msg);
+
+          if (name === 'NotAllowedError' || msg.includes('NotAllowedError') || msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('abort')) {
+            return {
+              success: false,
+              errorCode: 'USER_CANCELLED',
+              error: 'Leitura biométrica cancelada ou não reconhecida pelo sensor do dispositivo.'
+            };
+          }
+
+          return {
+            success: false,
+            errorCode: 'NOT_AVAILABLE',
+            error: 'Nenhum sensor biométrico físico configurado neste dispositivo (verifique o Windows Hello, Touch ID ou leitor digital).'
+          };
+        }
+      }
+
+      // 2. Suporte exclusivo para suíte de testes unitários quando activePromptHandler está injetado
+      if (!credentialIdB64) {
+        if (activePromptHandler !== null) {
+          const approved = await this.promptCyberSensor(emailKey, 'REGISTER', hwStatus.biometricType);
+          if (!approved) {
             return {
               success: false,
               errorCode: 'USER_CANCELLED',
               error: 'Cadastro biométrico cancelado pelo usuário.'
             };
           }
-          // Outros erros (ex: NotSupportedError na máquina) continuam para o Cyber Sensor
-        }
-      }
-
-      // 2. SE NÃO USOU NATIVO (máquina sem Windows Hello/leitor, navegador sem suporte, etc.):
-      if (!credentialIdB64) {
-        const approved = await this.promptCyberSensor(emailKey, 'REGISTER', hwStatus.biometricType);
-        if (!approved) {
+          const deviceEntropy = new Uint8Array(32);
+          window.crypto.getRandomValues(deviceEntropy);
+          credentialIdB64 = arrayBufferToBase64(deviceEntropy);
+          isNative = false;
+        } else {
           return {
             success: false,
-            errorCode: 'USER_CANCELLED',
-            error: 'Cadastro biométrico cancelado pelo usuário.'
+            errorCode: 'NOT_AVAILABLE',
+            error: 'Este dispositivo ou navegador não possui leitor de impressão digital / biometria de hardware habilitado.'
           };
         }
-
-        // Gera identificador criptográfico de alta entropia exclusivo deste dispositivo
-        const deviceEntropy = new Uint8Array(32);
-        window.crypto.getRandomValues(deviceEntropy);
-        credentialIdB64 = arrayBufferToBase64(deviceEntropy);
-        isNative = false;
       }
 
       // 3. DERIVA CHAVE CRIPTOGRÁFICA SEGURA COM SALT DE 16 BYTES
@@ -304,7 +329,6 @@ export const BiometricsService = {
       const cryptoKey = await deriveKey(credentialIdB64, salt);
       const encryptedMasterPassword = await encryptData(masterPassword, cryptoKey);
 
-      // Payload seguro (a Senha Mestra é guardada apenas cifrada com AES-256-GCM)
       const payload = JSON.stringify({
         encryptedMasterPassword,
         salt,
@@ -335,10 +359,9 @@ export const BiometricsService = {
         localStorage.setItem(`${BIOMETRIC_CONFIG_PREFIX}${emailKey}`, JSON.stringify(config));
       }
 
-      // Atualiza cache em memória
       enrolledCache.set(emailKey, true);
 
-      return { 
+      return {
         success: true,
         isNative
       };
@@ -346,7 +369,7 @@ export const BiometricsService = {
     } catch (err: any) {
       console.error('[BiometricsService] Erro no registro biométrico:', err);
       const message = err?.message || '';
-      
+
       let errorCode: BiometricErrorCode = 'UNKNOWN_ERROR';
       if (message.includes('cancel') || message.includes('abort') || message.includes('NotAllowedError')) {
         errorCode = 'USER_CANCELLED';
@@ -355,30 +378,28 @@ export const BiometricsService = {
       return {
         success: false,
         errorCode,
-        error: message || 'Falha ao vincular biometria do dispositivo.'
+        error: message || 'Falha ao vincular biometria de hardware do dispositivo.'
       };
     }
   },
 
   /**
-   * Verifica de forma síncrona se o e-mail possui biometria cadastrada.
+   * Verifica de forma síncrona se o e-mail possui biometria real cadastrada.
    */
   isEnrolled(email: string): boolean {
     if (!email) return false;
     const emailKey = email.toLowerCase().trim();
 
-    // 1. Consulta cache em memória
     if (enrolledCache.has(emailKey)) {
       return !!enrolledCache.get(emailKey);
     }
 
-    // 2. Consulta localStorage
     if (typeof localStorage !== 'undefined') {
       const configStr = localStorage.getItem(`${BIOMETRIC_CONFIG_PREFIX}${emailKey}`);
       if (configStr) {
         try {
           const config = JSON.parse(configStr) as BiometricConfig;
-          const ok = config.enabled && !!config.credentialId;
+          const ok = config.enabled && !!config.credentialId && (config.isNative || activePromptHandler !== null);
           enrolledCache.set(emailKey, ok);
           return ok;
         } catch {
@@ -396,12 +417,10 @@ export const BiometricsService = {
   getEnrolledEmails(): string[] {
     const emails = new Set<string>();
 
-    // 1. Do cache em memória
     for (const [email, enrolled] of enrolledCache.entries()) {
       if (enrolled) emails.add(email);
     }
 
-    // 2. Do localStorage
     if (typeof localStorage !== 'undefined') {
       try {
         for (let i = 0; i < localStorage.length; i++) {
@@ -438,12 +457,13 @@ export const BiometricsService = {
   },
 
   /**
-   * Dispara a autenticação biométrica (nativa ou Cyber Sensor) e recupera a Senha Mestra em memória.
+   * Dispara a autenticação biométrica nativa de hardware e recupera a Senha Mestra em memória.
+   * Jamais faz fallback para clique de mouse em produção.
    */
   async authenticate(email: string): Promise<BiometricAuthResult> {
     try {
       const emailKey = email.toLowerCase().trim();
-      
+
       let configStr = (await Preferences.get({ key: `${BIOMETRIC_CONFIG_PREFIX}${emailKey}` })).value;
       let keyDataStr = (await Preferences.get({ key: `${BIOMETRIC_KEY_PREFIX}${emailKey}` })).value;
 
@@ -467,8 +487,15 @@ export const BiometricsService = {
 
       let authenticated = false;
 
-      // 1. TENTA VALIDAÇÃO NATIVA WEBAUTHN CASO TENHA SIDO CADASTRADA NATIVAMENTE
-      if (config.isNative && typeof window !== 'undefined' && window.PublicKeyCredential && window.isSecureContext) {
+      if (config.isNative) {
+        if (typeof window === 'undefined' || !window.PublicKeyCredential || !window.isSecureContext) {
+          return {
+            success: false,
+            errorCode: 'NOT_AVAILABLE',
+            error: 'Autenticador biométrico de hardware indisponível neste contexto.'
+          };
+        }
+
         try {
           const rawId = base64ToArrayBuffer(config.credentialId);
           const challenge = new Uint8Array(32);
@@ -479,9 +506,10 @@ export const BiometricsService = {
               challenge,
               allowCredentials: [{
                 id: rawId,
-                type: "public-key"
+                type: "public-key",
+                transports: ["internal"]
               }],
-              userVerification: "preferred",
+              userVerification: "required",
               timeout: 60000
             }
           });
@@ -491,21 +519,24 @@ export const BiometricsService = {
           }
         } catch (nativeErr: any) {
           const msg = nativeErr?.message || '';
-          console.warn('[BiometricsService] Erro ao validar WebAuthn nativo:', msg);
+          const name = nativeErr?.name || '';
+          console.warn('[BiometricsService] Falha na verificação WebAuthn de hardware:', name, msg);
 
-          if (msg.includes('NotAllowedError') && (msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('abort'))) {
+          if (name === 'NotAllowedError' || msg.includes('NotAllowedError') || msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('abort')) {
             return {
               success: false,
               errorCode: 'USER_CANCELLED',
-              error: 'Autenticação biométrica cancelada pelo usuário.'
+              error: 'Verificação biométrica cancelada ou recusada pelo leitor do dispositivo.'
             };
           }
-          // Caso a credencial nativa tenha sido perdida ou haja falha de hardware, permite fallback Cyber Sensor
-        }
-      }
 
-      // 2. SE NÃO FOI NATIVO OU NATIVO CAIU NO FALLBACK:
-      if (!authenticated) {
+          return {
+            success: false,
+            errorCode: 'BIOMETRIC_FAILED',
+            error: 'Falha ao validar o sensor biométrico de hardware.'
+          };
+        }
+      } else if (activePromptHandler !== null) {
         const approved = await this.promptCyberSensor(emailKey, 'AUTH', config.biometricType);
         if (!approved) {
           return {
@@ -515,6 +546,14 @@ export const BiometricsService = {
           };
         }
         authenticated = true;
+      } else {
+        // Cadastro legado simulado não é aceito em produção
+        await this.disableBiometrics(emailKey);
+        return {
+          success: false,
+          errorCode: 'NOT_ENROLLED',
+          error: 'Cadastro biométrico antigo inválido. Reconfigure utilizando o leitor físico do dispositivo.'
+        };
       }
 
       if (!authenticated) {

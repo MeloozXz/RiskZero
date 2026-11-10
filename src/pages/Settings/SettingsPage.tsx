@@ -17,6 +17,7 @@ import { VaultService } from '../../services/vault';
 import { StorageService } from '../../services/storage';
 import { SessionService } from '../../services/session';
 import { ImporterService, ParsedImportItem, SupportedImportFormat } from '../../services/importer';
+import { ConfirmModal } from '../../components/UI/ConfirmModal';
 import { useSecurity } from '../../contexts/SecurityContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { ActiveSession } from '../../types';
@@ -51,6 +52,7 @@ export const SettingsPage: React.FC = () => {
 
   // Estados para Exclusão Total
   const [confirmWipePassword, setConfirmWipePassword] = useState<string>('');
+  const [showWipeConfirmModal, setShowWipeConfirmModal] = useState<boolean>(false);
 
   // Estado para Confirmação de Biometria
   const [bioPassword, setBioPassword] = useState<string>('');
@@ -325,20 +327,23 @@ export const SettingsPage: React.FC = () => {
     try {
       const authRes = await SessionService.authenticateMaster(email, confirmWipePassword);
       if (authRes.success) {
-        if (window.confirm('Atenção: todas as suas senhas e dados serão excluídos permanentemente deste dispositivo. Essa ação não pode ser desfeita. Deseja continuar?')) {
-          await StorageService.clearAllData();
-          SessionService.clearSession();
-          showFeedback('Todos os dados foram excluídos deste dispositivo.', 'danger');
-          setTimeout(() => {
-            logout();
-          }, 1500);
-        }
+        setShowWipeConfirmModal(true);
       } else {
         showFeedback('Senha mestra incorreta. A operação foi cancelada.', 'danger');
       }
     } catch {
       showFeedback(`Não foi possível confirmar sua identidade. Tente novamente.`, 'danger');
     }
+  };
+
+  const handleExecuteWipe = async () => {
+    setShowWipeConfirmModal(false);
+    await StorageService.clearAllData();
+    SessionService.clearSession();
+    showFeedback('Todos os dados foram excluídos deste dispositivo.', 'danger');
+    setTimeout(() => {
+      logout();
+    }, 1500);
   };
 
   const handleRevokeSession = async (sessionId: string) => {
@@ -939,6 +944,17 @@ export const SettingsPage: React.FC = () => {
           color={toastColor}
           duration={3000}
           position="bottom"
+        />
+
+        <ConfirmModal
+          isOpen={showWipeConfirmModal}
+          title="Destruir Todos os Dados Locais?"
+          message="Atenção crítica: todas as suas credenciais, chaves criptográficas e configurações salvas serão excluídas permanentemente deste aparelho. Esta ação é irreversível."
+          confirmText="Destruir Dados"
+          cancelText="Cancelar"
+          variant="danger"
+          onConfirm={handleExecuteWipe}
+          onCancel={() => setShowWipeConfirmModal(false)}
         />
       </IonContent>
     </IonPage>

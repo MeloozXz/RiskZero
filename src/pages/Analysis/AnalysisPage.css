@@ -1,82 +1,73 @@
-/* ============================================
-   ANALYSIS PAGE - Cyberpunk Metrics
-   ============================================ */
+/* ==========================================================================
+   ANALYSIS PAGE - CORPORATE SAAS GRAPHITE / ZINC
+   ========================================================================== */
 
-.analysis-page {
-  --background: transparent;
+.analysis-page,
+.analysis-content {
+  --background: #09090b !important;
+  background-color: #09090b !important;
 }
 
 .analysis-toolbar {
-  --background: transparent;
-  --color: #e8ecf2;
+  --background: #09090b !important;
+  --color: #fafafa;
+  border-bottom: 1px solid #27272a;
 }
 
 .analysis-title {
-  font-weight: 900 !important;
-  font-size: 1.4rem !important;
-  background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.analysis-content {
-  --background: transparent;
+  font-weight: 700 !important;
+  font-size: 1.15rem !important;
+  color: #fafafa !important;
 }
 
 .analysis-container {
-  padding: 16px;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-/* Score Card */
 .analysis-score-card {
-  background: radial-gradient(circle at 50% 0%, rgba(30, 58, 114, 0.6) 0%, rgba(13, 18, 36, 0.85) 100%);
-  border: 1px solid rgba(74, 158, 255, 0.22);
-  border-radius: 24px;
-  padding: 28px 24px;
+  background: #121215;
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  padding: 24px;
   text-align: center;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
 .analysis-score-val {
-  font-size: 4.5rem;
-  font-weight: 950;
+  font-size: 3.25rem;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: -2px;
+  font-family: var(--rz-font-mono);
 }
 
 .analysis-score-val.excellent {
   color: #10b981;
-  text-shadow: 0 0 24px rgba(16, 185, 129, 0.45);
 }
 
 .analysis-score-val.warning {
   color: #f59e0b;
-  text-shadow: 0 0 24px rgba(245, 158, 11, 0.45);
 }
 
 .analysis-score-val.danger {
   color: #ef4444;
-  text-shadow: 0 0 24px rgba(239, 68, 68, 0.45);
 }
 
 .analysis-score-label {
-  color: #94a3b8;
-  font-size: 0.95rem;
-  margin-top: 10px;
-  font-weight: 650;
-  letter-spacing: 0.1px;
+  color: #a1a1aa;
+  font-size: 0.875rem;
+  margin-top: 8px;
+  font-weight: 500;
 }
 
 .analysis-progress-bar {
-  border-radius: 6px;
-  height: 8px;
-  margin-top: 20px;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  height: 6px;
+  margin-top: 16px;
+  background: #27272a;
 }
 
 .analysis-progress-bar.excellent {
@@ -91,13 +82,12 @@
   --progress-background: #ef4444;
 }
 
-/* Estatísticas em linha */
 .analysis-stats-row {
   display: flex;
   justify-content: space-around;
-  margin-top: 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding-top: 20px;
+  margin-top: 20px;
+  border-top: 1px solid #27272a;
+  padding-top: 16px;
 }
 
 .analysis-stat-item {
@@ -105,107 +95,88 @@
 }
 
 .analysis-stat-val {
-  font-size: 1.65rem;
-  font-weight: 900;
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: var(--rz-font-mono);
 }
 
 .analysis-stat-label {
-  font-size: 0.75rem;
-  color: #94a3b8;
+  font-size: 0.72rem;
+  color: #71717a;
   margin-top: 4px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
 }
 
-/* Filtros */
 .analysis-filter-container {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .analysis-filter-btn {
   flex: 1;
   margin: 0;
-  --border-radius: 12px !important;
+  --border-radius: 8px !important;
   --border-width: 1px !important;
   --border-style: solid !important;
-  --border-color: rgba(255, 255, 255, 0.08) !important;
-  --background: rgba(15, 22, 42, 0.5) !important;
-  --color: #94a3b8 !important;
-  font-weight: 700 !important;
-  font-size: 0.82rem !important;
-  letter-spacing: 0.2px !important;
-  transition: all 0.2s ease;
-}
-
-.analysis-filter-btn:hover {
-  --border-color: rgba(255, 255, 255, 0.2) !important;
-  --background: rgba(20, 29, 56, 0.6) !important;
+  --border-color: #27272a !important;
+  --background: #121215 !important;
+  --color: #a1a1aa !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  box-shadow: none !important;
 }
 
 .analysis-filter-btn.active {
-  --background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  --background: #2563eb !important;
   --color: #ffffff !important;
-  --border-color: transparent !important;
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
+  --border-color: #3b82f6 !important;
 }
 
-/* Lista */
 .analysis-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .analysis-item-card {
-  background: rgba(15, 22, 42, 0.6);
-  border-radius: 18px;
-  padding: 16px 18px;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.analysis-item-card:hover {
-  transform: translateY(-2px);
-  background: rgba(22, 30, 59, 0.7);
+  background: #121215;
+  border-radius: 8px;
+  padding: 14px 16px;
+  border: 1px solid #27272a;
 }
 
 .analysis-item-card.border-weak {
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  border-left: 4px solid #ef4444;
+  border-left: 3px solid #ef4444;
 }
 
 .analysis-item-card.border-reused {
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  border-left: 4px solid #f59e0b;
+  border-left: 3px solid #f59e0b;
 }
 
 .analysis-item-card.border-strong {
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-left: 4px solid rgba(255, 255, 255, 0.15);
+  border-left: 3px solid #10b981;
 }
 
 .analysis-card-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .analysis-card-title {
-  color: #f1f5f9;
-  font-weight: 750;
-  font-size: 0.98rem;
-  letter-spacing: -0.2px;
+  color: #fafafa;
+  font-weight: 600;
+  font-size: 0.92rem;
 }
 
 .analysis-item-badge {
   font-size: 0.65rem !important;
-  padding: 3px 6px !important;
-  border-radius: 5px !important;
-  font-weight: 750 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-weight: 600 !important;
 }
 
 .analysis-card-meta-row {
@@ -215,70 +186,60 @@
 }
 
 .analysis-strength-lbl {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .analysis-entropy-val {
-  font-size: 0.78rem;
-  color: #94a3b8;
-  font-weight: 500;
+  font-size: 0.75rem;
+  color: #71717a;
+  font-family: var(--rz-font-mono);
 }
 
 .analysis-fix-btn {
-  --color: #60a5fa !important;
+  --color: #3b82f6 !important;
   --padding-start: 8px !important;
   --padding-end: 8px !important;
-  font-weight: 750 !important;
-  font-size: 0.82rem !important;
-  transition: all 0.2s ease;
-}
-
-.analysis-fix-btn:hover {
-  transform: scale(1.05);
-  filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.3));
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
 }
 
 .entropy-progress-track {
   height: 4px;
-  background: rgba(255, 255, 255, 0.08);
+  background: #27272a;
   border-radius: 2px;
   overflow: hidden;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .entropy-progress-fill {
   height: 100%;
   border-radius: 2px;
-  transition: width 0.4s ease;
+  transition: width 0.3s ease;
 }
 
-/* Estado Limpo / Seguro */
 .analysis-clean-state {
   text-align: center;
-  padding: 48px 24px;
-  background: rgba(16, 185, 129, 0.05);
-  border-radius: 20px;
-  border: 1px solid rgba(16, 185, 129, 0.15);
-  box-shadow: 0 4px 24px rgba(16, 185, 129, 0.03);
+  padding: 40px 24px;
+  background: #121215;
+  border-radius: 10px;
+  border: 1px solid #27272a;
 }
 
 .analysis-clean-icon {
-  font-size: 44px;
+  font-size: 36px;
   color: #10b981;
-  margin-bottom: 12px;
-  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.2));
+  margin-bottom: 10px;
 }
 
 .analysis-clean-title {
-  color: #34d399;
-  font-weight: 800;
-  font-size: 1.05rem;
+  color: #fafafa;
+  font-weight: 600;
+  font-size: 0.98rem;
   margin-bottom: 4px;
 }
 
 .analysis-clean-desc {
-  font-size: 0.88rem;
-  color: #a7f3d0;
-  line-height: 1.4;
+  font-size: 0.825rem;
+  color: #a1a1aa;
 }

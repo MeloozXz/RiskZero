@@ -5,7 +5,8 @@ from docx.shared import Pt, RGBColor, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx_helper import (
     get_target_doc_path, get_workspace_target_doc_path,
-    add_heading_1, add_heading_2, add_heading_3, add_body_p, add_bullet_p, add_table_data
+    add_heading_1, add_heading_2, add_heading_3, add_body_p, add_bullet_p, add_table_data,
+    add_figure_placeholder
 )
 
 def run_part2():
@@ -293,6 +294,12 @@ def run_part2():
         ],
     ]
     add_table_data(doc, cron_headers, cron_rows, [1.8, 1.8, 2.2, 5.0, 2.7, 1.5])
+    add_figure_placeholder(
+        doc,
+        "Figura 1",
+        "Gráfico de Gantt do Cronograma de Desenvolvimento Ágil (Sprints 1 a 6)",
+        "[INSERIR FIGURA 1 - GRÁFICO DE GANTT DO CRONOGRAMA DE SPRINTS (VER DIAGRAMAS_MERMAID.MD)]"
+    )
 
     # =========================================================================
     # CAPÍTULO 4: DOCUMENTO DE REQUISITOS DO SISTEMA

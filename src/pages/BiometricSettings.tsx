@@ -1,36 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import {
   IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
   IonContent,
-  IonCard,
-  IonCardHeader,
-  IonCardTitle,
-  IonCardContent,
-  IonButton,
-  IonIcon,
-  IonItem,
-  IonLabel,
-  IonToggle,
-  IonInput,
   IonToast,
   IonSpinner,
-  IonBackButton,
-  IonButtons,
-  IonBadge
 } from '@ionic/react';
 import {
-  fingerPrintOutline,
-  shieldCheckmarkOutline,
-  keyOutline,
-  hardwareChipOutline,
-  lockClosedOutline,
-  checkmarkCircleOutline,
-  sparklesOutline,
-  scanOutline
-} from 'ionicons/icons';
+  Fingerprint,
+  ShieldCheck,
+  KeyRound,
+  Cpu,
+  Lock,
+  CheckCircle2,
+  AlertTriangle,
+  ScanFace,
+  Trash2,
+} from 'lucide-react';
 import { useSecurity } from '../contexts/SecurityContext';
 import { BiometricsService, BiometricHardwareStatus } from '../services/biometrics';
 import { MasterKeyModal } from '../components/MasterKeyModal';
@@ -41,7 +26,7 @@ export const BiometricSettings: React.FC = () => {
     activeEmail,
     isBiometricsEnrolled,
     registerBiometrics,
-    disableBiometrics
+    disableBiometrics,
   } = useSecurity();
 
   const [hwStatus, setHwStatus] = useState<BiometricHardwareStatus | null>(null);
@@ -69,12 +54,12 @@ export const BiometricSettings: React.FC = () => {
       } catch {
         if (isMounted) {
           setHwStatus({
-            isAvailable: true,
+            isAvailable: false,
             isNativeAvailable: false,
-            biometricType: 'CYBER_SENSOR',
+            biometricType: 'NONE',
             isEnrolled: false,
-            platformName: 'Sensor Cyber Obsidian',
-            isSecureContext: true
+            platformName: 'Nenhum sensor biométrico físico detectado',
+            isSecureContext: true,
           });
           setLoading(false);
         }
@@ -95,8 +80,16 @@ export const BiometricSettings: React.FC = () => {
   };
 
   const handleRegister = async () => {
+    if (!hwStatus?.isNativeAvailable) {
+      triggerFeedback(
+        'Nenhum leitor biométrico físico foi detectado neste dispositivo.',
+        'danger'
+      );
+      return;
+    }
+
     if (!confirmPassword.trim()) {
-      triggerFeedback('Por favor, informe sua Senha Mestra para vincular a biometria.', 'warning');
+      triggerFeedback('Informe sua Senha Mestra para autorizar o vínculo no hardware.', 'warning');
       return;
     }
 
@@ -104,12 +97,12 @@ export const BiometricSettings: React.FC = () => {
     try {
       const res = await registerBiometrics(confirmPassword);
       if (res.success) {
-        triggerFeedback('Biometria ativada neste dispositivo.', 'success');
+        triggerFeedback('Biometria de hardware vinculada com sucesso.', 'success');
         setConfirmPassword('');
         const updated = await BiometricsService.checkHardwareStatus(activeEmail || undefined);
         setHwStatus(updated);
       } else {
-        triggerFeedback(res.error || 'Falha ao vincular biometria.', 'danger');
+        triggerFeedback(res.error || 'Falha ao vincular biometria no hardware.', 'danger');
       }
     } catch (err: unknown) {
       triggerFeedback(getErrorMessage(err) || 'Erro inesperado ao registrar biometria.', 'danger');
@@ -122,7 +115,7 @@ export const BiometricSettings: React.FC = () => {
     setIsProcessing(true);
     try {
       await disableBiometrics();
-      triggerFeedback('Biometria desativada com sucesso para esta conta.', 'warning');
+      triggerFeedback('Credencial biométrica removida deste dispositivo.', 'warning');
       setConfirmPassword('');
       const updated = await BiometricsService.checkHardwareStatus(activeEmail || undefined);
       setHwStatus(updated);
@@ -139,295 +132,183 @@ export const BiometricSettings: React.FC = () => {
     try {
       const res = await BiometricsService.authenticate(activeEmail);
       if (res.success) {
-        triggerFeedback('Teste concluído. A biometria e o cofre foram validados.', 'success');
+        triggerFeedback('Leitura biométrica de hardware autenticada com sucesso.', 'success');
       } else {
-        triggerFeedback(res.error || 'Falha na validação biométrica de teste.', 'danger');
+        triggerFeedback(res.error || 'A leitura biométrica falhou ou foi cancelada.', 'danger');
       }
     } catch (err: unknown) {
-      triggerFeedback(getErrorMessage(err) || 'Erro ao testar biometria.', 'danger');
+      triggerFeedback(getErrorMessage(err) || 'Erro ao testar sensor biométrico.', 'danger');
     } finally {
       setIsTesting(false);
     }
   };
 
   const enrolled = activeEmail ? isBiometricsEnrolled(activeEmail) : false;
+  const hasHardware = Boolean(hwStatus?.isNativeAvailable);
 
   return (
-    <IonPage style={{ background: '#070a13' }}>
-      <IonHeader className="ion-no-border">
-        <IonToolbar style={{ '--background': '#070a13', borderBottom: '1px solid rgba(96, 165, 250, 0.12)' }}>
-          <IonButtons slot="start">
-            <IonBackButton defaultHref="/settings" style={{ color: '#60a5fa' }} />
-          </IonButtons>
-          <IonTitle style={{ color: '#f8fafc', fontWeight: 800, fontSize: '1.1rem' }}>
-            Biometria & Chave Mestra
-          </IonTitle>
-        </IonToolbar>
-      </IonHeader>
+    <IonPage className="rz-page">
+      <IonContent className="rz-content">
+        <div className="rz-container-narrow">
+          {/* Page Header */}
+          <div className="rz-page-header">
+            <div>
+              <h1 className="rz-page-title">Biometria &amp; Chave Mestra</h1>
+              <p className="rz-page-subtitle">
+                Autenticação física via WebAuthn (Windows Hello, Touch ID ou Leitor Digital Android) e rotação de chaves.
+              </p>
+            </div>
+            <span className={`rz-badge ${hasHardware ? 'rz-badge-success' : 'rz-badge-neutral'}`}>
+              {loading ? 'Verificando...' : hasHardware ? 'Sensor Físico Detectado' : 'Sem Leitor Biométrico'}
+            </span>
+          </div>
 
-      <IonContent className="ion-padding" style={{ '--background': '#070a13' }}>
-        <div style={{ maxWidth: '650px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Header Banner Cyber Obsidian */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(96, 165, 250,0.08) 0%, rgba(139,92,246,0.08) 100%)',
-            border: '1px solid rgba(96, 165, 250, 0.2)',
-            backdropFilter: 'blur(16px)',
-            borderRadius: '20px',
-            padding: '24px',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: '-30px',
-              right: '-30px',
-              width: '120px',
-              height: '120px',
-              background: 'radial-gradient(circle, rgba(96, 165, 250,0.15) 0%, transparent 70%)',
-              borderRadius: '50%'
-            }} />
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '14px',
-                background: 'rgba(96, 165, 250, 0.1)',
-                border: '1px solid rgba(96, 165, 250, 0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <IonIcon icon={fingerPrintOutline} style={{ fontSize: '28px', color: '#60a5fa' }} />
+          {/* Hardware Diagnostics Card */}
+          <section className="rz-card" style={{ marginBottom: '20px' }}>
+            <div className="rz-card-header">
+              <div className="rz-card-title-group">
+                <Cpu className="w-4 h-4 text-zinc-400" />
+                <h2 className="rz-card-title">Diagnóstico de Hardware Biométrico</h2>
               </div>
-              <div>
-                <h2 style={{ margin: 0, color: '#ffffff', fontSize: '1.25rem', fontWeight: 800 }}>
-                  Autenticação Biométrica
-                </h2>
-                <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
-                  Arquitetura Zero-Knowledge & Hardware Seguro
+            </div>
+
+            <div className="rz-grid-2" style={{ marginTop: '12px' }}>
+              <div className="rz-stat-box">
+                <span className="rz-stat-label">Módulo de Plataforma</span>
+                <span className="rz-stat-value-sm">
+                  {loading ? 'Consultando SO...' : hwStatus?.platformName || 'Não detectado'}
+                </span>
+              </div>
+              <div className="rz-stat-box">
+                <span className="rz-stat-label">Status da Credencial FIDO2</span>
+                <span
+                  className="rz-stat-value-sm"
+                  style={{ color: enrolled ? '#10b981' : '#a1a1aa' }}
+                >
+                  {enrolled ? 'Ativa e vinculada ao hardware' : 'Não configurada'}
                 </span>
               </div>
             </div>
-            <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.9rem', lineHeight: '1.5' }}>
-              Utilize o leitor de impressão digital, Face ID ou o Sensor Cyber Obsidian para realizar desbloqueio instantâneo e proteger redefinições da sua Chave Mestra.
-            </p>
-          </div>
 
-          {/* Card Status do Hardware e Tecnologia */}
-          <IonCard style={{
-            background: 'rgba(15, 23, 42, 0.6)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            backdropFilter: 'blur(16px)',
-            borderRadius: '16px',
-            margin: 0
-          }}>
-            <IonCardHeader style={{ padding: '16px 20px 8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <IonIcon icon={hardwareChipOutline} style={{ color: '#8b5cf6', fontSize: '20px' }} />
-                  <IonCardTitle style={{ color: '#f8fafc', fontSize: '1rem', fontWeight: 700 }}>
-                    Status do Sensor de Biometria
-                  </IonCardTitle>
-                </div>
-                {loading ? (
-                  <IonSpinner name="crescent" style={{ width: '20px', height: '20px', color: '#60a5fa' }} />
-                ) : hwStatus?.isNativeAvailable ? (
-                  <IonBadge color="success" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '6px 12px', borderRadius: '12px' }}>
-                    <IonIcon icon={checkmarkCircleOutline} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                    Hardware Nativo
-                  </IonBadge>
-                ) : (
-                  <IonBadge color="secondary" style={{ background: 'rgba(96, 165, 250, 0.15)', color: '#60a5fa', border: '1px solid rgba(96, 165, 250, 0.3)', padding: '6px 12px', borderRadius: '12px' }}>
-                    <IonIcon icon={sparklesOutline} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                    Cyber Sensor Ativo
-                  </IonBadge>
-                )}
-              </div>
-            </IonCardHeader>
-            <IonCardContent style={{ padding: '0 20px 16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
-                <div style={{ background: 'rgba(2, 6, 23, 0.4)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
-                    TECNOLOGIA
-                  </span>
-                  <span style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '0.85rem' }}>
-                    {hwStatus?.platformName || 'WebAuthn / Cyber Obsidian'}
-                  </span>
-                </div>
-                <div style={{ background: 'rgba(2, 6, 23, 0.4)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
-                    STATUS DO DISPOSITIVO
-                  </span>
-                  <span style={{ color: enrolled ? '#10b981' : '#94a3b8', fontWeight: 700, fontSize: '0.85rem' }}>
-                    {enrolled ? 'Ativo' : 'Não Ativado'}
-                  </span>
-                </div>
-              </div>
-            </IonCardContent>
-          </IonCard>
-
-          {/* Painel Principal de Ativação / Desativação */}
-          <IonCard style={{
-            background: 'rgba(15, 23, 42, 0.6)',
-            border: '1px solid rgba(96, 165, 250, 0.15)',
-            backdropFilter: 'blur(16px)',
-            borderRadius: '16px',
-            margin: 0
-          }}>
-            <IonCardHeader>
-              <IonCardTitle style={{ color: '#f8fafc', fontSize: '1rem', fontWeight: 700 }}>
-                Configuração de Acesso
-              </IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
-              <IonItem lines="none" style={{
-                '--background': 'rgba(2, 6, 23, 0.5)',
-                borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                padding: '4px 8px'
-              }}>
-                <IonIcon icon={fingerPrintOutline} slot="start" style={{ color: enrolled ? '#10b981' : '#60a5fa' }} />
-                <IonLabel style={{ color: '#f8fafc', fontWeight: 600 }}>
-                  Desbloqueio Biométrico
-                  <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '2px' }}>
-                    {enrolled ? 'Acesso rápido com biometria ativo.' : 'Requer confirmação com a Senha Mestra.'}
+            {!loading && !hasHardware && (
+              <div className="rz-alert rz-alert-warning" style={{ marginTop: '16px' }}>
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <div>
+                  <strong>Leitor biométrico físico não disponível neste aparelho/navegador.</strong>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.9 }}>
+                    Por política de segurança estrita, cliques de mouse ou sensores emulados são bloqueados. Para usar biometria, acesse a partir de um dispositivo com leitor de impressão digital, Face ID, Touch ID ou Windows Hello configurado.
                   </p>
-                </IonLabel>
-                <IonToggle
-                  checked={enrolled}
-                  onIonChange={(e) => {
-                    const willEnable = e.detail.checked;
-                    if (!willEnable && enrolled) {
-                      handleDisable();
-                    }
-                  }}
-                  disabled={isProcessing}
-                  slot="end"
-                  style={{ '--color-checked': '#10b981' }}
-                />
-              </IonItem>
+                </div>
+              </div>
+            )}
+          </section>
 
-              {!enrolled && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
-                  <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>
-                    Para cadastrar e ativar a Biometria neste aparelho, informe sua Senha Mestra:
-                  </span>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    background: 'rgba(2, 6, 23, 0.7)',
-                    border: '1px solid rgba(96, 165, 250, 0.2)',
-                    borderRadius: '12px',
-                    padding: '0 12px'
-                  }}>
-                    <IonIcon icon={keyOutline} style={{ color: '#60a5fa', fontSize: '18px', marginRight: '8px' }} />
-                    <IonInput
+          {/* Enrollment / Management Card */}
+          <section className="rz-card" style={{ marginBottom: '20px' }}>
+            <div className="rz-card-header">
+              <div className="rz-card-title-group">
+                <Fingerprint className="w-4 h-4 text-zinc-400" />
+                <h2 className="rz-card-title">Vínculo de Impressão Digital / Biometria</h2>
+              </div>
+              {enrolled && (
+                <span className="rz-badge rz-badge-success">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Vinculado
+                </span>
+              )}
+            </div>
+
+            <p className="rz-text-muted" style={{ marginBottom: '16px' }}>
+              Quando ativada, a chave do cofre é encapsulada pelo chip de segurança do dispositivo (TPM / Secure Enclave / Android Keystore) e exige leitura biométrica real do sistema operacional.
+            </p>
+
+            {!enrolled ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label className="rz-label" htmlFor="bio-master-pwd">
+                    Confirme sua Senha Mestra para registrar no sensor físico
+                  </label>
+                  <div className="rz-input-group">
+                    <KeyRound className="w-4 h-4 text-zinc-500 shrink-0" />
+                    <input
+                      id="bio-master-pwd"
                       type="password"
-                      placeholder="Digite sua Senha Mestra"
+                      className="rz-input"
+                      placeholder="Digite sua Senha Mestra atual"
                       value={confirmPassword}
-                      onIonInput={(e) => setConfirmPassword(e.detail.value ?? '')}
-                      style={{ color: '#ffffff', '--placeholder-color': '#64748b' }}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      disabled={!hasHardware || isProcessing}
                     />
                   </div>
-                  <IonButton
-                    expand="block"
-                    onClick={handleRegister}
-                    disabled={isProcessing || !confirmPassword.trim()}
-                    style={{
-                      '--background': 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
-                      '--border-radius': '12px',
-                      fontWeight: 700,
-                      margin: '6px 0 0'
-                    }}
-                  >
-                    {isProcessing ? <IonSpinner name="crescent" style={{ color: '#000' }} /> : 'Cadastrar e ativar biometria'}
-                  </IonButton>
                 </div>
-              )}
 
-              {enrolled && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <IonButton
-                    expand="block"
-                    onClick={handleTestBiometrics}
-                    disabled={isTesting}
-                    style={{
-                      '--background': 'linear-gradient(135deg, rgba(96, 165, 250,0.15) 0%, rgba(139,92,246,0.15) 100%)',
-                      '--border-color': 'rgba(96, 165, 250, 0.4)',
-                      '--border-style': 'solid',
-                      '--border-width': '1px',
-                      '--border-radius': '12px',
-                      color: '#60a5fa',
-                      fontWeight: 700
-                    }}
-                  >
-                    <IonIcon icon={scanOutline} slot="start" />
-                    {isTesting ? <IonSpinner name="crescent" style={{ color: '#60a5fa' }} /> : 'Testar verificação biométrica'}
-                  </IonButton>
-
-                  <IonButton
-                    expand="block"
-                    fill="outline"
-                    color="danger"
-                    onClick={handleDisable}
-                    disabled={isProcessing}
-                    style={{
-                      '--border-color': 'rgba(239, 68, 68, 0.4)',
-                      '--border-radius': '12px',
-                      fontWeight: 700
-                    }}
-                  >
-                    Desativar Biometria Neste Aparelho
-                  </IonButton>
-                </div>
-              )}
-            </IonCardContent>
-          </IonCard>
-
-          {/* Ação Crítica: Redefinição de Chave Mestra Protegida por Biometria */}
-          <IonCard style={{
-            background: 'linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(15,23,42,0.8) 100%)',
-            border: '1px solid rgba(239, 68, 68, 0.2)',
-            backdropFilter: 'blur(16px)',
-            borderRadius: '16px',
-            margin: 0
-          }}>
-            <IonCardHeader>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <IonIcon icon={shieldCheckmarkOutline} style={{ color: '#ef4444', fontSize: '22px' }} />
-                <IonCardTitle style={{ color: '#f8fafc', fontSize: '1rem', fontWeight: 800 }}>
-                  Redefinição Crítica da Chave Mestra
-                </IonCardTitle>
+                <button
+                  type="button"
+                  onClick={handleRegister}
+                  disabled={!hasHardware || isProcessing || !confirmPassword.trim()}
+                  className="rz-btn rz-btn-primary"
+                >
+                  {isProcessing ? (
+                    <>
+                      <IonSpinner name="crescent" style={{ width: '16px', height: '16px' }} />
+                      <span>Aguardando leitura física do sensor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Fingerprint className="w-4 h-4" />
+                      <span>Vincular Biometria de Hardware</span>
+                    </>
+                  )}
+                </button>
               </div>
-            </IonCardHeader>
-            <IonCardContent style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <p style={{ color: '#cbd5e1', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>
-                A redefinição da Chave Mestra Zero-Knowledge altera a chave criptográfica de todo o seu cofre. Esta operação é de altíssima segurança e <strong>exige validação biométrica</strong> do proprietário da conta.
-              </p>
+            ) : (
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleTestBiometrics}
+                  disabled={isTesting}
+                  className="rz-btn rz-btn-secondary"
+                >
+                  <ScanFace className="w-4 h-4" />
+                  <span>{isTesting ? 'Aguardando sensor...' : 'Testar Leitor Físico'}</span>
+                </button>
 
-              <IonButton
-                expand="block"
-                onClick={() => setShowMasterKeyModal(true)}
-                style={{
-                  '--background': 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                  '--border-radius': '12px',
-                  fontWeight: 800,
-                  boxShadow: '0 4px 16px rgba(239, 68, 68, 0.25)',
-                  margin: '4px 0 0'
-                }}
-              >
-                <IonIcon icon={lockClosedOutline} slot="start" />
-                Redefinir Chave Mestra com Biometria
-              </IonButton>
-            </IonCardContent>
-          </IonCard>
+                <button
+                  type="button"
+                  onClick={handleDisable}
+                  disabled={isProcessing}
+                  className="rz-btn rz-btn-danger"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Remover Biometria deste Dispositivo</span>
+                </button>
+              </div>
+            )}
+          </section>
 
+          {/* Master Key Rotation Card */}
+          <section className="rz-card">
+            <div className="rz-card-header">
+              <div className="rz-card-title-group">
+                <ShieldCheck className="w-4 h-4 text-zinc-400" />
+                <h2 className="rz-card-title">Rotação da Senha Mestra (Envelope Encryption)</h2>
+              </div>
+            </div>
+
+            <p className="rz-text-muted" style={{ marginBottom: '16px' }}>
+              Altera a Chave de Cifragem de Chave (KEK) e re-encapsula a DEK de 256 bits sem necessidade de re-cifrar individualmente todos os itens do cofre.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setShowMasterKeyModal(true)}
+              className="rz-btn rz-btn-secondary"
+            >
+              <Lock className="w-4 h-4" />
+              <span>Alterar Senha Mestra</span>
+            </button>
+          </section>
         </div>
 
-        {/* Modal de Redefinição Crítica */}
         <MasterKeyModal
           isOpen={showMasterKeyModal}
           onClose={() => setShowMasterKeyModal(false)}
@@ -438,7 +319,7 @@ export const BiometricSettings: React.FC = () => {
           onDidDismiss={() => setShowToast(false)}
           message={toastMsg}
           color={toastColor}
-          duration={3500}
+          duration={3000}
           position="bottom"
         />
       </IonContent>
