@@ -5,17 +5,25 @@
 
 .lock-overlay-container {
   position: fixed;
-  inset: 0;
-  z-index: 99999;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 9999999;
   background:
-    radial-gradient(circle at 50% 18%, rgba(47, 123, 255, 0.16), transparent 55%),
+    radial-gradient(circle at 50% 18%, rgba(47, 123, 255, 0.18), transparent 55%),
     var(--rz-bg-base);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: calc(16px + var(--rz-safe-top)) 16px calc(16px + var(--rz-safe-bottom));
   overflow-y: auto;
+  box-sizing: border-box;
   animation: rz-fade var(--rz-dur) var(--rz-ease) both;
 }
 
