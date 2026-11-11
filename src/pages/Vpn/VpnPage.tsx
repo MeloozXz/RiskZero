@@ -165,8 +165,10 @@ export const VpnPage: React.FC = () => {
   };
 
   const handleDownloadExtension = () => {
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
     const link = document.createElement('a');
-    link.href = '/seguranapp-extension.zip';
+    link.href = `${cleanBase}seguranapp-extension.zip`;
     link.download = 'seguranapp-extension.zip';
     document.body.appendChild(link);
     link.click();
@@ -181,8 +183,10 @@ export const VpnPage: React.FC = () => {
       setToastMessage(`Perfil WireGuard (${vpnStats.selectedServer.name}) baixado.`);
       setShowWindowsTutorial(true);
     } catch {
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
       const link = document.createElement('a');
-      link.href = '/seguranapp-vpn.conf';
+      link.href = `${cleanBase}seguranapp-vpn.conf`;
       link.download = 'seguranapp-vpn.conf';
       document.body.appendChild(link);
       link.click();
