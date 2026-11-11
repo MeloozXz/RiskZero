@@ -73,24 +73,43 @@ export async function clearHibpApiKey(): Promise<void> {
  */
 export const StorageService = {
   /**
-   * Salva o perfil do usuário indexado por e-mail no Firestore
+   * Salva o perfil do usuário indexado por e-mail localmente e no Firestore
    */
   async saveUserProfile(email: string, profile: UserProfile): Promise<void> {
+    const emailKey = email.toLowerCase().trim();
+    const localKey = `zk_user_profile_${emailKey}`;
+
+    // 1. Persistência local segura imediata (Zero-Loss)
+    try {
+      await setSecureItem(localKey, JSON.stringify(profile));
+    } catch (e) {
+      console.warn('[StorageService] Falha ao salvar perfil localmente:', e);
+    }
+
+    // 2. Sincronização remota no Firestore quando autenticado
     const uid = auth.currentUser?.uid;
-    if (!uid) return;
-    const docRef = doc(db, 'users', uid);
-    await setDoc(docRef, {
-      totpEnabled: profile.totpEnabled,
-      encryptedTotpSecret: profile.encryptedTotpSecret || null,
-      totpSecret: profile.totpSecret || null,
-      kdfAlgorithm: profile.kdfAlgorithm || 'argon2id',
-      subscription: profile.subscription || null
-    }, { merge: true });
-    await this.addRegisteredAccount(email);
+    if (uid) {
+      try {
+        const docRef = doc(db, 'users', uid);
+        await setDoc(docRef, {
+          email: emailKey,
+          totpEnabled: profile.totpEnabled,
+          encryptedTotpSecret: profile.encryptedTotpSecret || null,
+          totpSecret: profile.totpSecret || null,
+          kdfAlgorithm: profile.kdfAlgorithm || 'argon2id',
+          subscription: profile.subscription || null,
+          salt: profile.salt || null,
+          createdAt: profile.createdAt || new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.warn('[StorageService] Falha ao sincronizar perfil com Firestore:', err);
+      }
+    }
+    await this.addRegisteredAccount(emailKey);
   },
 
   /**
-   * Atualiza o salt criptográfico e algoritmo KDF do usuário no Firestore
+   * Atualiza o salt criptográfico e algoritmo KDF do usuário no Firestore e localmente
    */
   async updateUserKdf(salt: string, kdfAlgorithm: 'argon2id' | 'pbkdf2' = 'argon2id'): Promise<void> {
     const uid = auth.currentUser?.uid;
@@ -110,28 +129,51 @@ export const StorageService = {
   },
 
   /**
-   * Obtém o perfil do usuário indexado por e-mail do Firestore
+   * Obtém o perfil do usuário indexado por e-mail com fallback robusto local
    */
   async getUserProfile(email: string): Promise<UserProfile | null> {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return null;
-    const docRef = doc(db, 'users', uid);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      return {
-        username: data.email || email,
-        salt: data.salt,
-        kdfAlgorithm: data.kdfAlgorithm || 'pbkdf2', // Contas sem campo explícito são tratadas como PBKDF2 para migração
-        passwordHash: data.passwordHash || '',
-        totpEnabled: data.totpEnabled || false,
-        encryptedTotpSecret: data.encryptedTotpSecret || undefined,
-        totpSecret: data.totpSecret || undefined,
-        subscription: data.subscription || undefined,
-        createdAt: data.createdAt || new Date().toISOString()
-      };
+    const emailKey = email.toLowerCase().trim();
+    const localKey = `zk_user_profile_${emailKey}`;
+
+    // Leitura local prioritária
+    let localProfile: UserProfile | null = null;
+    const rawLocal = await getSecureItem(localKey);
+    if (rawLocal) {
+      try {
+        localProfile = JSON.parse(rawLocal) as UserProfile;
+      } catch {
+        // ignora erro de parse
+      }
     }
-    return null;
+
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      try {
+        const docRef = doc(db, 'users', uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const remoteProfile: UserProfile = {
+            username: data.email || emailKey,
+            salt: data.salt || localProfile?.salt || '',
+            kdfAlgorithm: data.kdfAlgorithm || localProfile?.kdfAlgorithm || 'pbkdf2',
+            passwordHash: data.passwordHash || localProfile?.passwordHash || '',
+            totpEnabled: data.totpEnabled ?? localProfile?.totpEnabled ?? false,
+            encryptedTotpSecret: data.encryptedTotpSecret || localProfile?.encryptedTotpSecret || undefined,
+            totpSecret: data.totpSecret || localProfile?.totpSecret || undefined,
+            subscription: data.subscription || localProfile?.subscription || undefined,
+            createdAt: data.createdAt || localProfile?.createdAt || new Date().toISOString()
+          };
+          // Mantém cache local sincronizado
+          await setSecureItem(localKey, JSON.stringify(remoteProfile));
+          return remoteProfile;
+        }
+      } catch (err) {
+        console.warn('[StorageService] Falha ao buscar perfil no Firestore, usando fallback local:', err);
+      }
+    }
+
+    return localProfile;
   },
 
   /**
@@ -218,6 +260,28 @@ export const StorageService = {
   async removePanicPINHash(email: string): Promise<void> {
     const key = `zk_panic_pin_hash_${email.toLowerCase().trim()}`;
     await removeSecureItem(key);
+  },
+
+  /**
+   * Obtém os itens do Cofre de Fachada (Decoy Vault) indexados por e-mail
+   */
+  async getDecoyVault<T = any>(email: string): Promise<T[] | null> {
+    const key = `zk_decoy_vault_${email.toLowerCase().trim()}`;
+    const raw = await getSecureItem(key);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Salva os itens do Cofre de Fachada (Decoy Vault) indexados por e-mail
+   */
+  async saveDecoyVault<T = any>(email: string, items: T[]): Promise<void> {
+    const key = `zk_decoy_vault_${email.toLowerCase().trim()}`;
+    await setSecureItem(key, JSON.stringify(items));
   },
 
   /**

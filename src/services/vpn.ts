@@ -268,60 +268,21 @@ class VpnServiceManager {
   public async auditExternalIp(): Promise<ExternalIpAudit> {
     const isConn = this.stats.status === 'CONNECTED';
     const server = this.stats.selectedServer;
-
-    if (isConn && !Capacitor.isNativePlatform()) {
-      try {
-        const res = await fetch(`/__riskzero_ip?node=${encodeURIComponent(server.id)}&t=${Date.now()}`);
-        if (res.ok) {
-          const data = await res.json();
-          return {
-            ip: data.ip || server.endpoint,
-            isp: data.isp || 'Cloudflare / RiskZero Tunnel',
-            city: data.city || server.city,
-            country: data.country || server.country,
-            isProtected: true,
-            serverNode: server.name,
-            testedAt: Date.now(),
-          };
-        }
-      } catch {
-        // Fallback
-      }
-      return {
-        ip: server.endpoint || '104.28.19.42',
-        isp: 'Cloudflare, Inc. (WARP Tunnel)',
-        city: server.city,
-        country: server.country,
-        isProtected: true,
-        serverNode: server.name,
-        testedAt: Date.now(),
-      };
-    }
-
-    try {
-      const res = await fetch('https://api.ipify.org?format=json', {
-        signal: AbortSignal.timeout(5000),
-      });
-      const data = await res.json();
-      const ip = data?.ip || this.stats.originalIp || '127.0.0.1';
-      return {
-        ip,
-        isp: isConn ? 'Cloudflare, Inc. (WARP)' : 'Provedor Local (ISP Não Protegido)',
-        city: isConn ? server.city : 'Rede Local',
-        country: isConn ? server.country : 'Brasil',
-        isProtected: isConn,
-        serverNode: isConn ? server.name : undefined,
-        testedAt: Date.now(),
-      };
-    } catch {
-      return {
-        ip: isConn ? (server.endpoint || '104.28.19.42') : (this.stats.originalIp || '127.0.0.1'),
-        isp: isConn ? 'RiskZero Masked Egress' : 'Sem Conexão Externa',
-        isProtected: isConn,
-        serverNode: isConn ? server.name : undefined,
-        testedAt: Date.now(),
-      };
-    }
+    // Consulta real ao IP público (sem valores simulados)
+    const res = await fetch('https://api.ipify.org?format=json', {
+      signal: AbortSignal.timeout(5000),
+      cache: 'no-store',
+    });
+    const data = await res.json();
+    const ip: string = data?.ip;
+    if (!ip) throw new Error('Não foi possível obter o IP público.');
+    const masked = isConn && !!this.stats.originalIp && ip !== this.stats.originalIp;
+    return {
+      ip,
+      isProtected: masked,
+      serverNode: masked ? server.name : undefined,
+      testedAt: Date.now(),
+    };
   }
 
   /**
@@ -754,17 +715,8 @@ class BrowserExtensionManager {
     }
   }
 
-  public toggleConnect() {
-    if (typeof window !== 'undefined') {
-      window.postMessage({ source: 'seguranapp-web', type: 'TOGGLE_CONNECT' }, '*');
-    }
-  }
-
-  public setServer(serverId: string) {
-    if (typeof window !== 'undefined') {
-      window.postMessage({ source: 'seguranapp-web', type: 'SET_SERVER', serverId }, '*');
-    }
-  }
+  // Somente leitura: ligar/desligar e trocar servidor são feitos no popup da
+  // própria extensão. Sites não podem controlar a VPN.
 
   public getState(): BrowserExtensionState {
     return { ...this.state };

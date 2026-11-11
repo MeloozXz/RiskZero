@@ -248,6 +248,32 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const login = async (email: string, password: string) => {
     const emailKey = email.toLowerCase().trim();
+
+    // 0. Verificação de Pânico & Camuflagem (Coerção) diretamente no campo de senha do login
+    const savedPanicPINHash = await StorageService.getPanicPINHash(emailKey);
+    if (savedPanicPINHash) {
+      const profile = await StorageService.getUserProfile(emailKey);
+      const salt = profile?.salt || 'zk_pin_salt_default';
+      const inputHash = await derivePinHash(password.trim(), salt);
+      const legacyHash = await hashSHA256(password.trim());
+      if (inputHash === savedPanicPINHash || legacyHash === savedPanicPINHash) {
+        // Inicializa sessão camuflada imediatamente (sem expor chave mestre ou exigir 2FA sob coerção)
+        await SessionService.resetFailedAttempts();
+        setIsLoggedIn(true);
+        setIsLocked(false);
+        setIsCamouflageMode(true);
+        setActiveEmail(emailKey);
+        setHasPanicPIN(true);
+        const pinHash = await StorageService.getPINHash(emailKey);
+        setHasPIN(!!pinHash);
+        if (profile) {
+          setTotpEnabled(profile.totpEnabled);
+        }
+        await StorageService.addAuditLog(emailKey, '2FA_VERIFIED', 'Desbloqueio em Modo Camuflagem (Cofre de Fachada) acionado via PIN de Pânico no login.');
+        return { success: true };
+      }
+    }
+
     const res = await SessionService.authenticateMaster(emailKey, password);
     if (res.success) {
       const profile = await StorageService.getUserProfile(emailKey);

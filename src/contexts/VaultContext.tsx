@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { VaultService } from '../services/vault';
+import { StorageService } from '../services/storage';
 import { SessionService } from '../services/session';
 import { useSecurity } from './SecurityContext';
 import { VaultItem, VaultCategory } from '../types';
@@ -10,41 +11,79 @@ type VaultItemWithPlain = VaultItem & {
   _plaintextTotpSecret?: string;
 };
 
-const DECOY_VAULT_ITEMS: VaultItemWithPlain[] = [
-  {
-    id: 'decoy-item-1',
-    title: 'Portal de Notícias Diárias',
-    username: 'leitor.assinante@email.com',
-    url: 'https://noticias.exemplo.com.br',
-    category: 'LOGIN',
-    encryptedPassword: { ciphertext: 'decoy_ciphertext_1', iv: 'decoy_iv_1' },
-    _plaintextPassword: ' Noticia@2026#Leitura!',
-    _plaintextNotes: 'Assinatura gratuita de newsletter.',
-    updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-  },
-  {
-    id: 'decoy-item-2',
-    title: 'Clube de Cupons & Descontos',
-    username: 'cliente.desconto@email.com',
-    url: 'https://cupons.exemplo.com.br',
-    category: 'LOGIN',
-    encryptedPassword: { ciphertext: 'decoy_ciphertext_2', iv: 'decoy_iv_2' },
-    _plaintextPassword: 'Cupom#Promo2026$Vip',
-    _plaintextNotes: 'Conta de pontos de fidelidade.',
-    updatedAt: new Date(Date.now() - 86400000 * 10).toISOString(),
-  },
-  {
-    id: 'decoy-item-3',
-    title: 'Fórum de Estudos Aberto',
-    username: 'estudante_geral',
-    url: 'https://forum.exemplo.org',
-    category: 'NOTE',
-    encryptedPassword: { ciphertext: 'decoy_ciphertext_3', iv: 'decoy_iv_3' },
-    _plaintextPassword: 'Estudo@Forum2026!Ok',
-    _plaintextNotes: 'Anotações públicas de horários de aula.',
-    updatedAt: new Date(Date.now() - 86400000 * 20).toISOString(),
-  },
-];
+export function generateRealisticDecoyItems(userEmail?: string | null): VaultItemWithPlain[] {
+  const email = (userEmail && userEmail.includes('@')) ? userEmail.trim().toLowerCase() : 'usuario.pessoal@gmail.com';
+  const prefix = email.split('@')[0].replace(/[^a-zA-Z0-9._-]/g, '') || 'usuario';
+
+  return [
+    {
+      id: 'decoy-item-netflix',
+      title: 'Netflix',
+      username: email,
+      url: 'https://www.netflix.com',
+      category: 'LOGIN',
+      encryptedPassword: { ciphertext: 'decoy_net', iv: 'decoy_iv' },
+      _plaintextPassword: 'Netflix#Familia2026',
+      _plaintextNotes: 'Plano Padrão com Anúncios (conta compartilhada da família)',
+      updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    },
+    {
+      id: 'decoy-item-meli',
+      title: 'Mercado Livre',
+      username: email,
+      url: 'https://www.mercadolivre.com.br',
+      category: 'LOGIN',
+      encryptedPassword: { ciphertext: 'decoy_meli', iv: 'decoy_iv' },
+      _plaintextPassword: 'Meli$Compras2026!',
+      _plaintextNotes: 'Endereço residencial cadastrado no app',
+      updatedAt: new Date(Date.now() - 86400000 * 6).toISOString(),
+    },
+    {
+      id: 'decoy-item-instagram',
+      title: 'Instagram',
+      username: `@${prefix}`,
+      url: 'https://www.instagram.com',
+      category: 'LOGIN',
+      encryptedPassword: { ciphertext: 'decoy_insta', iv: 'decoy_iv' },
+      _plaintextPassword: 'Insta!Foto2026#Sp',
+      _plaintextNotes: 'Perfil pessoal (fotos e mensagens privadas)',
+      updatedAt: new Date(Date.now() - 86400000 * 12).toISOString(),
+    },
+    {
+      id: 'decoy-item-ifood',
+      title: 'iFood',
+      username: email,
+      url: 'https://www.ifood.com.br',
+      category: 'LOGIN',
+      encryptedPassword: { ciphertext: 'decoy_ifood', iv: 'decoy_iv' },
+      _plaintextPassword: 'Ifood@Delivery99',
+      _plaintextNotes: 'Cartão de crédito/débito salvo para pedidos de refeição',
+      updatedAt: new Date(Date.now() - 86400000 * 18).toISOString(),
+    },
+    {
+      id: 'decoy-item-uber',
+      title: 'Uber',
+      username: email,
+      url: 'https://www.uber.com',
+      category: 'LOGIN',
+      encryptedPassword: { ciphertext: 'decoy_uber', iv: 'decoy_iv' },
+      _plaintextPassword: 'Uber#Viagens2026*Br',
+      _plaintextNotes: 'Conta vinculada ao cartão para viagens urbanas',
+      updatedAt: new Date(Date.now() - 86400000 * 25).toISOString(),
+    },
+    {
+      id: 'decoy-item-spotify',
+      title: 'Spotify',
+      username: email,
+      url: 'https://www.spotify.com',
+      category: 'LOGIN',
+      encryptedPassword: { ciphertext: 'decoy_spot', iv: 'decoy_iv' },
+      _plaintextPassword: 'Musica#Spotify2026',
+      _plaintextNotes: 'Plano Individual Mensal / Playlists salvas',
+      updatedAt: new Date(Date.now() - 86400000 * 30).toISOString(),
+    },
+  ];
+}
 
 interface VaultContextType {
   items: VaultItemWithPlain[];
@@ -73,13 +112,33 @@ interface VaultContextType {
 const VaultContext = createContext<VaultContextType | undefined>(undefined);
 
 export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isCamouflageMode } = useSecurity();
+  const { isCamouflageMode, activeEmail } = useSecurity();
   const [realItems, setRealItems] = useState<VaultItemWithPlain[]>([]);
-  const [decoyItems, setDecoyItems] = useState<VaultItemWithPlain[]>(DECOY_VAULT_ITEMS);
+  const [decoyItems, setDecoyItems] = useState<VaultItemWithPlain[]>(() => generateRealisticDecoyItems(activeEmail));
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<VaultCategory | 'ALL'>('ALL');
   const [healthStats, setHealthStats] = useState<VaultContextType['healthStats']>(null);
+
+  const loadDecoyItems = useCallback(async () => {
+    const email = activeEmail || SessionService.getActiveUserEmail() || 'usuario.pessoal@gmail.com';
+    try {
+      const saved = await StorageService.getDecoyVault<VaultItemWithPlain>(email);
+      if (saved && saved.length > 0) {
+        setDecoyItems(saved);
+      } else {
+        const generated = generateRealisticDecoyItems(email);
+        setDecoyItems(generated);
+        await StorageService.saveDecoyVault(email, generated);
+      }
+    } catch {
+      setDecoyItems(generateRealisticDecoyItems(email));
+    }
+  }, [activeEmail]);
+
+  useEffect(() => {
+    loadDecoyItems();
+  }, [loadDecoyItems, isCamouflageMode]);
 
   const refreshVault = useCallback(async () => {
     if (!SessionService.isKeyLoaded()) return;
@@ -124,20 +183,21 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const createItem = async (params: Parameters<typeof VaultService.create>[0]) => {
     if (isCamouflageMode) {
       const newId = `decoy-${Date.now()}`;
-      setDecoyItems((prev) => [
-        {
-          id: newId,
-          title: params.title,
-          username: params.username,
-          url: params.url || '',
-          category: params.category || 'LOGIN',
-          encryptedPassword: { ciphertext: 'decoy', iv: 'decoy' },
-          _plaintextPassword: params.password,
-          _plaintextNotes: params.notes,
-          updatedAt: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
+      const newItem: VaultItemWithPlain = {
+        id: newId,
+        title: params.title,
+        username: params.username,
+        url: params.url || '',
+        category: params.category || 'LOGIN',
+        encryptedPassword: { ciphertext: 'decoy', iv: 'decoy' },
+        _plaintextPassword: params.password,
+        _plaintextNotes: params.notes,
+        updatedAt: new Date().toISOString(),
+      };
+      const updated = [newItem, ...decoyItems];
+      setDecoyItems(updated);
+      const email = activeEmail || SessionService.getActiveUserEmail() || 'usuario.pessoal@gmail.com';
+      await StorageService.saveDecoyVault(email, updated);
       return newId;
     }
     const id = await VaultService.create(params);
@@ -147,22 +207,23 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateItem = async (id: string, params: Parameters<typeof VaultService.update>[1]) => {
     if (isCamouflageMode) {
-      setDecoyItems((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                title: params.title ?? item.title,
-                username: params.username ?? item.username,
-                url: params.url ?? item.url,
-                category: params.category ?? item.category,
-                _plaintextPassword: params.password ?? item._plaintextPassword,
-                _plaintextNotes: params.notes ?? item._plaintextNotes,
-                updatedAt: new Date().toISOString(),
-              }
-            : item
-        )
+      const updated = decoyItems.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              title: params.title ?? item.title,
+              username: params.username ?? item.username,
+              url: params.url ?? item.url,
+              category: params.category ?? item.category,
+              _plaintextPassword: params.password ?? item._plaintextPassword,
+              _plaintextNotes: params.notes ?? item._plaintextNotes,
+              updatedAt: new Date().toISOString(),
+            }
+          : item
       );
+      setDecoyItems(updated);
+      const email = activeEmail || SessionService.getActiveUserEmail() || 'usuario.pessoal@gmail.com';
+      await StorageService.saveDecoyVault(email, updated);
       return;
     }
     await VaultService.update(id, params);
@@ -171,7 +232,10 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const removeItem = async (id: string) => {
     if (isCamouflageMode) {
-      setDecoyItems((prev) => prev.filter((i) => i.id !== id));
+      const updated = decoyItems.filter((i) => i.id !== id);
+      setDecoyItems(updated);
+      const email = activeEmail || SessionService.getActiveUserEmail() || 'usuario.pessoal@gmail.com';
+      await StorageService.saveDecoyVault(email, updated);
       return;
     }
     await VaultService.remove(id);

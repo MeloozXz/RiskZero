@@ -417,3 +417,79 @@
   color: var(--rz-text-primary);
   margin: 0 0 2px;
 }
+
+/* ---------- Checkup de Proteção ---------- */
+.vpn-ext-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: var(--rz-text-sm);
+  color: var(--rz-text-secondary);
+}
+
+.vpn-check-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vpn-check-head,
+.vpn-check-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vpn-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.vpn-check-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: var(--rz-radius-sm);
+  border: 1px solid var(--rz-border);
+  background: var(--rz-bg-deep);
+  min-width: 0;
+}
+
+.vpn-check-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.vpn-check-icon {
+  display: inline-flex;
+  color: var(--rz-text-muted);
+}
+
+.vpn-check-title {
+  font-weight: 700;
+  font-size: var(--rz-text-sm);
+  color: var(--rz-text-primary);
+}
+
+.vpn-check-detail {
+  font-size: var(--rz-text-xs);
+  color: var(--rz-text-secondary);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.vpn-check-card.is-ok { border-color: var(--rz-success-line); }
+.vpn-check-card.is-ok .vpn-check-icon { color: var(--rz-success); }
+.vpn-check-card.is-warn { border-color: rgba(255, 181, 71, 0.45); }
+.vpn-check-card.is-warn .vpn-check-icon { color: var(--rz-warning, #FFB547); }
+.vpn-check-card.is-fail { border-color: var(--rz-danger-line); }
+.vpn-check-card.is-fail .vpn-check-icon { color: var(--rz-danger); }
+.vpn-check-card.is-running .vpn-check-icon,
+.vpn-check-card.is-info .vpn-check-icon { color: var(--rz-ice); }

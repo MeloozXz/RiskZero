@@ -5,7 +5,6 @@ let privacyScreenPlugin: any = null;
 const PRIVACY_STORAGE_KEY = 'rz_privacy_screen_enabled';
 
 let webListenersActive = false;
-let blackoutTimeout: ReturnType<typeof setTimeout> | null = null;
 
 async function loadPrivacyPlugin() {
   if (privacyScreenPlugin) return privacyScreenPlugin;
@@ -58,9 +57,7 @@ function ensureCurtainElement(): HTMLElement {
       </button>
     `;
     curtain.addEventListener('click', () => {
-      if (document.hasFocus()) {
-        hideCurtain();
-      }
+      hideCurtain();
     });
     document.body.appendChild(curtain);
   }
@@ -94,29 +91,6 @@ async function scrubClipboardOnScreenshot() {
     }
   } catch {
     // Ignora caso o navegador restrinja escrita sem foco
-  }
-}
-
-function handleWindowBlur() {
-  if (!HardeningService.isPrivacyScreenEnabled()) return;
-  // Acionado imediatamente quando Win+Shift+S (Ferramenta de Captura do Windows) ou Alt+Tab é aberto
-  showCurtain();
-}
-
-function handleWindowFocus() {
-  if (!HardeningService.isPrivacyScreenEnabled()) return;
-  if (blackoutTimeout) clearTimeout(blackoutTimeout);
-  blackoutTimeout = setTimeout(() => {
-    if (document.hasFocus()) {
-      hideCurtain();
-    }
-  }, 250);
-}
-
-function handleVisibilityChange() {
-  if (!HardeningService.isPrivacyScreenEnabled()) return;
-  if (document.hidden) {
-    showCurtain();
   }
 }
 
@@ -224,9 +198,6 @@ export const HardeningService = {
     }
 
     if (!webListenersActive) {
-      window.addEventListener('blur', handleWindowBlur, true);
-      window.addEventListener('focus', handleWindowFocus, true);
-      document.addEventListener('visibilitychange', handleVisibilityChange, true);
       window.addEventListener('keydown', handleKeyDown, true);
       window.addEventListener('keyup', handleKeyUp, true);
       webListenersActive = true;
@@ -240,9 +211,6 @@ export const HardeningService = {
     hideCurtain();
 
     if (webListenersActive) {
-      window.removeEventListener('blur', handleWindowBlur, true);
-      window.removeEventListener('focus', handleWindowFocus, true);
-      document.removeEventListener('visibilitychange', handleVisibilityChange, true);
       window.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('keyup', handleKeyUp, true);
       webListenersActive = false;

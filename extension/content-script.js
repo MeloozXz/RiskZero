@@ -353,31 +353,8 @@
         });
       }
 
-      if (req.type === 'TOGGLE_CONNECT') {
-        chrome.runtime.sendMessage({ type: 'TOGGLE_CONNECT' }, function(resp) {
-          if (resp && resp.state) {
-            syncLocationToPage(resp.state);
-            window.postMessage({
-              source: 'seguranapp-extension',
-              type: 'STATE_CHANGED',
-              state: resp.state
-            }, '*');
-          }
-        });
-      }
-
-      if (req.type === 'SET_SERVER') {
-        chrome.runtime.sendMessage({ type: 'SET_SERVER', serverId: req.serverId }, function(resp) {
-          if (resp && resp.state) {
-            syncLocationToPage(resp.state);
-            window.postMessage({
-              source: 'seguranapp-extension',
-              type: 'STATE_CHANGED',
-              state: resp.state
-            }, '*');
-          }
-        });
-      }
+      // TOGGLE_CONNECT / SET_SERVER removidos: sites não podem ligar/desligar
+      // a VPN nem trocar o servidor. Isso é feito somente pelo popup da extensão.
     }
   });
 

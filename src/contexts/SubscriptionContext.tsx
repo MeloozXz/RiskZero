@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { SubscriptionService } from '../services/subscription';
 import { SessionService } from '../services/session';
+import { useSecurity } from './SecurityContext';
 import { PlanTier, BillingCycle, SubscriptionInfo } from '../types';
 
 interface SubscriptionContextType {
@@ -32,6 +33,7 @@ interface SubscriptionContextType {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { activeEmail } = useSecurity();
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -41,7 +43,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [modalMinTier, setModalMinTier] = useState<PlanTier>('PRO');
 
   const refreshSubscription = useCallback(async () => {
-    const email = SessionService.getActiveUserEmail();
+    const email = activeEmail || SessionService.getActiveUserEmail();
     if (!email) {
       setSubscription({
         tier: 'FREE',
@@ -62,11 +64,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeEmail]);
 
   useEffect(() => {
     refreshSubscription();
-  }, [refreshSubscription]);
+  }, [refreshSubscription, activeEmail]);
 
   const tier: PlanTier = subscription?.tier || 'FREE';
   const isPro = tier === 'PRO' || tier === 'ULTRA';
@@ -86,7 +88,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     cycle: BillingCycle,
     paymentMethod: 'PIX' | 'CREDIT_CARD' = 'PIX'
   ): Promise<boolean> => {
-    const email = SessionService.getActiveUserEmail();
+    const email = activeEmail || SessionService.getActiveUserEmail();
     if (!email) return false;
 
     try {
@@ -103,7 +105,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const cancelSubscription = async (): Promise<void> => {
-    const email = SessionService.getActiveUserEmail();
+    const email = activeEmail || SessionService.getActiveUserEmail();
     if (!email) return;
 
     await SubscriptionService.cancel(email);

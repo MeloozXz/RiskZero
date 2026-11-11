@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { IonPage, IonContent, IonToast, IonToggle } from '@ionic/react';
 import {
-  Power,
   ShieldCheck,
+  ShieldAlert,
   Globe,
   Monitor,
   Download,
@@ -13,72 +13,76 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
+  XCircle,
+  MinusCircle,
   ExternalLink,
-  Wifi,
   Info,
   Server,
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  Activity,
   FileCode,
   Lock,
-  Layers,
-  Sparkles,
+  Radar,
+  Wifi,
+  Clock,
+  MapPin,
+  Network,
+  Puzzle,
 } from 'lucide-react';
 import {
   VpnService,
   VpnStats,
-  ExternalIpAudit,
   BrowserExtensionService,
   BrowserExtensionState,
 } from '../../services/vpn';
+import {
+  runProtectionCheck,
+  clearBaseline,
+  ProtectionReport,
+  CheckResult,
+  CheckStatus,
+  Verdict,
+} from '../../services/protectionCheck';
 import { ClipboardService } from '../../services/clipboard';
-import { VpnServer } from '../../types';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { OrbitRing } from '../../components/brand';
+import { OrbitRing, OrbitTone } from '../../components/brand/OrbitRing';
 import './VpnPage.css';
 
 type VpnMode = 'browser-ext' | 'wireguard-pc';
 
-function formatDuration(totalSeconds: number): string {
-  const hrs = Math.floor(totalSeconds / 3600);
-  const mins = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
-  return [hrs, mins, secs].map((v) => String(v).padStart(2, '0')).join(':');
-}
+const VERDICT_UI: Record<Verdict, { label: string; tone: OrbitTone; badge: string; pill: string; dot: string }> = {
+  protected: { label: 'Navegador Protegido', tone: 'success', badge: 'rz-badge-success', pill: 'is-connected', dot: 'success is-live' },
+  leaking: { label: 'IP Mascarado, Com Vazamentos', tone: 'warning', badge: 'rz-badge-warning', pill: 'is-error', dot: 'warning' },
+  unprotected: { label: 'IP Real Exposto', tone: 'danger', badge: 'rz-badge-danger', pill: 'is-error', dot: 'danger' },
+  unknown: { label: 'Não Verificado', tone: 'muted', badge: 'rz-badge-blue', pill: '', dot: 'info' },
+};
 
-function formatBytes(bytes: number): string {
-  if (!bytes || bytes <= 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-  const val = bytes / Math.pow(1024, i);
-  return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
-
-function getNodeCode(server: VpnServer): string {
-  if (server.id === 'cf-warp') return 'WARP';
-  if (server.id.startsWith('br')) return 'BR';
-  if (server.id.startsWith('us')) return 'US';
-  if (server.id.startsWith('de')) return 'DE';
-  if (server.id.startsWith('uk')) return 'UK';
-  return 'VPS';
-}
+const STATUS_ICON: Record<CheckStatus, React.ReactNode> = {
+  ok: <CheckCircle2 size={16} />,
+  warn: <AlertTriangle size={16} />,
+  fail: <XCircle size={16} />,
+  info: <Info size={16} />,
+  skipped: <MinusCircle size={16} />,
+  running: <RefreshCw size={16} className="rz-spin" />,
+  error: <MinusCircle size={16} />,
+};
 
 export const VpnPage: React.FC = () => {
   const [activeMode, setActiveMode] = useState<VpnMode>('browser-ext');
   const [vpnStats, setVpnStats] = useState<VpnStats>(() => VpnService.getStats());
-  const [servers, setServers] = useState<VpnServer[]>(() => VpnService.getServers());
-  const [auditData, setAuditData] = useState<ExternalIpAudit | null>(null);
-  const [isAuditing, setIsAuditing] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string>('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [configPreview, setConfigPreview] = useState<string>('');
   const [showConfPreview, setShowConfPreview] = useState<boolean>(false);
 
-  // Estado sincronizado com a Extensão do Navegador
+  // Estado LIDO da extensão (a página não controla a extensão)
   const [extState, setExtState] = useState<BrowserExtensionState>(() =>
     BrowserExtensionService.getState()
   );
+
+  // Checkup de proteção
+  const [report, setReport] = useState<ProtectionReport | null>(null);
+  const [isChecking, setIsChecking] = useState<boolean>(false);
+  const geoRef = useRef<CheckResult | undefined>(undefined);
+  const checkSeq = useRef(0);
 
   // Estados de expansão dos tutoriais
   const [showBrowserTutorial, setShowBrowserTutorial] = useState<boolean>(false);
@@ -87,7 +91,6 @@ export const VpnPage: React.FC = () => {
   useEffect(() => {
     const unsubVpn = VpnService.subscribe((stats) => {
       setVpnStats(stats);
-      setServers(VpnService.getServers());
     });
     const unsubExt = BrowserExtensionService.subscribe((state) => {
       setExtState(state);
@@ -98,9 +101,30 @@ export const VpnPage: React.FC = () => {
     };
   }, []);
 
+  const runCheck = useCallback(
+    async (includeGeolocation: boolean) => {
+      const seq = ++checkSeq.current;
+      setIsChecking(true);
+      try {
+        const res = await runProtectionCheck({
+          extensionConnected: extState.isInstalled ? extState.isConnected : undefined,
+          includeGeolocation,
+          previousGeolocation: geoRef.current,
+        });
+        if (includeGeolocation) geoRef.current = res.checks.geolocation;
+        if (seq === checkSeq.current) setReport(res);
+      } finally {
+        if (seq === checkSeq.current) setIsChecking(false);
+      }
+    },
+    [extState.isInstalled, extState.isConnected]
+  );
+
+  // Roda ao abrir e quando a extensão avisa mudança de estado
   useEffect(() => {
-    runAudit();
-  }, [vpnStats.status, vpnStats.selectedServer.id, extState.isConnected]);
+    const t = setTimeout(() => runCheck(false), 400);
+    return () => clearTimeout(t);
+  }, [runCheck]);
 
   useEffect(() => {
     let active = true;
@@ -114,72 +138,15 @@ export const VpnPage: React.FC = () => {
     };
   }, [vpnStats.selectedServer.id]);
 
-  const runAudit = async () => {
-    setIsAuditing(true);
-    try {
-      const res = await VpnService.auditExternalIp();
-      setAuditData(res);
-    } catch {
-      setAuditData({
-        ip: '189.20.125.138',
-        isp: 'Vivo (Provedor Local)',
-        city: 'São Paulo',
-        country: 'Brasil',
-        isProtected: false,
-        testedAt: Date.now(),
-      });
-    } finally {
-      setIsAuditing(false);
-    }
+  const handleVerify = () => {
+    if (activeMode === 'browser-ext') BrowserExtensionService.ping();
+    runCheck(true);
   };
 
-  const handleToggleTunnel = async () => {
-    if (activeMode === 'browser-ext') {
-      if (!extState.isInstalled) {
-        handleDownloadExtension();
-        setToastMessage('Baixe e ative a extensão para rotear as abas do navegador.');
-        return;
-      }
-      BrowserExtensionService.toggleConnect();
-      setToastMessage(
-        !extState.isConnected ? 'Proteção da extensão ativada!' : 'Proteção da extensão desativada.'
-      );
-      return;
-    }
-
-    // Modo WireGuard PC
-    if (vpnStats.status === 'CONNECTED' || vpnStats.status === 'CONNECTING') {
-      await VpnService.disconnect();
-      setToastMessage('Túnel WireGuard desconectado.');
-    } else {
-      try {
-        await VpnService.connect();
-        setToastMessage(`Túnel simulado via ${vpnStats.selectedServer.name}.`);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Falha ao iniciar túnel VPN.';
-        setToastMessage(msg);
-      }
-    }
-  };
-
-  const handleSelectServer = async (server: VpnServer) => {
-    if (server.status === 'UNAVAILABLE') {
-      setToastMessage('Este nó requer configuração manual de endpoint.');
-      return;
-    }
-    const wasConnected = vpnStats.status === 'CONNECTED';
-    if (wasConnected) {
-      await VpnService.disconnect();
-    }
-    VpnService.setServer(server);
-    setToastMessage(`Nó selecionado: ${server.name}`);
-    if (wasConnected) {
-      try {
-        await VpnService.connect();
-      } catch {
-        // Tratado no estado de erro
-      }
-    }
+  const handleResetBaseline = () => {
+    clearBaseline();
+    setToastMessage('IP real esquecido. Verifique novamente com a VPN desligada para salvá-lo.');
+    runCheck(false);
   };
 
   const handleCopyText = async (text: string, label: string) => {
@@ -225,24 +192,123 @@ export const VpnPage: React.FC = () => {
     }
   };
 
-  const isConnected =
-    activeMode === 'browser-ext'
-      ? extState.isConnected
-      : vpnStats.status === 'CONNECTED';
+  const verdict: Verdict = report?.verdict ?? 'unknown';
+  const verdictUi = VERDICT_UI[verdict];
+  const currentIp = report?.ipInfo?.ip ?? (isChecking ? 'Consultando...' : '—');
 
-  const isConnecting =
-    activeMode === 'wireguard-pc' &&
-    (vpnStats.status === 'CONNECTING' ||
-      vpnStats.status === 'RECONNECTING' ||
-      vpnStats.status === 'DISCONNECTING');
+  const extStatusLabel = !extState.isInstalled
+    ? 'Extensão não detectada'
+    : extState.isConnected
+      ? `Extensão ligada · ${extState.selectedServer?.name || 'servidor desconhecido'}`
+      : 'Extensão instalada, desligada';
 
-  const isError = activeMode === 'wireguard-pc' && vpnStats.status === 'ERROR';
+  /** Reator central compartilhado pelas duas abas */
+  const renderReactor = (context: 'ext' | 'wg') => (
+    <div className="vpn-reactor-stage">
+      <OrbitRing
+        size={168}
+        stroke={7}
+        spinning={isChecking}
+        value={isChecking ? undefined : report ? 100 : 0}
+        tone={isChecking ? 'accent' : verdictUi.tone}
+        globe
+        label={verdictUi.label}
+      >
+        <button
+          type="button"
+          onClick={handleVerify}
+          disabled={isChecking}
+          className={`vpn-power-btn ${verdict === 'protected' ? 'is-connected' : ''} ${isChecking ? 'is-connecting' : ''}`}
+          aria-label="Verificar proteção"
+        >
+          {isChecking ? (
+            <RefreshCw size={28} strokeWidth={2} className="rz-spin" />
+          ) : verdict === 'protected' ? (
+            <ShieldCheck size={30} strokeWidth={2} />
+          ) : verdict === 'unknown' ? (
+            <Radar size={30} strokeWidth={2} />
+          ) : (
+            <ShieldAlert size={30} strokeWidth={2} />
+          )}
+          <span className="vpn-power-label">{isChecking ? 'Verificando' : 'Verificar'}</span>
+        </button>
+      </OrbitRing>
 
-  const activeVirtualIp = isConnected
-    ? vpnStats.protectedIp
-    : auditData?.ip || vpnStats.originalIp || 'Consultando IP...';
+      <div className="vpn-ip-readout">
+        <span className="vpn-ip-eyebrow">IP público visto pelos sites</span>
+        <div className="vpn-ip-value-row">
+          <span className="vpn-ip-value">{currentIp}</span>
+          {report?.ipInfo?.ip && (
+            <button
+              type="button"
+              className="rz-icon-btn"
+              style={{ width: 28, height: 28 }}
+              onClick={() => handleCopyText(report.ipInfo!.ip, 'Endereço IP')}
+              aria-label="Copiar endereço IP"
+            >
+              {copiedField === 'Endereço IP' ? <Check size={14} /> : <Copy size={14} />}
+            </button>
+          )}
+        </div>
+        <span className="vpn-ip-meta">
+          {report?.checks.ip.detail ||
+            (context === 'ext'
+              ? 'Ligue a extensão pelo ícone na barra do navegador e verifique.'
+              : 'Ative o túnel no app WireGuard e verifique.')}
+        </span>
+      </div>
+    </div>
+  );
 
-  const availableNodes = servers.filter((s) => s.status === 'AVAILABLE');
+  /** Grade de resultados do checkup */
+  const renderResults = () => {
+    const items: { key: string; icon: React.ReactNode; label: string; res?: CheckResult }[] = [
+      { key: 'ip', icon: <Wifi size={12} />, label: 'IP Público', res: report?.checks.ip },
+      { key: 'webrtc', icon: <Network size={12} />, label: 'WebRTC', res: report?.checks.webrtc },
+      { key: 'dns', icon: <Server size={12} />, label: 'DNS', res: report?.checks.dns },
+      { key: 'locale', icon: <Clock size={12} />, label: 'Fuso / Idioma', res: report?.checks.locale },
+      { key: 'geo', icon: <MapPin size={12} />, label: 'Geolocalização', res: report?.checks.geolocation },
+    ];
+    return (
+      <section className="rz-panel vpn-check-panel" aria-label="Resultados da verificação">
+        <div className="vpn-check-head">
+          <span className="rz-stat-label">Checkup de Proteção</span>
+          <span className="rz-help rz-font-mono">
+            {report ? `Testado às ${new Date(report.testedAt).toLocaleTimeString('pt-BR')}` : 'Aguardando...'}
+          </span>
+        </div>
+        <div className="vpn-check-grid">
+          {items.map(({ key, icon, label, res }) => {
+            const status: CheckStatus = isChecking && !res ? 'running' : res?.status ?? 'skipped';
+            return (
+              <div key={key} className={`vpn-check-card is-${status}`}>
+                <div className="vpn-check-card-top">
+                  <span className="rz-stat-label">
+                    {icon} {label}
+                  </span>
+                  <span className="vpn-check-icon">{STATUS_ICON[status]}</span>
+                </div>
+                <div className="vpn-check-title">{res?.title ?? (isChecking ? 'Verificando...' : 'Não executado')}</div>
+                <div className="vpn-check-detail">{res?.detail ?? ''}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="vpn-check-foot">
+          <span className="rz-help">
+            {report?.baseline
+              ? `Seu IP real salvo neste dispositivo: ${report.baseline.ip}`
+              : 'IP real ainda não salvo: verifique uma vez com a VPN desligada para comparar.'}
+          </span>
+          {report?.baseline && (
+            <button type="button" className="rz-btn rz-btn-ghost rz-btn-sm" onClick={handleResetBaseline}>
+              Esquecer IP real
+            </button>
+          )}
+        </div>
+      </section>
+    );
+  };
 
   return (
     <IonPage className="rz-page">
@@ -251,21 +317,21 @@ export const VpnPage: React.FC = () => {
           <PageHeader
             eyebrow="Rede Criptografada"
             title="Túnel VPN & Proteção de Rede"
-            subtitle="Escolha entre a Extensão Leve para Navegador ou o Perfil WireGuard Oficial (.conf) para o Computador Inteiro."
+            subtitle="Ligue a proteção pela extensão ou pelo app WireGuard instalado. Aqui você verifica se ela está realmente funcionando."
             actions={
               <>
-                <span className={`rz-badge ${isConnected ? 'rz-badge-success' : 'rz-badge-blue'}`}>
-                  <span className={`rz-dot ${isConnected ? 'success is-live' : 'info'}`} />
-                  {isConnected ? 'Proteção Ativa' : 'Pronto para Conectar'}
+                <span className={`rz-badge ${isChecking ? 'rz-badge-blue' : verdictUi.badge}`}>
+                  <span className={`rz-dot ${isChecking ? 'info' : verdictUi.dot}`} />
+                  {isChecking ? 'Verificando...' : verdictUi.label}
                 </span>
                 <button
                   type="button"
-                  onClick={runAudit}
-                  disabled={isAuditing}
+                  onClick={handleVerify}
+                  disabled={isChecking}
                   className="rz-btn rz-btn-secondary rz-btn-sm"
                 >
-                  <RefreshCw size={14} className={isAuditing ? 'rz-spin' : ''} />
-                  <span>{isAuditing ? 'Auditando...' : 'Testar Meu IP'}</span>
+                  <RefreshCw size={14} className={isChecking ? 'rz-spin' : ''} />
+                  <span>{isChecking ? 'Verificando...' : 'Verificar Proteção'}</span>
                 </button>
               </>
             }
@@ -323,174 +389,58 @@ export const VpnPage: React.FC = () => {
           {/* ==================== MODO 1: EXTENSÃO DE NAVEGADOR ==================== */}
           {activeMode === 'browser-ext' && (
             <div className="vpn-layout">
-              {/* Coluna Esquerda: Reator de Conexão da Extensão */}
+              {/* Coluna Esquerda: Verificação de Proteção */}
               <div className="vpn-col">
                 <section
-                  className={`vpn-reactor-panel rz-meridian-bg ${isConnected ? 'is-connected' : ''
-                    }`}
-                  aria-label="Controle da Extensão do Navegador"
+                  className={`vpn-reactor-panel rz-meridian-bg ${verdict === 'protected' ? 'is-connected' : isChecking ? 'is-connecting' : ''}`}
+                  aria-label="Verificação de proteção do navegador"
                 >
                   <div className="vpn-reactor-top">
-                    <div
-                      className={`vpn-status-pill ${isConnected
-                          ? 'is-connected'
-                          : extState.isInstalled
-                            ? 'is-connecting'
-                            : ''
-                        }`}
-                    >
-                      <span
-                        className={`rz-dot ${isConnected
-                            ? 'success is-live'
-                            : extState.isInstalled
-                              ? 'info'
-                              : 'warning'
-                          }`}
-                      />
-                      <span>
-                        {isConnected
-                          ? 'Navegador Protegido'
-                          : extState.isInstalled
-                            ? 'Extensão em Standby'
-                            : 'Extensão Não Detectada'}
-                      </span>
+                    <div className={`vpn-status-pill ${isChecking ? 'is-connecting' : verdictUi.pill}`}>
+                      <span className={`rz-dot ${isChecking ? 'info' : verdictUi.dot}`} />
+                      <span>{isChecking ? 'Verificando...' : verdictUi.label}</span>
                     </div>
-
-                    <span className="vpn-uptime" title="Tempo de conexão">
-                      {formatDuration(vpnStats.connectedTimeSeconds)}
+                    <span className="vpn-uptime" title="Estado lido da extensão">
+                      {!extState.isInstalled ? 'SEM EXTENSÃO' : extState.isConnected ? 'EXT: LIGADA' : 'EXT: DESLIGADA'}
                     </span>
                   </div>
 
-                  <div className="vpn-reactor-stage">
-                    <OrbitRing
-                      size={168}
-                      stroke={7}
-                      spinning={false}
-                      value={isConnected ? 100 : 0}
-                      tone={isConnected ? 'success' : 'accent'}
-                      globe
-                      label={isConnected ? 'Extensão Conectada' : 'Extensão Desconectada'}
-                    >
+                  {renderReactor('ext')}
+
+                  {/* Ação Principal */}
+                  <div className="vpn-thumb-bar">
+                    {!extState.isInstalled ? (
                       <button
                         type="button"
-                        onClick={handleToggleTunnel}
-                        className={`vpn-power-btn ${isConnected ? 'is-connected' : ''}`}
-                        aria-label={
-                          isConnected ? 'Desconectar Extensão' : 'Conectar Extensão'
-                        }
+                        onClick={handleDownloadExtension}
+                        className="rz-btn rz-btn-lg rz-btn-block rz-btn-primary"
                       >
-                        <Power size={30} strokeWidth={2} />
-                        <span className="vpn-power-label">
-                          {isConnected ? 'Ativo' : 'Conectar'}
-                        </span>
+                        <Download size={16} />
+                        <span>Baixar Extensão SeguranApp (.zip)</span>
                       </button>
-                    </OrbitRing>
-
-                    <div className="vpn-ip-readout">
-                      <span className="vpn-ip-eyebrow">
-                        {isConnected ? 'IP Mascarado no Navegador' : 'Endereço IP Atual do Navegador'}
-                      </span>
-                      <div className="vpn-ip-value-row">
-                        <span className="vpn-ip-value">{activeVirtualIp}</span>
+                    ) : (
+                      <>
+                        <p className="vpn-ext-hint">
+                          <Puzzle size={14} />
+                          <span>
+                            Ligue/desligue e troque o servidor pelo <strong>ícone da extensão</strong> na barra do navegador.
+                          </span>
+                        </p>
                         <button
                           type="button"
-                          className="rz-icon-btn"
-                          style={{ width: 28, height: 28 }}
-                          onClick={() => handleCopyText(activeVirtualIp, 'Endereço IP')}
-                          aria-label="Copiar endereço IP"
+                          onClick={handleVerify}
+                          disabled={isChecking}
+                          className="rz-btn rz-btn-lg rz-btn-block rz-btn-secondary"
                         >
-                          {copiedField === 'Endereço IP' ? <Check size={14} /> : <Copy size={14} />}
+                          <RefreshCw size={16} className={isChecking ? 'rz-spin' : ''} />
+                          <span>{isChecking ? 'Verificando...' : 'Verificar novamente'}</span>
                         </button>
-                      </div>
-                      <span className="vpn-ip-meta">
-                        {isConnected
-                          ? `Protegendo abas via ${extState.selectedServer?.country || 'Alemanha'}`
-                          : auditData?.city
-                            ? `${auditData.city}, ${auditData.country || 'Brasil'} · ${auditData.isp || 'Provedor Local'}`
-                            : 'Tráfego direto sem proxy'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Ação Principal do Reator */}
-                  <div className="vpn-thumb-bar">
-                    <button
-                      type="button"
-                      onClick={handleToggleTunnel}
-                      className={`rz-btn rz-btn-lg rz-btn-block ${isConnected ? 'rz-btn-danger' : 'rz-btn-primary'
-                        }`}
-                    >
-                      <Power size={16} />
-                      <span>
-                        {isConnected
-                          ? 'Desconectar Proteção do Navegador'
-                          : extState.isInstalled
-                            ? 'Ativar Proteção do Navegador'
-                            : '1. Baixar Extensão SeguranApp (.zip)'}
-                      </span>
-                    </button>
+                      </>
+                    )}
                   </div>
                 </section>
 
-                {/* Métricas do Navegador */}
-                <section className="rz-metrics" aria-label="Telemetria do navegador">
-                  <div className="rz-metric">
-                    <span className="rz-stat-label">
-                      <ArrowDownToLine size={12} style={{ display: 'inline', marginRight: 4 }} />
-                      Download
-                    </span>
-                    <div className="rz-stat-value rz-num">
-                      {isConnected ? vpnStats.downloadSpeedKbps : 0}
-                      <small style={{ fontSize: '0.85rem', marginLeft: 4, color: 'var(--rz-text-muted)' }}>
-                        kbps
-                      </small>
-                    </div>
-                    <span className="rz-help rz-font-mono">
-                      Total: {formatBytes(vpnStats.downloadBytes)}
-                    </span>
-                  </div>
-
-                  <div className="rz-metric">
-                    <span className="rz-stat-label">
-                      <ArrowUpFromLine size={12} style={{ display: 'inline', marginRight: 4 }} />
-                      Upload
-                    </span>
-                    <div className="rz-stat-value rz-num">
-                      {isConnected ? vpnStats.uploadSpeedKbps : 0}
-                      <small style={{ fontSize: '0.85rem', marginLeft: 4, color: 'var(--rz-text-muted)' }}>
-                        kbps
-                      </small>
-                    </div>
-                    <span className="rz-help rz-font-mono">
-                      Total: {formatBytes(vpnStats.uploadBytes)}
-                    </span>
-                  </div>
-
-                  <div className="rz-metric">
-                    <span className="rz-stat-label">
-                      <Activity size={12} style={{ display: 'inline', marginRight: 4 }} />
-                      Latência
-                    </span>
-                    <div className="rz-stat-value rz-num" style={{ color: 'var(--rz-ice)' }}>
-                      18
-                      <small style={{ fontSize: '0.85rem', marginLeft: 4, color: 'var(--rz-text-muted)' }}>
-                        ms
-                      </small>
-                    </div>
-                    <span className="rz-help">Proxy Web Local</span>
-                  </div>
-
-                  <div className="rz-metric">
-                    <span className="rz-stat-label">
-                      <ShieldCheck size={12} style={{ display: 'inline', marginRight: 4 }} />
-                      Modo Web
-                    </span>
-                    <div className="rz-stat-value rz-num" style={{ fontSize: '1.35rem' }}>
-                      Extensão
-                    </div>
-                    <span className="rz-help rz-font-mono">Proxy Zero-Install</span>
-                  </div>
-                </section>
+                {renderResults()}
               </div>
 
               {/* Coluna Direita: Gerenciamento da Extensão & Tutorial */}
@@ -526,7 +476,7 @@ export const VpnPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Estado da extensão */}
+                  {/* Estado da extensão (somente leitura) */}
                   <div
                     className="rz-stat-box"
                     style={{
@@ -560,21 +510,12 @@ export const VpnPage: React.FC = () => {
 
                     {extState.isInstalled && (
                       <div className="rz-setting-row" style={{ paddingBottom: 0 }}>
-                        <label htmlFor="ext-server-select" className="rz-label" style={{ marginBottom: 0 }}>
-                          Servidor de Saída:
-                        </label>
-                        <select
-                          id="ext-server-select"
-                          value={extState.selectedServer?.id || 'de-fra'}
-                          onChange={(e) => BrowserExtensionService.setServer(e.target.value)}
-                          className="rz-select"
-                          style={{ maxWidth: 220, height: 36 }}
-                        >
-                          <option value="de-fra">Alemanha (Frankfurt)</option>
-                          <option value="br-spo">Brasil (São Paulo)</option>
-                          <option value="us-mia">Estados Unidos (Miami)</option>
-                          <option value="uk-lon">Reino Unido (Londres)</option>
-                        </select>
+                        <span className="rz-label" style={{ marginBottom: 0 }}>
+                          Estado na extensão:
+                        </span>
+                        <span className="rz-font-mono" style={{ fontSize: 'var(--rz-text-sm)', color: 'var(--rz-text-primary)' }}>
+                          {extStatusLabel}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -652,71 +593,23 @@ export const VpnPage: React.FC = () => {
               {/* Coluna Esquerda: Reator e Seleção do Perfil .conf */}
               <div className="vpn-col">
                 <section
-                  className={`vpn-reactor-panel rz-meridian-bg ${isConnected ? 'is-connected' : isConnecting ? 'is-connecting' : ''
-                    }`}
-                  aria-label="Perfil WireGuard de Máquina"
+                  className={`vpn-reactor-panel rz-meridian-bg ${verdict === 'protected' ? 'is-connected' : isChecking ? 'is-connecting' : ''}`}
+                  aria-label="Verificação de proteção do computador"
                 >
                   <div className="vpn-reactor-top">
-                    <div className="vpn-status-pill is-connecting">
-                      <span className="rz-dot info" />
-                      <span>{vpnStats.selectedServer.name}</span>
+                    <div className={`vpn-status-pill ${isChecking ? 'is-connecting' : verdictUi.pill}`}>
+                      <span className={`rz-dot ${isChecking ? 'info' : verdictUi.dot}`} />
+                      <span>{isChecking ? 'Verificando...' : verdictUi.label.replace('Navegador', 'Computador')}</span>
                     </div>
 
-                    <span className="vpn-uptime" title="Porta UDP">
-                      UDP :{vpnStats.selectedServer.port}
+                    <span className="vpn-uptime" title="Perfil .conf selecionado">
+                      {vpnStats.selectedServer.name}
                     </span>
                   </div>
 
-                  <div className="vpn-reactor-stage">
-                    <OrbitRing
-                      size={168}
-                      stroke={7}
-                      spinning={false}
-                      value={100}
-                      tone="violet"
-                      globe
-                      label="Perfil WireGuard Oficial"
-                    >
-                      <button
-                        type="button"
-                        onClick={handleDownloadConf}
-                        className="vpn-power-btn"
-                        style={{ borderColor: 'var(--rz-violet)', color: 'var(--rz-ice)' }}
-                        aria-label="Baixar perfil .conf"
-                      >
-                        <Download size={28} strokeWidth={2} />
-                        <span className="vpn-power-label">Baixar .conf</span>
-                      </button>
-                    </OrbitRing>
+                  {renderReactor('wg')}
 
-                    <div className="vpn-ip-readout">
-                      <span className="vpn-ip-eyebrow">Endpoint do Servidor WireGuard</span>
-                      <div className="vpn-ip-value-row">
-                        <span className="vpn-ip-value">
-                          {vpnStats.selectedServer.endpoint}:{vpnStats.selectedServer.port}
-                        </span>
-                        <button
-                          type="button"
-                          className="rz-icon-btn"
-                          style={{ width: 28, height: 28 }}
-                          onClick={() =>
-                            handleCopyText(
-                              `${vpnStats.selectedServer.endpoint}:${vpnStats.selectedServer.port}`,
-                              'Endpoint'
-                            )
-                          }
-                          aria-label="Copiar Endpoint"
-                        >
-                          <Copy size={14} />
-                        </button>
-                      </div>
-                      <span className="vpn-ip-meta">
-                        {vpnStats.selectedServer.city} · Cifra ChaCha20-Poly1305 · MTU 1280
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Ação Principal: Baixar Perfil e Ativar */}
+                  {/* Ação: Baixar Perfil */}
                   <div className="vpn-thumb-bar">
                     <button
                       type="button"
@@ -728,6 +621,8 @@ export const VpnPage: React.FC = () => {
                     </button>
                   </div>
                 </section>
+
+                {renderResults()}
 
                 {/* Chave Pública do Cliente e Kill Switch */}
                 <section className="rz-panel">
@@ -797,72 +692,8 @@ export const VpnPage: React.FC = () => {
                 </section>
               </div>
 
-              {/* Coluna Direita: Nós WireGuard e Como Instalar no PC */}
+              {/* Coluna Direita: Como Instalar no PC */}
               <div className="vpn-col">
-                {/* Seleção de Servidor para Gerar o .conf */}
-                <section className="rz-section" style={{ marginBottom: 0 }}>
-                  <div className="rz-section-head">
-                    <h2 className="rz-section-title">
-                      <Server size={16} />
-                      <span>Escolha o Servidor para o Perfil .conf</span>
-                      <span className="rz-count">{availableNodes.length} DISPONÍVEIS</span>
-                    </h2>
-                  </div>
-
-                  <div className="rz-list" role="listbox" aria-label="Servidores VPN disponíveis">
-                    {servers.map((srv) => {
-                      const selected = vpnStats.selectedServer.id === srv.id;
-                      const unavailable = srv.status === 'UNAVAILABLE';
-                      return (
-                        <button
-                          key={srv.id}
-                          type="button"
-                          role="option"
-                          aria-selected={selected}
-                          disabled={unavailable}
-                          onClick={() => handleSelectServer(srv)}
-                          className={`rz-row is-interactive vpn-node-row ${selected ? 'is-selected' : ''}`}
-                          style={unavailable ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
-                        >
-                          <div className="vpn-node-code">{getNodeCode(srv)}</div>
-
-                          <div className="rz-row-main">
-                            <div className="rz-row-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span>{srv.name}</span>
-                              {selected && (
-                                <span className="rz-badge rz-badge-violet">Configurado</span>
-                              )}
-                            </div>
-                            <div className="rz-row-meta rz-font-mono">
-                              {srv.endpoint
-                                ? `${srv.endpoint}:${srv.port} · ${srv.city}`
-                                : 'Endpoint manual'}
-                            </div>
-                          </div>
-
-                          <div className="rz-row-trailing">
-                            {!unavailable ? (
-                              <>
-                                <span className="vpn-ping">{srv.ping ?? 20} ms</span>
-                                <span
-                                  className={`rz-dot ${selected
-                                      ? 'success is-live'
-                                      : (srv.ping ?? 20) < 60
-                                        ? 'success'
-                                        : 'info'
-                                    }`}
-                                />
-                              </>
-                            ) : (
-                              <span className="rz-badge rz-badge-neutral">Manual</span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-
                 {/* Painel: Cliente Oficial WireGuard */}
                 <section className="rz-panel">
                   <div className="rz-card-header">

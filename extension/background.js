@@ -343,6 +343,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false;
   }
 
+  // Comandos de controle só podem vir do popup da extensão (sem sender.tab),
+  // nunca de content scripts em páginas web.
+  const CONTROL_TYPES = ['TOGGLE_CONNECT', 'SET_SERVER', 'SAVE_CUSTOM_PROXY'];
+  if (CONTROL_TYPES.includes(msg.type) && sender && sender.tab) {
+    sendResponse({ error: 'forbidden', state });
+    return false;
+  }
+
   if (msg.type === 'TOGGLE_CONNECT') {
     state.isConnected = !state.isConnected;
     state.connectedAt = state.isConnected ? Date.now() : null;

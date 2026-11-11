@@ -603,10 +603,15 @@ export const HardeningPage: React.FC = () => {
                     </div>
                     <p className="rz-text-muted" style={{ marginTop: 6 }}>
                       Em situações de coação (assalto ou coerção presencial), digitar o seu{' '}
-                      <strong>PIN de Pânico de 6 dígitos</strong> na tela de bloqueio abre
-                      silenciosamente um <strong>Cofre de Fachada</strong> com contas fictícias
-                      inofensivas, mantendo suas senhas reais 100% ocultas.
+                      <strong>PIN de Pânico de 6 dígitos</strong> abre silenciosamente um{' '}
+                      <strong>Cofre de Fachada</strong> com contas cotidianas reais (Netflix, Mercado Livre, iFood, Uber), mantendo suas senhas verdadeiras 100% ocultas.
                     </p>
+                    <div className="rz-alert rz-alert-info" style={{ marginTop: 10 }}>
+                      <ShieldCheck size={18} />
+                      <span>
+                        <strong>Uso sob Coação no Login Inicial:</strong> Se o aplicativo estiver deslogado, você pode digitar o seu <strong>PIN de Pânico diretamente no campo de Senha Mestra</strong> da tela de login. O sistema detectará o código de emergência na hora, entrará sem pedir 2FA e exibirá o cofre camuflado para proteger sua integridade.
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -733,7 +738,7 @@ export const HardeningPage: React.FC = () => {
                       color: 'var(--rz-success)',
                     }}
                   >
-                    ✓ PIN de Pânico pronto. Bloqueie o cofre e digite seu PIN de Pânico para testar o Cofre de Fachada.
+                    ✓ PIN de Pânico pronto. Você pode digitá-lo na tela de bloqueio OU diretamente no campo de Senha Mestra na tela inicial de login para abrir o Cofre de Fachada.
                   </span>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button

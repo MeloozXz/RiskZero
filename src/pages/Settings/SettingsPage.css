@@ -157,3 +157,53 @@
     linear-gradient(180deg, rgba(255, 84, 112, 0.08), transparent 140px),
     var(--rz-bg-elevated);
 }
+
+/* ---------- 2FA / Google Authenticator ---------- */
+.settings-2fa-qr-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--rz-bg-deep);
+  padding: 14px;
+  border-radius: var(--rz-radius-sm);
+  border: 1px solid var(--rz-border);
+}
+
+.settings-2fa-qr-img {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--rz-radius-xs);
+  background: #ffffff;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.settings-2fa-secret-code {
+  display: block;
+  font-family: var(--rz-font-mono);
+  font-size: var(--rz-text-xs);
+  color: var(--rz-ice);
+  word-break: break-all;
+  margin-bottom: 8px;
+  background: var(--rz-bg-elevated);
+  padding: 6px 10px;
+  border-radius: var(--rz-radius-xs);
+  border: 1px solid var(--rz-border-subtle);
+}
+
+.settings-2fa-verify-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+@media (max-width: 520px) {
+  .settings-2fa-qr-box {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .settings-2fa-verify-row {
+    flex-direction: column;
+  }
+}
+

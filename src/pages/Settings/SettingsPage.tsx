@@ -29,6 +29,9 @@ import {
   Lock,
   LogOut,
   CheckCircle2,
+  Smartphone,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useHistory } from 'react-router-dom';
 import { VaultService } from '../../services/vault';
@@ -55,6 +58,10 @@ export const SettingsPage: React.FC = () => {
     disableBiometrics,
     rememberSession,
     setRememberSession,
+    totpEnabled,
+    setupNew2FA,
+    enable2FA,
+    disable2FA,
   } = useSecurity();
   const { tier, subscription, isPro, isUltra } = useSubscription();
   const [presentAlert] = useIonAlert();
@@ -392,6 +399,69 @@ export const SettingsPage: React.FC = () => {
 
   const handleDownloadExtensionInfo = () => {
     showFeedback('Pacote WebExtension (Manifest V3) disponível no diretório /browser-extension do projeto.', 'success');
+  };
+
+  // Estados e Ações para 2FA (Google Authenticator / TOTP)
+  const [show2FASetup, setShow2FASetup] = useState<boolean>(false);
+  const [currentLocalSecret, setCurrentLocalSecret] = useState<string | null>(null);
+  const [totpTokenInput, setTotpTokenInput] = useState<string>('');
+  const [mfaError, setMfaError] = useState<string | null>(null);
+  const [showDisable2FAConfirm, setShowDisable2FAConfirm] = useState<boolean>(false);
+  const [isVerifying2FA, setIsVerifying2FA] = useState<boolean>(false);
+
+  const handleStart2FA = () => {
+    setMfaError(null);
+    setTotpTokenInput('');
+    const secret = setupNew2FA();
+    setCurrentLocalSecret(secret);
+    setShow2FASetup(true);
+  };
+
+  const handleCopySecret = async (secret: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(secret);
+      } else {
+        await ClipboardService.copySecure(secret, 'Chave secreta 2FA');
+      }
+      showFeedback('Chave Base32 copiada para a área de transferência.', 'success');
+    } catch {
+      showFeedback('Chave selecionada.', 'info');
+    }
+  };
+
+  const handleConfirm2FA = async () => {
+    if (totpTokenInput.length !== 6 || isNaN(Number(totpTokenInput))) {
+      setMfaError('O código deve conter 6 dígitos numéricos.');
+      return;
+    }
+    setMfaError(null);
+    setIsVerifying2FA(true);
+    try {
+      const res = await enable2FA(totpTokenInput);
+      if (res.success) {
+        setTotpTokenInput('');
+        setCurrentLocalSecret(null);
+        setShow2FASetup(false);
+        showFeedback('Autenticação em duas etapas (Google Authenticator) ativada com sucesso.', 'success');
+      } else {
+        setMfaError(res.error || 'Código 2FA incorreto ou expirado. Tente novamente.');
+      }
+    } catch {
+      setMfaError('Erro ao validar o código 2FA.');
+    } finally {
+      setIsVerifying2FA(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    try {
+      await disable2FA();
+      setShowDisable2FAConfirm(false);
+      showFeedback('Autenticação em dois fatores desativada.', 'info');
+    } catch {
+      showFeedback('Erro ao desativar 2FA.', 'danger');
+    }
   };
 
   const enrolledBio = activeEmail ? isBiometricsEnrolled(activeEmail) : false;
@@ -792,7 +862,151 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </section>
 
-              {/* 4. Auditoria de E-mails (Have I Been Pwned API v3) */}
+              {/* 4. Segundo Fator (2FA / Google Authenticator) */}
+              <section className="rz-section" style={{ marginBottom: 0 }}>
+                <div className="rz-section-head">
+                  <h2 className="rz-section-title">
+                    <Smartphone size={16} />
+                    Segundo Fator (2FA / Google Authenticator)
+                  </h2>
+                  <span className={`rz-badge ${totpEnabled ? 'rz-badge-success' : 'rz-badge-neutral'}`}>
+                    {totpEnabled ? 'Ativado' : 'Não configurado'}
+                  </span>
+                </div>
+
+                <div className="rz-panel">
+                  <div className="rz-card-header">
+                    <div className="rz-card-title-group">
+                      <div className={`rz-icon-tile ${totpEnabled ? 'success' : ''}`}>
+                        <Smartphone />
+                      </div>
+                      <div>
+                        <h3 className="rz-card-title">Google Authenticator (TOTP)</h3>
+                        <span className="rz-row-meta">Padrão RFC 6238 · Códigos rotativos a cada 30s</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {totpEnabled ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div className="rz-alert rz-alert-success">
+                        <CheckCircle2 size={18} />
+                        <span>
+                          <strong>Proteção 2FA Ativa:</strong> seu cofre exige o código gerado pelo Google Authenticator a cada novo login.
+                        </span>
+                      </div>
+                      <p className="rz-text-muted" style={{ margin: 0 }}>
+                        Compatível com Google Authenticator, Microsoft Authenticator, Authy e 1Password.
+                      </p>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setShowDisable2FAConfirm(true)}
+                          className="rz-btn rz-btn-danger"
+                        >
+                          <Trash2 size={16} />
+                          <span>Desativar 2FA</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : !show2FASetup ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <p className="rz-text-muted" style={{ margin: 0 }}>
+                        Adicione uma camada extra de segurança blindada vinculando o <strong>Google Authenticator</strong>. Mesmo que sua senha seja descoberta, ninguém conseguirá entrar sem o código temporário de 6 dígitos gerado no seu celular.
+                      </p>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={handleStart2FA}
+                          className="rz-btn rz-btn-primary"
+                        >
+                          <Smartphone size={16} />
+                          <span>Configurar Google Authenticator</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <p className="rz-text-muted" style={{ margin: 0 }}>
+                        1. Abra o <strong>Google Authenticator</strong> no seu celular e escaneie o QR Code abaixo (ou insira a chave manualmente):
+                      </p>
+
+                      <div className="settings-2fa-qr-box">
+                        {currentLocalSecret && (
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                              `otpauth://totp/RiskZero:${encodeURIComponent(activeEmail || 'usuario')}?secret=${currentLocalSecret}&issuer=RiskZero`
+                            )}`}
+                            alt="QR Code Google Authenticator"
+                            className="settings-2fa-qr-img"
+                          />
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span className="rz-stat-label" style={{ marginBottom: 4 }}>
+                            CHAVE SECRETA (BASE32):
+                          </span>
+                          <code className="settings-2fa-secret-code">{currentLocalSecret}</code>
+                          <button
+                            type="button"
+                            className="rz-btn rz-btn-secondary rz-btn-sm"
+                            onClick={() => currentLocalSecret && handleCopySecret(currentLocalSecret)}
+                          >
+                            <Copy size={13} />
+                            <span>Copiar Chave</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="rz-text-muted" style={{ margin: 0 }}>
+                        2. Digite o código de 6 dígitos exibido no seu aplicativo para confirmar e ativar:
+                      </p>
+
+                      <div className="settings-2fa-verify-row">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="Ex: 123456"
+                          value={totpTokenInput}
+                          onChange={(e) => setTotpTokenInput(e.target.value.replace(/\D/g, ''))}
+                          className="rz-input is-mono"
+                          style={{ maxWidth: 200, letterSpacing: '0.15em', textAlign: 'center', fontSize: '1.1rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleConfirm2FA}
+                          disabled={totpTokenInput.length !== 6 || isVerifying2FA}
+                          className="rz-btn rz-btn-primary"
+                        >
+                          <Check size={16} />
+                          <span>{isVerifying2FA ? 'Validando...' : 'Ativar Proteção'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShow2FASetup(false);
+                            setCurrentLocalSecret(null);
+                            setTotpTokenInput('');
+                            setMfaError(null);
+                          }}
+                          className="rz-btn rz-btn-secondary"
+                        >
+                          <span>Cancelar</span>
+                        </button>
+                      </div>
+
+                      {mfaError && (
+                        <div className="rz-alert rz-alert-danger" style={{ margin: 0 }}>
+                          <AlertTriangle size={16} />
+                          <span>{mfaError}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* 5. Auditoria de E-mails (Have I Been Pwned API v3) */}
               <section className="rz-section" style={{ marginBottom: 0 }}>
                 <div className="rz-section-head">
                   <h2 className="rz-section-title">
@@ -1165,6 +1379,17 @@ export const SettingsPage: React.FC = () => {
           variant="danger"
           onConfirm={handleExecuteWipe}
           onCancel={() => setShowWipeConfirmModal(false)}
+        />
+
+        <ConfirmModal
+          isOpen={showDisable2FAConfirm}
+          title="Desativar Autenticação em Dois Fatores?"
+          message="Atenção: sua conta deixará de exigir códigos temporários para login, reduzindo a camada de proteção contra acessos não autorizados."
+          confirmText="Desativar 2FA"
+          cancelText="Manter Ativo"
+          variant="danger"
+          onConfirm={handleDisable2FA}
+          onCancel={() => setShowDisable2FAConfirm(false)}
         />
       </IonContent>
     </IonPage>
