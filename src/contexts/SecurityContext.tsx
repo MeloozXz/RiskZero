@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { App } from '@capacitor/app';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { StorageService } from '../services/storage';
 import { SessionService } from '../services/session';
 import { hashSHA256, derivePinHash, encryptData, decryptData } from '../crypto/webcrypto';
@@ -66,6 +66,15 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [hasPIN, setHasPIN] = useState<boolean>(false);
   const [hasPanicPIN, setHasPanicPIN] = useState<boolean>(false);
   const [isCamouflageMode, setIsCamouflageMode] = useState<boolean>(false);
+
+  /**
+   * Define o Modo Camuflagem e persiste o estado no dispositivo.
+   * Evita que um F5 sob coação restaure o cofre real após desbloqueio via PIN de Pânico.
+   */
+  const applyCamouflageMode = (enabled: boolean) => {
+    setIsCamouflageMode(enabled);
+    StorageService.setCamouflageState(enabled).catch(() => { /* melhor esforço */ });
+  };
   const [isBiometricEnabled, setIsBiometricEnabled] = useState<boolean>(false);
   const [totpEnabled, setTotpEnabled] = useState<boolean>(false);
   const [totpSecret, setTotpSecret] = useState<string | null>(null);
@@ -114,8 +123,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const email = SessionService.getActiveUserEmail();
         if (email) {
           const wasLocked = await StorageService.isAppLocked();
+          const wasCamouflaged = await StorageService.isCamouflageActive();
           setIsLoggedIn(true);
           setIsLocked(wasLocked);
+          setIsCamouflageMode(wasCamouflaged);
           setActiveEmail(email);
           const profile = await StorageService.getUserProfile(email);
           if (profile) {
@@ -151,8 +162,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // SEGURANÇA DE CICLO DE VIDA (AUTO-LOCK E VISIBILIDADE)
   // ==========================================
   useEffect(() => {
-    let appStateListener: any = null;
-    let visibilityTimeout: any = null;
+    let appStateListener: Promise<PluginListenerHandle> | null = null;
+    let visibilityTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // Escuta evento de ciclo de vida nativo (Android) via Capacitor App Plugin
     if (Capacitor.isNativePlatform()) {
@@ -197,7 +208,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     return () => {
       if (appStateListener) {
-        appStateListener.then((h: any) => h.remove());
+        appStateListener.then((h) => h.remove());
       }
       if (visibilityTimeout) {
         clearTimeout(visibilityTimeout);
@@ -212,7 +223,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     if (!isLoggedIn || isLocked) return;
 
-    let timeoutId: any;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const resetInactivityTimer = () => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -269,7 +280,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setIsLoggedIn(true);
         setIsLocked(false);
         await StorageService.setAppLockedState(false);
-        setIsCamouflageMode(true);
+        applyCamouflageMode(true);
         setActiveEmail(emailKey);
         setHasPanicPIN(true);
         const pinHash = await StorageService.getPINHash(emailKey);
@@ -295,7 +306,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsLoggedIn(true);
       setIsLocked(false);
       await StorageService.setAppLockedState(false);
-      setIsCamouflageMode(false);
+      applyCamouflageMode(false);
       setActiveEmail(emailKey);
 
       const pinHash = await StorageService.getPINHash(emailKey);
@@ -324,7 +335,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await StorageService.setAppLockedState(false);
     setIsLoggedIn(false);
     setIsLocked(false);
-    setIsCamouflageMode(false);
+    applyCamouflageMode(false);
     setActiveEmail(null);
     setHasPIN(false);
     setHasPanicPIN(false);
@@ -387,7 +398,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!email) return;
     await StorageService.removePanicPINHash(email);
     setHasPanicPIN(false);
-    setIsCamouflageMode(false);
+    applyCamouflageMode(false);
     await StorageService.addAuditLog(email, 'CREDENTIAL_DELETED', 'PIN secundário de Pânico & Camuflagem desativado.');
   };
 
@@ -416,7 +427,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // 1. Verifica se é o PIN de Pânico & Camuflagem (Duress PIN)
     if (savedPanicPINHash && inputPINHash === savedPanicPINHash) {
       await SessionService.resetFailedAttempts();
-      setIsCamouflageMode(true);
+      applyCamouflageMode(true);
       setIsLocked(false);
       await StorageService.setAppLockedState(false);
       await StorageService.addAuditLog(email, '2FA_VERIFIED', 'Desbloqueio em Modo Camuflagem (Cofre de Fachada) acionado via PIN de Pânico.');
@@ -429,7 +440,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         await StorageService.savePINHash(email, inputPINHash);
       }
       await SessionService.resetFailedAttempts();
-      setIsCamouflageMode(false);
+      applyCamouflageMode(false);
       setIsLocked(false);
       await StorageService.setAppLockedState(false);
       await StorageService.addAuditLog(email, '2FA_VERIFIED', 'Desbloqueio efetuado com sucesso via PIN.');
@@ -466,7 +477,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (res.masterPassword && !SessionService.isKeyLoaded()) {
         await SessionService.authenticateMaster(email, res.masterPassword);
       }
-      setIsCamouflageMode(false);
+      applyCamouflageMode(false);
       setIsLocked(false);
       await StorageService.setAppLockedState(false);
       await StorageService.addAuditLog(email, '2FA_VERIFIED', 'Desbloqueio efetuado via Biometria.');
@@ -551,7 +562,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const legacyHash = await hashSHA256(password.trim());
       if (inputHash === savedPanicPINHash || legacyHash === savedPanicPINHash) {
         await SessionService.resetFailedAttempts();
-        setIsCamouflageMode(true);
+        applyCamouflageMode(true);
         setIsLocked(false);
         await StorageService.setAppLockedState(false);
         await StorageService.addAuditLog(emailKey, '2FA_VERIFIED', 'Desbloqueio em Modo Camuflagem (Cofre de Fachada) acionado via PIN de Pânico.');
@@ -565,7 +576,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await SessionService.resetFailedAttempts();
       setIsLoggedIn(true);
       setIsLocked(false);
-      setIsCamouflageMode(false);
+      applyCamouflageMode(false);
       setActiveEmail(emailKey);
       await StorageService.setAppLockedState(false);
       await StorageService.addAuditLog(emailKey, '2FA_VERIFIED', 'Desbloqueio efetuado com sucesso via Senha Mestra.');
@@ -654,7 +665,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       try {
         const masterKey = SessionService.getMasterKey();
         secret = await decryptData(profile.encryptedTotpSecret, masterKey);
-      } catch (err) {
+      } catch {
         return { success: false, error: 'Falha ao descriptografar segredo 2FA.' };
       }
     } else if (profile.totpSecret) {
@@ -671,6 +682,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Login efetuado com sucesso
     setIsLoggedIn(true);
     setIsLocked(false);
+    applyCamouflageMode(false);
     await StorageService.setAppLockedState(false);
     setActiveEmail(email);
 

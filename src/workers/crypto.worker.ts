@@ -184,7 +184,7 @@ async function handleGenerateTOTP(data: Record<string, unknown>): Promise<string
   // HMAC-SHA1
   const cryptoKey = await self.crypto.subtle.importKey(
     'raw',
-    keyBytes as any,
+    keyBytes as BufferSource,
     { name: 'HMAC', hash: 'SHA-1' },
     false,
     ['sign']
@@ -193,7 +193,7 @@ async function handleGenerateTOTP(data: Record<string, unknown>): Promise<string
   const signatureBuffer = await self.crypto.subtle.sign(
     'HMAC',
     cryptoKey,
-    messageBytes as any
+    messageBytes as BufferSource
   );
 
   const hmacResult = new Uint8Array(signatureBuffer);
@@ -249,9 +249,9 @@ self.onmessage = async (event: MessageEvent<CryptoWorkerRequest>) => {
     }
 
     response.success = true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     response.success = false;
-    response.error = err?.message || 'Erro desconhecido no Crypto Worker.';
+    response.error = (err as Error | undefined)?.message || 'Erro desconhecido no Crypto Worker.';
   }
 
   self.postMessage(response);

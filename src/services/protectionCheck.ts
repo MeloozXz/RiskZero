@@ -98,6 +98,7 @@ export function clearBaseline(): void {
 // 1. IP público real
 // ---------------------------------------------------------------------------
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- respostas JSON heterogêneas de APIs públicas, validadas campo a campo
 async function fetchJson(url: string, timeoutMs = 6000): Promise<any> {
   const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

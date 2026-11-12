@@ -239,13 +239,13 @@ async function fallbackGenerateTOTP(secretBase32: string, time: number): Promise
 
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    keyBytes as any,
+    keyBytes as BufferSource,
     { name: 'HMAC', hash: 'SHA-1' },
     false,
     ['sign']
   );
 
-  const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageBytes as any);
+  const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageBytes as BufferSource);
   const hmacResult = new Uint8Array(signatureBuffer);
 
   const offset = hmacResult[hmacResult.length - 1] & 0xf;
@@ -270,8 +270,8 @@ export async function workerDeriveKeyArgon2id(password: string, saltBase64: stri
   try {
     const result = await sendToWorker('DERIVE_KEY_ARGON2ID', { password, saltBase64 });
     return result as string;
-  } catch (err: any) {
-    if (err?.message === 'WORKER_NOT_AVAILABLE') {
+  } catch (err: unknown) {
+    if ((err as Error | undefined)?.message === 'WORKER_NOT_AVAILABLE') {
       return fallbackDeriveKeyArgon2id(password, saltBase64);
     }
     throw err;
@@ -285,8 +285,8 @@ export async function workerDeriveKeyPBKDF2(password: string, saltBase64: string
   try {
     const result = await sendToWorker('DERIVE_KEY_PBKDF2', { password, saltBase64 });
     return result as string;
-  } catch (err: any) {
-    if (err?.message === 'WORKER_NOT_AVAILABLE') {
+  } catch (err: unknown) {
+    if ((err as Error | undefined)?.message === 'WORKER_NOT_AVAILABLE') {
       return fallbackDeriveKeyPBKDF2(password, saltBase64);
     }
     throw err;
@@ -300,8 +300,8 @@ export async function workerDerivePinHashArgon2id(pin: string, saltBase64: strin
   try {
     const result = await sendToWorker('DERIVE_PIN_HASH_ARGON2ID', { pin, saltBase64 });
     return result as string;
-  } catch (err: any) {
-    if (err?.message === 'WORKER_NOT_AVAILABLE') {
+  } catch (err: unknown) {
+    if ((err as Error | undefined)?.message === 'WORKER_NOT_AVAILABLE') {
       return fallbackDerivePinHashArgon2id(pin, saltBase64);
     }
     throw err;
@@ -315,8 +315,8 @@ export async function workerDerivePinHashPBKDF2(pin: string, saltBase64: string)
   try {
     const result = await sendToWorker('DERIVE_PIN_HASH_PBKDF2', { pin, saltBase64 });
     return result as string;
-  } catch (err: any) {
-    if (err?.message === 'WORKER_NOT_AVAILABLE') {
+  } catch (err: unknown) {
+    if ((err as Error | undefined)?.message === 'WORKER_NOT_AVAILABLE') {
       return fallbackDerivePinHashPBKDF2(pin, saltBase64);
     }
     throw err;
@@ -330,8 +330,8 @@ export async function workerGenerateTOTP(secretBase32: string, time: number = Da
   try {
     const result = await sendToWorker('GENERATE_TOTP', { secretBase32, time });
     return result as string;
-  } catch (err: any) {
-    if (err?.message === 'WORKER_NOT_AVAILABLE') {
+  } catch (err: unknown) {
+    if ((err as Error | undefined)?.message === 'WORKER_NOT_AVAILABLE') {
       return fallbackGenerateTOTP(secretBase32, time);
     }
     throw err;

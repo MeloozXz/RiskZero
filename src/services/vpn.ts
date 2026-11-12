@@ -1,5 +1,5 @@
 import { registerPlugin, Capacitor } from '@capacitor/core';
-import { VpnServer, PlanTier } from '../types';
+import { VpnServer } from '../types';
 import { SubscriptionService } from './subscription';
 import { SessionService } from './session';
 import { StorageService } from './storage';
@@ -375,8 +375,8 @@ class VpnServiceManager {
           this.notify();
           throw new Error(this.stats.errorMessage);
         }
-      } catch (err: any) {
-        if (err.message && err.message.includes('plano FREE')) throw err;
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message.includes('plano FREE')) throw err;
       }
     }
 
@@ -450,13 +450,13 @@ class VpnServiceManager {
           return;
         }
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (!Capacitor.isNativePlatform()) {
         isWebFallback = true;
         console.warn('[VpnService] Ambiente Web detectado. O túnel WireGuard nativo opera em dispositivos Android físicos ou emuladores.');
       } else {
         this.stats.status = 'ERROR';
-        this.stats.errorMessage = e?.message || 'Falha na comunicação com o plugin WireGuard.';
+        this.stats.errorMessage = (e as Error | undefined)?.message || 'Falha na comunicação com o plugin WireGuard.';
         this.notify();
         return;
       }
@@ -476,7 +476,7 @@ class VpnServiceManager {
             'Kill Switch ativo: O tráfego externo foi bloqueado porque o servidor VPN não está respondendo ao handshake.';
           try {
             await WireguardVpn.stopVpn();
-          } catch {}
+          } catch { /* túnel já encerrado */ }
           this.stats.status = 'ERROR';
           this.stats.errorMessage = errorMsg;
           this.notify();
@@ -490,7 +490,7 @@ class VpnServiceManager {
           'Vazamento Detectado: O IP público não foi alterado após a ativação. O túnel foi encerrado por segurança.';
         try {
           await WireguardVpn.stopVpn();
-        } catch {}
+        } catch { /* túnel já encerrado */ }
         this.stats.status = 'ERROR';
         this.stats.errorMessage = errorMsg;
         this.notify();

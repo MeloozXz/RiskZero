@@ -182,7 +182,7 @@ export function getStoredWarpCredentials(): WarpCredentials | null {
     if (raw) {
       return JSON.parse(raw);
     }
-  } catch {}
+  } catch { /* credenciais corrompidas */ }
   return null;
 }
 

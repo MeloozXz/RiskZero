@@ -37,6 +37,7 @@ import { VpnService, VpnStats } from '../services/vpn';
 import { AuditLog } from '../types';
 import { getErrorMessage } from '../lib/utils';
 import './Home.css';
+import { TotpQrCode } from '../components/Auth/TotpQrCode';
 
 const WELCOME_STORAGE_KEY = 'rz_welcome_dismissed';
 
@@ -682,10 +683,10 @@ const Home: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div className="home-2fa-qr-box">
                         {currentLocalSecret && (
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
-                              `otpauth://totp/RiskZero:${encodeURIComponent(activeEmail || 'usuario')}?secret=${currentLocalSecret}&issuer=RiskZero`
-                            )}`}
+                          <TotpQrCode
+                            account={activeEmail || 'usuario'}
+                            secret={currentLocalSecret}
+                            size={120}
                             alt="QR Code 2FA"
                             className="home-2fa-qr-img"
                           />

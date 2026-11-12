@@ -189,7 +189,7 @@ export const BiometricsService = {
         platformName,
         isSecureContext: isSecure
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return {
         isAvailable: activePromptHandler !== null,
         isNativeAvailable: false,
@@ -197,7 +197,7 @@ export const BiometricsService = {
         isEnrolled: false,
         platformName: 'Sensor biométrico indisponível',
         isSecureContext: typeof window !== 'undefined' && (window.isSecureContext ?? false),
-        error: err?.message
+        error: (err as Error | undefined)?.message
       };
     }
   },
@@ -279,9 +279,9 @@ export const BiometricsService = {
             credentialIdB64 = arrayBufferToBase64(credential.rawId);
             isNative = true;
           }
-        } catch (nativeErr: any) {
-          const msg = nativeErr?.message || '';
-          const name = nativeErr?.name || '';
+        } catch (nativeErr: unknown) {
+          const msg = (nativeErr as Error | undefined)?.message || '';
+          const name = (nativeErr as Error | undefined)?.name || '';
           console.warn('[BiometricsService] WebAuthn nativo recusado ou sem leitor físico:', name, msg);
 
           if (name === 'NotAllowedError' || msg.includes('NotAllowedError') || msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('abort')) {
@@ -366,9 +366,9 @@ export const BiometricsService = {
         isNative
       };
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[BiometricsService] Erro no registro biométrico:', err);
-      const message = err?.message || '';
+      const message = (err as Error | undefined)?.message || '';
 
       let errorCode: BiometricErrorCode = 'UNKNOWN_ERROR';
       if (message.includes('cancel') || message.includes('abort') || message.includes('NotAllowedError')) {
@@ -517,9 +517,9 @@ export const BiometricsService = {
           if (assertion) {
             authenticated = true;
           }
-        } catch (nativeErr: any) {
-          const msg = nativeErr?.message || '';
-          const name = nativeErr?.name || '';
+        } catch (nativeErr: unknown) {
+          const msg = (nativeErr as Error | undefined)?.message || '';
+          const name = (nativeErr as Error | undefined)?.name || '';
           console.warn('[BiometricsService] Falha na verificação WebAuthn de hardware:', name, msg);
 
           if (name === 'NotAllowedError' || msg.includes('NotAllowedError') || msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('abort')) {
@@ -574,9 +574,9 @@ export const BiometricsService = {
         isNative: config.isNative
       };
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[BiometricsService] Erro na verificação biométrica:', err);
-      const msg = err?.message || '';
+      const msg = (err as Error | undefined)?.message || '';
 
       let errorCode: BiometricErrorCode = 'UNKNOWN_ERROR';
       if (msg.includes('NotAllowedError') || msg.includes('cancel')) {

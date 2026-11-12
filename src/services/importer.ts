@@ -155,7 +155,7 @@ export const ImporterService = {
           break;
 
         case 'GENERIC':
-        default:
+        default: {
           title = getCol(row, ['title', 'name', 'serviço', 'servico']) || 'Sem Título';
           username = getCol(row, ['username', 'user', 'usuario', 'usuário', 'email', 'login']);
           password = getCol(row, ['password', 'senha', 'pass']);
@@ -167,6 +167,7 @@ export const ImporterService = {
           else if (catRaw.includes('NOTE') || catRaw.includes('NOTA')) category = 'NOTE';
           else if (catRaw.includes('ID') || catRaw.includes('IDENT')) category = 'IDENTITY';
           break;
+        }
       }
 
       if (title || username || password) {

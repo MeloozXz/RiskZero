@@ -46,6 +46,7 @@ import { useSecurity } from '../../contexts/SecurityContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { ActiveSession } from '../../types';
 import './SettingsPage.css';
+import { TotpQrCode } from '../../components/Auth/TotpQrCode';
 
 export const SettingsPage: React.FC = () => {
   const history = useHistory();
@@ -933,10 +934,10 @@ export const SettingsPage: React.FC = () => {
 
                       <div className="settings-2fa-qr-box">
                         {currentLocalSecret && (
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                              `otpauth://totp/RiskZero:${encodeURIComponent(activeEmail || 'usuario')}?secret=${currentLocalSecret}&issuer=RiskZero`
-                            )}`}
+                          <TotpQrCode
+                            account={activeEmail || 'usuario'}
+                            secret={currentLocalSecret}
+                            size={160}
                             alt="QR Code Google Authenticator"
                             className="settings-2fa-qr-img"
                           />

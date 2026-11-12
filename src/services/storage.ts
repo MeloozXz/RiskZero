@@ -48,7 +48,8 @@ const KEYS = {
   REMEMBER_SESSION: 'zk_remember_session',
   PERSISTED_SESSION: 'zk_persisted_session',
   DEVICE_PROTECTOR_SALT: 'zk_device_protector_salt',
-  APP_LOCKED: 'zk_app_locked'
+  APP_LOCKED: 'zk_app_locked',
+  APP_CAMOUFLAGE: 'zk_app_camouflage'
 };
 
 /**
@@ -266,7 +267,7 @@ export const StorageService = {
   /**
    * Obtém os itens do Cofre de Fachada (Decoy Vault) indexados por e-mail
    */
-  async getDecoyVault<T = any>(email: string): Promise<T[] | null> {
+  async getDecoyVault<T = unknown>(email: string): Promise<T[] | null> {
     const key = `zk_decoy_vault_${email.toLowerCase().trim()}`;
     const raw = await getSecureItem(key);
     if (!raw) return null;
@@ -280,7 +281,7 @@ export const StorageService = {
   /**
    * Salva os itens do Cofre de Fachada (Decoy Vault) indexados por e-mail
    */
-  async saveDecoyVault<T = any>(email: string, items: T[]): Promise<void> {
+  async saveDecoyVault<T = unknown>(email: string, items: T[]): Promise<void> {
     const key = `zk_decoy_vault_${email.toLowerCase().trim()}`;
     await setSecureItem(key, JSON.stringify(items));
   },
@@ -556,6 +557,21 @@ export const StorageService = {
    */
   async isAppLocked(): Promise<boolean> {
     const val = await getSecureItem(KEYS.APP_LOCKED);
+    return val === 'true';
+  },
+
+  /**
+   * Persiste se a sessão atual está em Modo Camuflagem (Cofre de Fachada)
+   */
+  async setCamouflageState(enabled: boolean): Promise<void> {
+    await setSecureItem(KEYS.APP_CAMOUFLAGE, enabled ? 'true' : 'false');
+  },
+
+  /**
+   * Verifica se a sessão restaurada deve continuar em Modo Camuflagem
+   */
+  async isCamouflageActive(): Promise<boolean> {
+    const val = await getSecureItem(KEYS.APP_CAMOUFLAGE);
     return val === 'true';
   },
 

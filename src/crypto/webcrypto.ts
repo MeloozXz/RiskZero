@@ -260,7 +260,7 @@ export async function unwrapDEK(wrappedDek: EncryptedData, kek: CryptoKey): Prom
 /**
  * Utilitário de Memory Scrubbing: Sobrescreve buffers de memória volátil com zeros.
  */
-export function zeroMemory(target: Uint8Array | ArrayBuffer | any): void {
+export function zeroMemory(target: Uint8Array | ArrayBuffer | null | undefined | unknown): void {
   try {
     if (!target) return;
     if (target instanceof Uint8Array) {

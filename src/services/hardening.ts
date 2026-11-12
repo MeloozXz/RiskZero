@@ -1,7 +1,7 @@
 import { StorageService } from './storage';
 import { SessionService } from './session';
 
-let privacyScreenPlugin: any = null;
+let privacyScreenPlugin: typeof import('@capacitor-community/privacy-screen').PrivacyScreen | null = null;
 const PRIVACY_STORAGE_KEY = 'rz_privacy_screen_enabled';
 
 let webListenersActive = false;
@@ -72,7 +72,7 @@ function showCurtain(reason?: string) {
   if (reason) {
     const email = SessionService.getActiveUserEmail();
     if (email) {
-      StorageService.addAuditLog(email, 'SCREENSHOT_BLOCKED' as any, reason).catch(() => { });
+      StorageService.addAuditLog(email, 'SCREENSHOT_BLOCKED', reason).catch(() => { });
     }
   }
 }
@@ -218,7 +218,7 @@ export const HardeningService = {
   },
 
   isNative(): boolean {
-    return (window as any).Capacitor?.isNativePlatform?.() === true;
+    return (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() === true;
   },
 
   async detectRootOrJailbreak(): Promise<{
@@ -228,7 +228,7 @@ export const HardeningService = {
   }> {
     const details: string[] = [];
 
-    if ((navigator as any).webdriver) {
+    if (navigator.webdriver) {
       details.push('Ambiente de automação/bot detectado (navigator.webdriver).');
     }
 
