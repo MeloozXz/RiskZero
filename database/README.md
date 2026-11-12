@@ -27,6 +27,30 @@ Este diretório contém o script SQL físico do sistema **RiskZero**, estruturad
 A aplicação Web/Mobile já opera online utilizando **Firebase Authentication** e **Cloud Firestore** (projeto `securityproject-67800`, definido em [`src/services/firebase.ts`](../src/services/firebase.ts) e [`firebase.json`](../firebase.json)).
 - As regras de segurança em [`firestore.rules`](../firestore.rules) garantem isolamento estrito por usuário (`request.auth != null && request.auth.uid == userId`).
 - Todos os dados sensíveis trafegam e são armazenados já cifrados pelo cliente (*Zero-Knowledge*).
+- **20 contas limpas povoadas online** no Firebase Authentication e na coleção `users/{uid}` do Cloud Firestore (apenas perfil inicial: `email`, `salt`, `kdfAlgorithm`, `totpEnabled`, `subscription` `FREE`/`ACTIVE` e `createdAt`, sem itens de cofre extras):
+
+| # | E-mail | UID no Firebase |
+| :-: | :--- | :--- |
+| 01 | `ana.silva@riskzero.dev` | `ZhsjOTswAhRFvfBosR5rP65ZVy63` |
+| 02 | `bruno.costa@riskzero.dev` | `fyjgeluSI5S9N45eVfVqwKx6o163` |
+| 03 | `carla.mendes@riskzero.dev` | `u7GRfch46bWmMm0fU9jeSYGD9Na2` |
+| 04 | `daniel.souza@riskzero.dev` | `XJcmI1M622XEBBwREcYJwbQyYRw1` |
+| 05 | `eduarda.lima@riskzero.dev` | `7GKBqMbyURNkjM2Ga0lYaJccP6f1` |
+| 06 | `felipe.rocha@riskzero.dev` | `tXIqVaaKamO7Hqvu1emsz7FNsEF2` |
+| 07 | `gabriela.alves@riskzero.dev` | `SdEoE5YkVDdj87QrgXp8THHJRHJ2` |
+| 08 | `henrique.dias@riskzero.dev` | `9aVjGUF5rHTAcTNtr6ksD1iq3113` |
+| 09 | `isabela.nunes@riskzero.dev` | `K72GMCGCPZaBxRHINEslmzM3yOf1` |
+| 10 | `joao.pedro@riskzero.dev` | `o6wqxw0KNMRLd5laRFLpeJ7Bk5w2` |
+| 11 | `karina.martins@riskzero.dev` | `Kdz3PnQLOnSN9cc8uvkYVNSeUXq1` |
+| 12 | `lucas.ferreira@riskzero.dev` | `6sCAj3rIgtSOu3ARIDbXr6MKXLH3` |
+| 13 | `mariana.gomes@riskzero.dev` | `z6QR2yYJzhYYepyWYy9sm64qArB3` |
+| 14 | `nikolas.melo@riskzero.dev` | `4eU8FDEfJCMevD6xgecv3rsgegp1` |
+| 15 | `olivia.santos@riskzero.dev` | `MXSADt9gR4VD4ERasbd5zm6nCFr2` |
+| 16 | `paulo.ribeiro@riskzero.dev` | `kktnAjAJMDYcoxLE46iVFqilX4U2` |
+| 17 | `rafaela.castro@riskzero.dev` | `FUMNvO6DxNaZxBczrtxMjvt7j7W2` |
+| 18 | `samuel.oliveira@riskzero.dev` | `xXanioPYS9YsbFpXLhCXb9C5igz2` |
+| 19 | `tatiana.barros@riskzero.dev` | `5SOXO2bRd2fH6QYh3e3gFHAPU5B3` |
+| 20 | `vinicius.cardoso@riskzero.dev` | `6SvAoVzQbuNlE6RaZunXNZaqOPN2` |
 
 ### 2. Supabase (Execução direta do `.sql` na nuvem)
 Para demonstrar o modelo relacional SQL povoado diretamente em nuvem PostgreSQL:
@@ -35,3 +59,4 @@ Para demonstrar o modelo relacional SQL povoado diretamente em nuvem PostgreSQL:
 3. Copie e cole todo o conteúdo de [`riskzero_schema_and_seed.sql`](./riskzero_schema_and_seed.sql).
 4. Clique em **Run**.
 5. Ao final da execução, a consulta `SELECT ... UNION ALL` exibirá a contagem confirmando **22 registros válidos em cada uma das 8 tabelas**.
+
