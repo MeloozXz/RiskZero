@@ -163,7 +163,6 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // ==========================================
   useEffect(() => {
     let appStateListener: Promise<PluginListenerHandle> | null = null;
-    let visibilityTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // Escuta evento de ciclo de vida nativo (Android) via Capacitor App Plugin
     if (Capacitor.isNativePlatform()) {
@@ -183,23 +182,14 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     // Fallback para Web: escuta mudança de visibilidade da aba do navegador (Visibility API)
-    // Auto-Lock aciona ao mudar de aba SOMENTE se o usuário tiver configurado um PIN de acesso rápido
+    // Ao alternar para outra aba ou minimizar o navegador, bloqueia imediatamente o cofre
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        if (SessionService.isKeyLoaded() && (hasPIN || hasPanicPIN)) {
-          // Pequena tolerância para evitar falsos positivos em transições de DOM internas do Ionic
-          visibilityTimeout = setTimeout(() => {
-            if (document.visibilityState === 'hidden') {
-              setIsLocked(true);
-              StorageService.setAppLockedState(true);
-              const email = SessionService.getActiveUserEmail() || '';
-              StorageService.addAuditLog(email, 'AUTO_LOCK', 'Aba do navegador desfocada. Auto-Lock acionado.');
-            }
-          }, 1500);
-        }
-      } else {
-        if (visibilityTimeout) {
-          clearTimeout(visibilityTimeout);
+        if (SessionService.isKeyLoaded()) {
+          setIsLocked(true);
+          StorageService.setAppLockedState(true);
+          const email = SessionService.getActiveUserEmail() || '';
+          StorageService.addAuditLog(email, 'AUTO_LOCK', 'Aba do navegador desfocada. Auto-Lock acionado.');
         }
       }
     };
@@ -210,12 +200,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (appStateListener) {
         appStateListener.then((h) => h.remove());
       }
-      if (visibilityTimeout) {
-        clearTimeout(visibilityTimeout);
-      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isLoggedIn, hasPIN, hasPanicPIN]);
+  }, [isLoggedIn]);
 
   // ==========================================
   // TIMER DE INATIVIDADE (5 MINUTOS)
@@ -579,6 +566,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       applyCamouflageMode(false);
       setActiveEmail(emailKey);
       await StorageService.setAppLockedState(false);
+      const pinHash = await StorageService.getPINHash(emailKey);
+      const panicPinHash = await StorageService.getPanicPINHash(emailKey);
+      setHasPIN(!!pinHash);
+      setHasPanicPIN(!!panicPinHash);
       await StorageService.addAuditLog(emailKey, '2FA_VERIFIED', 'Desbloqueio efetuado com sucesso via Senha Mestra.');
       return { success: true };
     } else {
@@ -687,7 +678,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setActiveEmail(email);
 
     const pinHash = await StorageService.getPINHash(email);
+    const panicPinHash = await StorageService.getPanicPINHash(email);
     setHasPIN(!!pinHash);
+    setHasPanicPIN(!!panicPinHash);
     setTotpEnabled(true);
 
     await StorageService.addAuditLog(email, '2FA_VERIFIED', 'Autenticação de dois fatores concluída durante o login.');
