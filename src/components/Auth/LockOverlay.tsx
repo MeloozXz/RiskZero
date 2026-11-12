@@ -22,7 +22,7 @@ export const LockOverlay: React.FC = () => {
   const {
     unlockWithPIN,
     unlockWithBiometrics,
-    login,
+    unlockWithMasterPassword,
     logout,
     isLocked,
     hasPIN,
@@ -74,7 +74,7 @@ export const LockOverlay: React.FC = () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await login(activeEmail, masterPasswordInput);
+      const res = await unlockWithMasterPassword(masterPasswordInput);
       setLoading(false);
       if (!res.success) {
         setErrorMsg(res.error || 'Senha Mestra incorreta.');

@@ -47,7 +47,8 @@ const KEYS = {
   HIBP_API_KEY: 'zk_hibp_api_key',
   REMEMBER_SESSION: 'zk_remember_session',
   PERSISTED_SESSION: 'zk_persisted_session',
-  DEVICE_PROTECTOR_SALT: 'zk_device_protector_salt'
+  DEVICE_PROTECTOR_SALT: 'zk_device_protector_salt',
+  APP_LOCKED: 'zk_app_locked'
 };
 
 /**
@@ -541,6 +542,21 @@ export const StorageService = {
    */
   async clearPersistedSession(): Promise<void> {
     await removeSecureItem(KEYS.PERSISTED_SESSION);
+  },
+
+  /**
+   * Salva o estado de bloqueio de tela (Auto-Lock / LockOverlay)
+   */
+  async setAppLockedState(locked: boolean): Promise<void> {
+    await setSecureItem(KEYS.APP_LOCKED, locked ? 'true' : 'false');
+  },
+
+  /**
+   * Verifica se a aplicação estava em estado de bloqueio de tela
+   */
+  async isAppLocked(): Promise<boolean> {
+    const val = await getSecureItem(KEYS.APP_LOCKED);
+    return val === 'true';
   },
 
   /**

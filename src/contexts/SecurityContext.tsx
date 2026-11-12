@@ -38,6 +38,7 @@ interface SecurityContextType {
   disablePanicPIN: () => Promise<void>;
   unlockWithPIN: (pin: string) => Promise<{ success: boolean; error?: string }>;
   unlockWithBiometrics: () => Promise<boolean>;
+  unlockWithMasterPassword: (password: string) => Promise<{ success: boolean; error?: string }>;
   lockApp: () => void;
 
   // Ações de 2FA
@@ -104,6 +105,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (!SessionService.isKeyLoaded()) {
           setIsLoggedIn(false);
           setIsLocked(false);
+          await StorageService.setAppLockedState(false);
           setActiveEmail(null);
           return;
         }
@@ -111,8 +113,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // 5. Sessão ativa e chave carregada na RAM com sucesso
         const email = SessionService.getActiveUserEmail();
         if (email) {
+          const wasLocked = await StorageService.isAppLocked();
           setIsLoggedIn(true);
-          setIsLocked(false);
+          setIsLocked(wasLocked);
           setActiveEmail(email);
           const profile = await StorageService.getUserProfile(email);
           if (profile) {
@@ -158,6 +161,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (!isActive && SessionService.isKeyLoaded()) {
             // Minimizado ou background -> Bloqueia o aplicativo instantaneamente
             setIsLocked(true);
+            StorageService.setAppLockedState(true);
             const email = SessionService.getActiveUserEmail() || '';
             StorageService.addAuditLog(email, 'AUTO_LOCK', 'App minimizado. Auto-Lock de segurança acionado.');
           }
@@ -171,11 +175,12 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Auto-Lock aciona ao mudar de aba SOMENTE se o usuário tiver configurado um PIN de acesso rápido
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        if (SessionService.isKeyLoaded() && hasPIN) {
+        if (SessionService.isKeyLoaded() && (hasPIN || hasPanicPIN)) {
           // Pequena tolerância para evitar falsos positivos em transições de DOM internas do Ionic
           visibilityTimeout = setTimeout(() => {
             if (document.visibilityState === 'hidden') {
               setIsLocked(true);
+              StorageService.setAppLockedState(true);
               const email = SessionService.getActiveUserEmail() || '';
               StorageService.addAuditLog(email, 'AUTO_LOCK', 'Aba do navegador desfocada. Auto-Lock acionado.');
             }
@@ -199,7 +204,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isLoggedIn, hasPIN]);
+  }, [isLoggedIn, hasPIN, hasPanicPIN]);
 
   // ==========================================
   // TIMER DE INATIVIDADE (5 MINUTOS)
@@ -213,6 +218,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         setIsLocked(true);
+        StorageService.setAppLockedState(true);
         const email = SessionService.getActiveUserEmail() || '';
         StorageService.addAuditLog(email, 'AUTO_LOCK', 'Inatividade de 5 minutos detectada. Auto-Lock acionado.');
       }, 5 * 60 * 1000); // 5 minutos em milissegundos
@@ -239,6 +245,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (res.success) {
       setIsLoggedIn(true);
       setIsLocked(false);
+      await StorageService.setAppLockedState(false);
       setActiveEmail(emailKey);
       setHasPIN(false);
       setTotpEnabled(false);
@@ -261,6 +268,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         await SessionService.resetFailedAttempts();
         setIsLoggedIn(true);
         setIsLocked(false);
+        await StorageService.setAppLockedState(false);
         setIsCamouflageMode(true);
         setActiveEmail(emailKey);
         setHasPanicPIN(true);
@@ -286,6 +294,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       setIsLoggedIn(true);
       setIsLocked(false);
+      await StorageService.setAppLockedState(false);
       setIsCamouflageMode(false);
       setActiveEmail(emailKey);
 
@@ -312,6 +321,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     SessionService.clearSession();
     await StorageService.clearPersistedSession();
+    await StorageService.setAppLockedState(false);
     setIsLoggedIn(false);
     setIsLocked(false);
     setIsCamouflageMode(false);
@@ -408,6 +418,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await SessionService.resetFailedAttempts();
       setIsCamouflageMode(true);
       setIsLocked(false);
+      await StorageService.setAppLockedState(false);
       await StorageService.addAuditLog(email, '2FA_VERIFIED', 'Desbloqueio em Modo Camuflagem (Cofre de Fachada) acionado via PIN de Pânico.');
       return { success: true };
     }
@@ -420,6 +431,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await SessionService.resetFailedAttempts();
       setIsCamouflageMode(false);
       setIsLocked(false);
+      await StorageService.setAppLockedState(false);
       await StorageService.addAuditLog(email, '2FA_VERIFIED', 'Desbloqueio efetuado com sucesso via PIN.');
       return { success: true };
     } else {
@@ -456,6 +468,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       setIsCamouflageMode(false);
       setIsLocked(false);
+      await StorageService.setAppLockedState(false);
       await StorageService.addAuditLog(email, '2FA_VERIFIED', 'Desbloqueio efetuado via Biometria.');
       return true;
     } else {
@@ -512,6 +525,53 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const lockApp = () => {
     if (isLoggedIn) {
       setIsLocked(true);
+      StorageService.setAppLockedState(true);
+    }
+  };
+
+  const unlockWithMasterPassword = async (password: string): Promise<{ success: boolean; error?: string }> => {
+    const lockout = await SessionService.checkLockout();
+    if (lockout.isLocked) {
+      return { success: false, error: lockout.message };
+    }
+
+    const email = SessionService.getActiveUserEmail() || activeEmail;
+    if (!email) {
+      return { success: false, error: 'Sessão inválida ou expirada.' };
+    }
+
+    const emailKey = email.toLowerCase().trim();
+
+    // 1. Verificação de Pânico & Camuflagem (Coerção) diretamente no campo de Senha Mestra
+    const savedPanicPINHash = await StorageService.getPanicPINHash(emailKey);
+    if (savedPanicPINHash) {
+      const profile = await StorageService.getUserProfile(emailKey);
+      const salt = profile?.salt || 'zk_pin_salt_default';
+      const inputHash = await derivePinHash(password.trim(), salt);
+      const legacyHash = await hashSHA256(password.trim());
+      if (inputHash === savedPanicPINHash || legacyHash === savedPanicPINHash) {
+        await SessionService.resetFailedAttempts();
+        setIsCamouflageMode(true);
+        setIsLocked(false);
+        await StorageService.setAppLockedState(false);
+        await StorageService.addAuditLog(emailKey, '2FA_VERIFIED', 'Desbloqueio em Modo Camuflagem (Cofre de Fachada) acionado via PIN de Pânico.');
+        return { success: true };
+      }
+    }
+
+    // 2. Validação da Senha Mestra
+    const res = await SessionService.authenticateMaster(emailKey, password);
+    if (res.success) {
+      await SessionService.resetFailedAttempts();
+      setIsLoggedIn(true);
+      setIsLocked(false);
+      setIsCamouflageMode(false);
+      setActiveEmail(emailKey);
+      await StorageService.setAppLockedState(false);
+      await StorageService.addAuditLog(emailKey, '2FA_VERIFIED', 'Desbloqueio efetuado com sucesso via Senha Mestra.');
+      return { success: true };
+    } else {
+      return { success: false, error: res.error || 'Senha Mestra incorreta.' };
     }
   };
 
@@ -611,6 +671,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Login efetuado com sucesso
     setIsLoggedIn(true);
     setIsLocked(false);
+    await StorageService.setAppLockedState(false);
     setActiveEmail(email);
 
     const pinHash = await StorageService.getPINHash(email);
@@ -687,6 +748,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         disablePanicPIN,
         unlockWithPIN,
         unlockWithBiometrics,
+        unlockWithMasterPassword,
         lockApp,
         setupNew2FA,
         enable2FA,
